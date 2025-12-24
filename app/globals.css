@@ -1,15 +1,80 @@
 @import "tailwindcss";
 
+@theme {
+  /* Campus Compass Custom Colors */
+
+  /* Pista (Green-ish) - Primary Brand Color */
+  --color-cc-pista-50: #f4f7f2;
+  --color-cc-pista-100: #e3ebe0;
+  --color-cc-pista-200: #c5d9bf;
+  --color-cc-pista-300: #9cbd94;
+  --color-cc-pista-400: #749e6b;
+  --color-cc-pista-500: #708F59;
+  /* Seed Base */
+  --color-cc-pista-600: #426638;
+  --color-cc-pista-700: #35512d;
+  --color-cc-pista-800: #2c4126;
+  --color-cc-pista-900: #253621;
+  --color-cc-pista-950: #131d11;
+
+  /* Brown (Secondary / Accent) */
+  --color-cc-brown-50: #fbf8f5;
+  --color-cc-brown-100: #f5efe8;
+  --color-cc-brown-200: #ebdccf;
+  --color-cc-brown-300: #dec0ab;
+  --color-cc-brown-400: #cba083;
+  --color-cc-brown-500: #A67B59;
+  /* Seed Base */
+  --color-cc-brown-600: #9e6c4e;
+  --color-cc-brown-700: #845740;
+  --color-cc-brown-800: #6d493a;
+  --color-cc-brown-900: #593c31;
+  --color-cc-brown-950: #301f19;
+
+  /* Sky (Blue-ish) */
+  --color-cc-sky-50: #f0f9ff;
+  --color-cc-sky-100: #e0f2fe;
+  --color-cc-sky-200: #bae6fd;
+  --color-cc-sky-300: #7dd3fc;
+  --color-cc-sky-400: #38bdf8;
+  --color-cc-sky-500: #5B9BD5;
+  /* Seed Base */
+  --color-cc-sky-600: #0284c7;
+  --color-cc-sky-700: #0369a1;
+  --color-cc-sky-800: #075985;
+  --color-cc-sky-900: #0c4a6e;
+  --color-cc-sky-950: #082f49;
+
+  /* Beige (Backgrounds) */
+  --color-cc-beige-50: #fdfdfb;
+  --color-cc-beige-100: #fafaf5;
+  --color-cc-beige-200: #f3f3e8;
+  --color-cc-beige-300: #ebebd6;
+  --color-cc-beige-400: #e0e0c0;
+  --color-cc-beige-500: #d0d0a0;
+  --color-cc-beige-600: #b0b080;
+  --color-cc-beige-900: #505030;
+
+  /* Red (Alerts/SOS) */
+  --color-cc-red-50: #fef2f2;
+  --color-cc-red-100: #fee2e2;
+  --color-cc-red-200: #fecaca;
+  --color-cc-red-500: #ef4444;
+  --color-cc-red-600: #dc2626;
+  --color-cc-red-800: #991b1b;
+  --color-cc-red-900: #7f1d1d;
+
+  /* Canvas / Custom */
+  --color-cc-canvas: #f2f0e9;
+
+  /* Fonts */
+  --font-sans: var(--font-geist-sans);
+  --font-mono: var(--font-geist-mono);
+}
+
 :root {
   --background: #ffffff;
   --foreground: #171717;
-}
-
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
 }
 
 @media (prefers-color-scheme: dark) {
