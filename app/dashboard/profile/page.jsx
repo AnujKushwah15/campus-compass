@@ -1,7 +1,8 @@
 "use client";
 
 import { useState } from 'react';
-import { User, Phone, Bus, CreditCard, Lock, ShieldCheck, X } from 'lucide-react';
+import { useRouter } from 'next/navigation';
+import { User, Phone, Bus, CreditCard, Lock, ShieldCheck, X, LogOut, AlertTriangle } from 'lucide-react';
 
 export default function ProfilePage() {
     // Mock User Data
@@ -12,7 +13,9 @@ export default function ProfilePage() {
         prn: "12345678"
     });
 
+    const router = useRouter();
     const [isPasswordModalOpen, setPasswordModalOpen] = useState(false);
+    const [isLogoutModalOpen, setLogoutModalOpen] = useState(false);
 
     // OTP Flow States
     const [step, setStep] = useState('INIT'); // INIT, OTP_SENT, COMPLETED
@@ -71,6 +74,12 @@ export default function ProfilePage() {
         }, 1500);
     };
 
+    const handleLogout = () => {
+        // Clear any session data here if needed
+        // For now, just redirect to home
+        router.push('/');
+    };
+
     return (
         <div className="min-h-screen bg-cc-canvas p-4 sm:p-8">
             <div className="max-w-2xl mx-auto space-y-6">
@@ -105,13 +114,20 @@ export default function ProfilePage() {
                         <InfoItem icon={<Bus size={20} />} label="Bus Number" value={user.busNumber} />
                     </div>
 
-                    <div className="mt-10 pt-6 border-t border-cc-pista-900/10 flex justify-end">
+                    <div className="mt-10 pt-6 border-t border-cc-pista-900/10 flex justify-end gap-3">
                         <button
                             onClick={handleOpenModal}
                             className="flex items-center gap-2 px-6 py-2.5 bg-cc-brown-500 hover:bg-cc-brown-600 text-white rounded-xl font-medium shadow-md hover:shadow-lg transition-all active:scale-95"
                         >
                             <Lock size={18} />
                             Change Password
+                        </button>
+                        <button
+                            onClick={() => setLogoutModalOpen(true)}
+                            className="flex items-center gap-2 px-6 py-2.5 bg-red-100 hover:bg-red-200 text-red-600 rounded-xl font-medium shadow-sm hover:shadow-md transition-all active:scale-95"
+                        >
+                            <LogOut size={18} />
+                            Log Out
                         </button>
                     </div>
                 </div>
@@ -200,6 +216,43 @@ export default function ProfilePage() {
                             </div>
                         )}
 
+                    </div>
+                </div>
+            )}
+
+            {/* Logout Confirmation Modal */}
+            {isLogoutModalOpen && (
+                <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/20 backdrop-blur-sm animate-in fade-in duration-200">
+                    <div className="bg-white rounded-3xl shadow-2xl max-w-sm w-full overflow-hidden p-6 relative">
+                        <button
+                            onClick={() => setLogoutModalOpen(false)}
+                            className="absolute top-4 right-4 text-gray-400 hover:text-gray-600"
+                        >
+                            <X size={20} />
+                        </button>
+
+                        <div className="text-center mb-6">
+                            <div className="w-12 h-12 bg-red-100 text-red-500 rounded-full flex items-center justify-center mx-auto mb-3">
+                                <AlertTriangle size={24} />
+                            </div>
+                            <h3 className="text-xl font-bold text-gray-900">Sign Out?</h3>
+                            <p className="text-sm text-gray-500 mt-1">Are you sure you want to log out of your account?</p>
+                        </div>
+
+                        <div className="flex gap-3">
+                            <button
+                                onClick={() => setLogoutModalOpen(false)}
+                                className="flex-1 py-2.5 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-xl font-semibold transition-colors"
+                            >
+                                Cancel
+                            </button>
+                            <button
+                                onClick={handleLogout}
+                                className="flex-1 py-2.5 bg-red-500 hover:bg-red-600 text-white rounded-xl font-semibold shadow-md transition-all"
+                            >
+                                Log Out
+                            </button>
+                        </div>
                     </div>
                 </div>
             )}
