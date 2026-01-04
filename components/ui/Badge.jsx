@@ -1,10 +1,10 @@
 export default function Badge({ children, variant = 'neutral', className = '' }) {
     const styles = {
-        success: "bg-cc-brown-400/20 text-cc-brown-600 border-cc-brown-600/30",
-        warning: "bg-amber-100 text-amber-700 border-amber-500/30",
-        danger: "bg-red-100 text-red-700 border-red-500/30",
-        neutral: "bg-cc-beige-300/50 text-cc-pista-800 border-cc-pista-800/20",
-        info: "bg-cc-sky-300/20 text-cc-sky-500 border-cc-sky-500/30"
+        success: "bg-green-500/10 text-green-600 border-green-500/20 dark:text-green-400 dark:border-green-400/30",
+        warning: "bg-amber-500/10 text-amber-600 border-amber-500/20 dark:text-amber-400 dark:border-amber-400/30",
+        danger: "bg-destructive/10 text-destructive border-destructive/20",
+        neutral: "bg-secondary/10 text-secondary-foreground border-secondary/20",
+        info: "bg-sky-500/10 text-sky-600 border-sky-500/20 dark:text-sky-400 dark:border-sky-400/30"
     };
 
     return (

@@ -45,7 +45,7 @@ export default function BusManagement({ buses, selectedBus, onSelectBus, onUpdat
                 <input
                     type="text"
                     placeholder="Enter Bus Number..."
-                    className="w-full px-4 py-2 rounded-lg border border-cc-brown-200 focus:outline-none focus:ring-2 focus:ring-cc-pista-500 bg-white"
+                    className="w-full px-4 py-2 rounded-lg border border-cc-brown-200 focus:outline-none focus:ring-2 focus:ring-cc-purple-500 bg-white"
                     value={searchTerm}
                     onChange={handleSearch}
                 />
@@ -59,8 +59,8 @@ export default function BusManagement({ buses, selectedBus, onSelectBus, onUpdat
                             key={bus.id}
                             onClick={() => onSelectBus(bus)}
                             className={`p-3 rounded-lg mb-2 cursor-pointer transition-colors ${selectedBus?.id === bus.id
-                                    ? 'bg-cc-pista-200 border-cc-pista-400'
-                                    : 'hover:bg-cc-beige-200 border border-transparent'
+                                ? 'bg-cc-purple-200 border-cc-purple-400'
+                                : 'hover:bg-cc-beige-200 border border-transparent'
                                 }`}
                         >
                             <div className="font-bold text-cc-brown-900">{bus.number}</div>
@@ -84,7 +84,7 @@ export default function BusManagement({ buses, selectedBus, onSelectBus, onUpdat
                                     <h4 className="font-semibold text-cc-brown-800">Route Stops</h4>
                                     <button
                                         onClick={handleAddStop}
-                                        className="text-xs px-2 py-1 bg-cc-pista-500 text-white rounded hover:bg-cc-pista-600 transition"
+                                        className="text-xs px-2 py-1 bg-cc-purple-500 text-white rounded hover:bg-cc-purple-600 transition"
                                     >
                                         + Add Stop
                                     </button>

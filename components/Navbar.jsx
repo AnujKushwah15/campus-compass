@@ -76,7 +76,7 @@ export default function Navbar() {
                     <div className="relative">
                         <button
                             onClick={() => setShowNotifications(!showNotifications)}
-                            className="p-2 text-cc-pista-800 hover:bg-cc-pista-500/10 rounded-full transition-colors relative"
+                            className="p-2 text-cc-purple-800 hover:bg-cc-purple-500/10 rounded-full transition-colors relative"
                         >
                             <Bell size={20} />
                             {dummyNotifications.some(n => !n.read) && (
@@ -89,7 +89,7 @@ export default function Navbar() {
                             <div className="absolute right-0 mt-2 w-80 bg-white/90 backdrop-blur-xl border border-white/20 rounded-2xl shadow-xl overflow-hidden z-50 animate-in fade-in zoom-in-95 duration-200">
                                 <div className="p-3 border-b border-gray-100 flex justify-between items-center bg-white/50">
                                     <h3 className="font-semibold text-gray-800 text-sm">Notifications</h3>
-                                    <span className="text-xs text-cc-pista-600 font-medium px-2 py-0.5 bg-cc-pista-100 rounded-full">
+                                    <span className="text-xs text-cc-purple-600 font-medium px-2 py-0.5 bg-cc-purple-100 rounded-full">
                                         {dummyNotifications.length} New
                                     </span>
                                 </div>
@@ -104,7 +104,7 @@ export default function Navbar() {
                                         >
                                             <div className="flex gap-3 items-start">
                                                 <div className={`mt-1 w-2 h-2 rounded-full flex-shrink-0 
-                                                    ${notification.type === 'emergency' ? 'bg-red-500 animate-pulse' : 'bg-cc-pista-500'}
+                                                    ${notification.type === 'emergency' ? 'bg-red-500 animate-pulse' : 'bg-cc-purple-500'}
                                                 `} />
                                                 <div className="flex-1 space-y-1">
                                                     <div className="flex justify-between items-start">
@@ -127,7 +127,7 @@ export default function Navbar() {
                                     ))}
                                 </div>
                                 <div className="p-2 border-t border-gray-100 bg-gray-50/50 text-center">
-                                    <button className="text-xs font-medium text-cc-pista-600 hover:text-cc-pista-700 transition-colors">
+                                    <button className="text-xs font-medium text-cc-purple-600 hover:text-cc-purple-700 transition-colors">
                                         Mark all as read
                                     </button>
                                 </div>
@@ -138,15 +138,15 @@ export default function Navbar() {
                     {/* User Dropdown Trigger */}
                     <div className="flex items-center gap-3 pl-3 border-l border-cc-pista-800/10 cursor-pointer group">
                         <div className="w-9 h-9 rounded-full bg-gradient-to-br from-cc-sky-300 to-cc-brown-400 p-0.5 shadow-sm group-hover:shadow-glow transition-all">
-                            <div className="w-full h-full bg-white rounded-full flex items-center justify-center text-cc-pista-800 font-bold text-sm">
+                            <div className="w-full h-full bg-white rounded-full flex items-center justify-center text-cc-purple-800 font-bold text-sm">
                                 {user.name.charAt(0)}
                             </div>
                         </div>
                         <div className="hidden sm:block text-sm">
-                            <p className="font-semibold text-cc-pista-800 leading-none">{user.name}</p>
-                            <p className="text-cc-pista-500 text-xs mt-0.5">{user.role}</p>
+                            <p className="font-semibold text-cc-purple-800 leading-none">{user.name}</p>
+                            <p className="text-cc-purple-500 text-xs mt-0.5">{user.role}</p>
                         </div>
-                        <ChevronDown size={16} className="text-cc-pista-500 group-hover:translate-y-0.5 transition-transform" />
+                        <ChevronDown size={16} className="text-cc-purple-500 group-hover:translate-y-0.5 transition-transform" />
                     </div>
                 </div>
             </div>
@@ -161,8 +161,8 @@ function NavItem({ href, icon, label, active }) {
             className={`
         flex items-center gap-2 px-4 py-1.5 rounded-full text-sm font-medium transition-all duration-200
         ${active
-                    ? 'bg-cc-pista-500 text-white shadow-md'
-                    : 'text-cc-pista-800 hover:bg-white/60 hover:text-cc-pista-900'}
+                    ? 'bg-cc-purple-500 text-white shadow-md'
+                    : 'text-cc-purple-800 hover:bg-white/60 hover:text-cc-purple-900'}
       `}
         >
             {icon}

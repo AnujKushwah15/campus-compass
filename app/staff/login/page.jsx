@@ -48,23 +48,23 @@ export default function StaffLoginPage() {
     };
 
     return (
-        <main className="min-h-screen w-full relative overflow-hidden bg-cc-beige-200 flex flex-col items-center justify-center p-4">
+        <main className="min-h-screen w-full relative overflow-hidden bg-background flex flex-col items-center justify-center p-4">
             {/* Background Elements */}
             <div className="absolute inset-0 z-0">
-                <div className="absolute top-0 left-0 w-full h-full bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-cc-red-100/40 via-cc-beige-200/20 to-transparent pointer-events-none" />
+                <div className="absolute top-0 left-0 w-full h-full bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-destructive/10 via-background/20 to-transparent pointer-events-none" />
             </div>
 
             <div className="z-10 mb-8 scale-110">
                 <Logo />
             </div>
 
-            <Card className="z-10 w-full max-w-md backdrop-blur-xl border-white/50 shadow-glow hover:shadow-lg transition-shadow duration-300" padding="lg">
+            <Card className="z-10 w-full max-w-md backdrop-blur-xl border-border shadow-glow hover:shadow-lg transition-shadow duration-300" padding="lg">
                 <div className="text-center mb-8">
-                    <div className="w-12 h-12 bg-cc-red-100 rounded-full flex items-center justify-center mx-auto mb-4 text-cc-red-600">
+                    <div className="w-12 h-12 bg-destructive/10 rounded-full flex items-center justify-center mx-auto mb-4 text-destructive">
                         <Bus size={24} />
                     </div>
-                    <h1 className="text-2xl font-bold text-cc-brown-800">Staff Portal</h1>
-                    <p className="text-cc-brown-500 mt-2 text-sm">Welcome back, please login to your account.</p>
+                    <h1 className="text-2xl font-bold text-foreground">Staff Portal</h1>
+                    <p className="text-muted-foreground mt-2 text-sm">Welcome back, please login to your account.</p>
                 </div>
 
                 <form onSubmit={handleLogin} className="space-y-6">
@@ -93,7 +93,7 @@ export default function StaffLoginPage() {
                     <Button
                         type="submit"
                         size="lg"
-                        className="w-full bg-cc-red-600 hover:bg-cc-red-700 text-white shadow-md shadow-cc-red-200"
+                        className="w-full bg-destructive hover:bg-destructive/90 text-destructive-foreground shadow-md shadow-destructive/20"
                         disabled={isLoading}
                     >
                         {isLoading ? 'Verifying...' : 'Login to Dashboard'}
@@ -102,13 +102,13 @@ export default function StaffLoginPage() {
                 </form>
 
                 <div className="mt-6 text-center">
-                    <Link href="/" className="text-xs text-cc-brown-500 hover:text-cc-red-600 transition-colors">
+                    <Link href="/" className="text-xs text-muted-foreground hover:text-destructive transition-colors">
                         &larr; Back to Home
                     </Link>
                 </div>
             </Card>
 
-            <footer className="absolute bottom-4 text-xs text-cc-brown-400 font-medium">
+            <footer className="absolute bottom-4 text-xs text-muted-foreground font-medium">
                 © 2025 Campus Compass. Staff Restricted Area.
             </footer>
         </main>

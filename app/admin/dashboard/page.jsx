@@ -85,14 +85,14 @@ export default function AdminDashboardPage() {
     };
 
     return (
-        <main className="min-h-screen bg-cc-beige-100 p-6 pt-24 font-sans text-cc-brown-900">
+        <main className="min-h-screen bg-background p-6 pt-24 font-sans text-foreground">
             <div className="max-w-7xl mx-auto h-[calc(100vh-8rem)]">
                 <header className="mb-6 flex items-center justify-between">
                     <div>
-                        <h1 className="text-3xl font-bold bg-gradient-to-r from-cc-brown-800 to-cc-brown-600 bg-clip-text text-transparent">
+                        <h1 className="text-3xl font-bold bg-gradient-to-r from-accent to-accent/70 bg-clip-text text-transparent">
                             Admin Dashboard
                         </h1>
-                        <p className="text-cc-brown-600">Manage fleet, routes, and student data.</p>
+                        <p className="text-muted-foreground">Manage fleet, routes, and student data.</p>
                     </div>
                 </header>
 

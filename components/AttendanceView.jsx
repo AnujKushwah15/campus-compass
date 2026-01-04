@@ -2,6 +2,7 @@
 
 import Card from '@/components/ui/Card';
 import Badge from '@/components/ui/Badge';
+import AnimatedCounter from '@/components/ui/AnimatedCounter';
 import { Calendar, CheckCircle, XCircle, Clock } from 'lucide-react';
 
 export default function AttendanceView({ data, title, studentName }) {
@@ -21,13 +22,13 @@ export default function AttendanceView({ data, title, studentName }) {
         <div className="space-y-6 animate-fadeIn">
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                 <div>
-                    <h1 className="text-2xl font-bold text-cc-pista-800">{title}</h1>
-                    <p className="text-cc-pista-500 text-sm">Attendance for <span className="font-semibold">{studentName}</span> • {currentMonth} {currentYear}</p>
+                    <h1 className="text-2xl font-bold text-cc-purple-800">{title}</h1>
+                    <p className="text-cc-purple-500 text-sm">Attendance for <span className="font-semibold">{studentName}</span> • {currentMonth} {currentYear}</p>
                 </div>
                 <div className="flex items-center gap-3">
                     <Card className="flex items-center gap-3 !py-2 !px-4 bg-white/60" padding="none">
                         <div className={`w-2.5 h-2.5 rounded-full ${data.percentage >= 75 ? 'bg-green-500' : 'bg-red-500'} animate-pulse`}></div>
-                        <span className="text-sm font-semibold text-cc-pista-800">Overall: {data.percentage}%</span>
+                        <span className="text-sm font-semibold text-cc-purple-800">Overall: <AnimatedCounter end={data.percentage} suffix="%" duration={2000} decimals={1} /></span>
                     </Card>
                 </div>
             </div>
@@ -36,25 +37,25 @@ export default function AttendanceView({ data, title, studentName }) {
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
                 <StatCard
                     label="Total Working Days"
-                    value={data.totalDays}
+                    value={<AnimatedCounter end={data.totalDays} />}
                     icon={<Calendar className="text-cc-sky-500" />}
                     color="bg-cc-sky-500/10"
                 />
                 <StatCard
                     label="Days Present"
-                    value={data.presentDays}
+                    value={<AnimatedCounter end={data.presentDays} delay={200} />}
                     icon={<CheckCircle className="text-green-500" />}
                     color="bg-green-500/10"
                 />
                 <StatCard
                     label="Days Absent"
-                    value={data.absentDays}
+                    value={<AnimatedCounter end={data.absentDays} delay={400} />}
                     icon={<XCircle className="text-red-500" />}
                     color="bg-red-500/10"
                 />
                 <StatCard
                     label="Attendance %"
-                    value={`${data.percentage}%`}
+                    value={<AnimatedCounter end={data.percentage} suffix="%" decimals={1} delay={600} />}
                     icon={<Clock className="text-cc-brown-400" />}
                     color="bg-cc-brown-400/10"
                 />
@@ -63,19 +64,19 @@ export default function AttendanceView({ data, title, studentName }) {
             {/* Calendar View */}
             <Card>
                 <div className="flex items-center justify-between mb-4">
-                    <h3 className="font-bold text-cc-pista-800 text-lg">Monthly Overview</h3>
+                    <h3 className="font-bold text-cc-purple-800 text-lg">Monthly Overview</h3>
                     <div className="flex gap-4 text-sm">
                         <div className="flex items-center gap-1.5">
                             <div className="w-3 h-3 rounded-sm bg-green-100 border border-green-300"></div>
-                            <span className="text-cc-pista-500">Present</span>
+                            <span className="text-cc-purple-500">Present</span>
                         </div>
                         <div className="flex items-center gap-1.5">
                             <div className="w-3 h-3 rounded-sm bg-red-100 border border-red-300"></div>
-                            <span className="text-cc-pista-500">Absent</span>
+                            <span className="text-cc-purple-500">Absent</span>
                         </div>
                         <div className="flex items-center gap-1.5">
                             <div className="w-3 h-3 rounded-sm bg-gray-100 border border-gray-300"></div>
-                            <span className="text-cc-pista-500">Holiday/Weekend</span>
+                            <span className="text-cc-purple-500">Holiday/Weekend</span>
                         </div>
                     </div>
                 </div>
@@ -83,7 +84,7 @@ export default function AttendanceView({ data, title, studentName }) {
                 {/* Calendar Grid Mockup */}
                 <div className="grid grid-cols-7 gap-2 text-center mb-2">
                     {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map(day => (
-                        <div key={day} className="text-xs font-semibold text-cc-pista-400 uppercase tracking-wider py-2">
+                        <div key={day} className="text-xs font-semibold text-cc-purple-400 uppercase tracking-wider py-2">
                             {day}
                         </div>
                     ))}
@@ -141,8 +142,8 @@ function StatCard({ label, value, icon, color }) {
         <Card className="flex items-center gap-4 relative overflow-hidden" padding="md">
             <div className={`w-12 h-12 rounded-full flex items-center justify-center ${color}`}>{icon}</div>
             <div>
-                <p className="text-cc-pista-500 text-xs font-medium uppercase tracking-wider">{label}</p>
-                <p className="text-2xl font-bold text-cc-pista-800">{value}</p>
+                <p className="text-cc-purple-500 text-xs font-medium uppercase tracking-wider">{label}</p>
+                <p className="text-2xl font-bold text-cc-purple-800">{value}</p>
             </div>
             {/* Decorative background element */}
             <div className={`absolute right-0 top-0 w-20 h-20 opacity-5 rounded-bl-full translate-x-4 -translate-y-4 ${color.replace('/10', '')}`}></div>

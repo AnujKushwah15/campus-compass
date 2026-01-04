@@ -22,12 +22,12 @@ export default function ParentDashboard() {
 
     if (showLiveFeed) {
         return (
-            <div className="fixed inset-0 z-50 bg-black flex flex-col items-center justify-center animate-fadeIn">
-                <div className="w-16 h-16 border-4 border-cc-pista-500 border-t-transparent rounded-full animate-spin mb-4"></div>
-                <h2 className="text-white text-xl font-bold tracking-widest animate-pulse">LOADING LIVE FEED...</h2>
+            <div className="fixed inset-0 z-50 bg-background/95 flex flex-col items-center justify-center animate-fadeIn">
+                <div className="w-16 h-16 border-4 border-primary border-t-transparent rounded-full animate-spin mb-4"></div>
+                <h2 className="text-foreground text-xl font-bold tracking-widest animate-pulse">LOADING LIVE FEED...</h2>
                 <button
                     onClick={() => setShowLiveFeed(false)}
-                    className="mt-8 text-white/50 hover:text-white text-sm underline"
+                    className="mt-8 text-muted-foreground hover:text-foreground text-sm underline"
                 >
                     Cancel
                 </button>
@@ -39,8 +39,8 @@ export default function ParentDashboard() {
         return (
             <div className="min-h-[80vh] flex flex-col items-center justify-center animate-fadeIn">
                 <div className="text-center mb-8 space-y-2">
-                    <h1 className="text-3xl font-bold text-cc-pista-800">Track Your Child&apos;s Bus</h1>
-                    <p className="text-cc-pista-500 max-w-md mx-auto">
+                    <h1 className="text-3xl font-bold text-foreground">Track Your Child&apos;s Bus</h1>
+                    <p className="text-muted-foreground max-w-md mx-auto">
                         Enter your child&apos;s PRN number to get real-time location updates and safety status.
                     </p>
                 </div>
@@ -59,10 +59,10 @@ export default function ParentDashboard() {
                             Find Bus <MapPin size={18} className="ml-2 group-hover:animate-bounce" />
                         </Button>
                     </form>
-                    <div className="mt-6 flex items-start gap-3 p-3 bg-cc-sky-500/10 rounded-lg">
-                        <ShieldCheck className="w-5 h-5 text-cc-sky-500 shrink-0 mt-0.5" />
-                        <p className="text-xs text-cc-pista-500 leading-relaxed">
-                            <span className="font-semibold text-cc-sky-600">Secure Tracking:</span> Only parents with a valid PRN can access live location data. Verification is instant.
+                    <div className="mt-6 flex items-start gap-3 p-3 bg-secondary/10 rounded-lg">
+                        <ShieldCheck className="w-5 h-5 text-secondary shrink-0 mt-0.5" />
+                        <p className="text-xs text-muted-foreground leading-relaxed">
+                            <span className="font-semibold text-secondary-foreground">Secure Tracking:</span> Only parents with a valid PRN can access live location data. Verification is instant.
                         </p>
                     </div>
                 </Card>
@@ -77,14 +77,14 @@ export default function ParentDashboard() {
                 <div className="flex items-center gap-4">
                     <button
                         onClick={() => setIsTracking(false)}
-                        className="p-2 hover:bg-white/50 rounded-full transition-colors text-cc-pista-500"
+                        className="p-2 hover:bg-muted rounded-full transition-colors text-muted-foreground"
                     >
                         ← Back
                     </button>
                     <div>
-                        <h1 className="text-2xl font-bold text-cc-pista-800">Tracking: Rohan Sharma</h1>
-                        <div className="flex items-center gap-2 text-sm text-cc-pista-500">
-                            <span className="font-medium bg-cc-beige-300 px-2 rounded">PRN: {prn}</span>
+                        <h1 className="text-2xl font-bold text-foreground">Tracking: Rohan Sharma</h1>
+                        <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                            <span className="font-medium bg-muted px-2 rounded">PRN: {prn}</span>
                             <span>•</span>
                             <span>5th Semester, Computer Engineering</span>
                         </div>
@@ -95,10 +95,10 @@ export default function ParentDashboard() {
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                 {/* Live Map */}
                 <div className="lg:col-span-2 space-y-4">
-                    <div className="bg-white/60 backdrop-blur-sm border border-white p-4 rounded-2xl shadow-sm flex items-center justify-between">
+                    <div className="bg-card/60 backdrop-blur-sm border border-border p-4 rounded-2xl shadow-sm flex items-center justify-between">
                         <div className="flex items-center gap-3">
-                            <div className="w-3 h-3 bg-cc-brown-400 rounded-full animate-pulse"></div>
-                            <h2 className="text-lg font-bold text-cc-pista-800">Bus is approaching your stop</h2>
+                            <div className="w-3 h-3 bg-accent rounded-full animate-pulse"></div>
+                            <h2 className="text-lg font-bold text-foreground">Bus is approaching your stop</h2>
                         </div>
                         <Badge variant="success">On Time</Badge>
                     </div>
@@ -106,8 +106,8 @@ export default function ParentDashboard() {
                     <MockMap status="ontime" />
 
                     {/* Friendly Status Message */}
-                    <div className="p-4 bg-cc-sky-500/10 border border-cc-sky-300/30 rounded-xl">
-                        <p className="text-cc-pista-800 font-medium text-center">
+                    <div className="p-4 bg-secondary/10 border border-secondary/30 rounded-xl">
+                        <p className="text-foreground font-medium text-center">
                             &quot;Don&apos;t worry! The bus has left the campus and is moving smoothly. Approx 10 minutes to reach stop.&quot;
                         </p>
                     </div>
@@ -116,7 +116,7 @@ export default function ParentDashboard() {
                 {/* Info Panel */}
                 <div className="space-y-4">
                     {/* Driver Details (Prominent) */}
-                    <Card padding="sm" className="bg-cc-pista-500 text-white shadow-lg overflow-hidden relative">
+                    <Card padding="sm" className="bg-primary text-primary-foreground shadow-lg overflow-hidden relative">
                         <div className="absolute top-0 right-0 w-20 h-20 bg-white/10 rounded-bl-full -mr-4 -mt-4"></div>
                         <div className="flex items-center justify-between relative z-10">
                             <div className="flex items-center gap-3">
@@ -133,7 +133,7 @@ export default function ParentDashboard() {
                                     </div>
                                 </div>
                             </div>
-                            <button className="bg-white text-cc-pista-800 p-2.5 rounded-full hover:bg-cc-beige-100 transition-colors shadow-lg active:scale-95">
+                            <button className="bg-background text-foreground p-2.5 rounded-full hover:bg-muted transition-colors shadow-lg active:scale-95">
                                 <Phone size={20} />
                             </button>
                         </div>
@@ -150,10 +150,10 @@ export default function ParentDashboard() {
                     </Button>
 
                     <Card>
-                        <h3 className="text-sm font-bold text-cc-pista-500 uppercase tracking-wider mb-4">Live Status</h3>
+                        <h3 className="text-sm font-bold text-muted-foreground uppercase tracking-wider mb-4">Live Status</h3>
                         <div className="space-y-6 relative">
                             {/* Timeline */}
-                            <div className="absolute left-2.5 top-2 bottom-2 w-0.5 bg-cc-pista-200"></div>
+                            <div className="absolute left-2.5 top-2 bottom-2 w-0.5 bg-muted"></div>
 
                             <TimelineItem
                                 status="completed"
@@ -177,9 +177,9 @@ export default function ParentDashboard() {
                     </Card>
 
                     {/* Bus Info */}
-                    <Card padding="sm" className="bg-cc-sky-500/10 border-cc-sky-500/20">
+                    <Card padding="sm" className="bg-secondary/10 border-secondary/20">
                         <div className="flex items-center justify-between text-sm">
-                            <span className="text-cc-pista-800 font-medium">Bus Number</span>
+                            <span className="text-foreground font-medium">Bus Number</span>
                             <Badge variant="info">MH 12 AB 1234</Badge>
                         </div>
                     </Card>
@@ -191,9 +191,9 @@ export default function ParentDashboard() {
 
 function TimelineItem({ time, title, desc, status }) {
     const dotStyles = {
-        completed: "bg-cc-brown-400 ring-4 ring-cc-brown-200",
-        current: "bg-cc-sky-500 ring-4 ring-cc-sky-200 animate-pulse",
-        upcoming: "bg-white border-2 border-cc-pista-300"
+        completed: "bg-accent ring-4 ring-accent/30",
+        current: "bg-secondary ring-4 ring-secondary/30 animate-pulse",
+        upcoming: "bg-background border-2 border-muted"
     };
 
     return (
@@ -201,8 +201,8 @@ function TimelineItem({ time, title, desc, status }) {
             <div className={`absolute left-0 top-1.5 w-5 h-5 rounded-full z-10 ${dotStyles[status]}`}></div>
             <div className="flex flex-col">
                 <span className="text-xs font-bold opacity-60 mb-0.5">{time}</span>
-                <span className={`text-sm font-bold ${status === 'current' ? 'text-cc-sky-600' : 'text-cc-pista-800'}`}>{title}</span>
-                <span className="text-xs text-cc-pista-500">{desc}</span>
+                <span className={`text-sm font-bold ${status === 'current' ? 'text-secondary' : 'text-foreground'}`}>{title}</span>
+                <span className="text-xs text-muted-foreground">{desc}</span>
             </div>
         </div>
     );

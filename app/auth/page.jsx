@@ -25,11 +25,11 @@ export default function LoginPage() {
     };
 
     return (
-        <main className="min-h-screen w-full relative overflow-hidden bg-cc-beige-200 flex flex-col items-center justify-center p-4">
+        <main className="min-h-screen w-full relative overflow-hidden bg-background flex flex-col items-center justify-center p-4">
             {/* Staff Login Button */}
             <div className="absolute top-6 right-6 z-50">
                 <Link href="/staff/login">
-                    <Button variant="outline" className="bg-white/50 backdrop-blur-sm border-cc-pista-500 text-cc-pista-800 hover:bg-cc-pista-500 hover:text-white transition-all text-sm py-2 px-4 shadow-sm">
+                    <Button variant="outline" className="bg-card/50 backdrop-blur-sm border-primary text-primary hover:bg-primary hover:text-primary-foreground transition-all text-sm py-2 px-4 shadow-sm">
                         Staff Login
                     </Button>
                 </Link>
@@ -43,8 +43,8 @@ export default function LoginPage() {
                     <circle cx="20" cy="20" r="15" fill="#A67B59" className="blur-3xl" />
                     <circle cx="80" cy="80" r="20" fill="#87CEEB" className="blur-3xl" />
                 </svg>
-                <div className="absolute top-0 right-0 w-1/2 h-1/2 bg-gradient-to-bl from-cc-sky-300/10 to-transparent blur-3xl pointer-events-none" />
-                <div className="absolute bottom-0 left-0 w-1/2 h-1/2 bg-gradient-to-tr from-cc-brown-400/10 to-transparent blur-3xl pointer-events-none" />
+                <div className="absolute top-0 right-0 w-1/2 h-1/2 bg-gradient-to-bl from-secondary/10 to-transparent blur-3xl pointer-events-none" />
+                <div className="absolute bottom-0 left-0 w-1/2 h-1/2 bg-gradient-to-tr from-accent/10 to-transparent blur-3xl pointer-events-none" />
             </div>
 
             {/* Hero Logo Area */}
@@ -55,15 +55,15 @@ export default function LoginPage() {
             </div>
 
             {/* Auth Card */}
-            <Card className="z-10 w-full max-w-md md:max-w-lg mt-4 backdrop-blur-xl border-white/50 shadow-glow" padding="none">
+            <Card className="z-10 w-full max-w-md md:max-w-lg mt-4 backdrop-blur-xl border-border shadow-glow" padding="none">
                 {/* Tabs */}
-                <div className="flex border-b border-cc-beige-300">
+                <div className="flex border-b border-border">
                     <button
                         onClick={() => setActiveTab('login')}
                         className={`flex-1 py-4 text-sm font-bold tracking-wide transition-colors duration-200 
               ${activeTab === 'login'
-                                ? 'text-cc-pista-800 bg-white/40 border-b-2 border-cc-pista-500'
-                                : 'text-cc-pista-500 hover:bg-white/20 hover:text-cc-pista-800'}`}
+                                ? 'text-primary bg-muted/40 border-b-2 border-primary'
+                                : 'text-muted-foreground hover:bg-muted/20 hover:text-foreground'}`}
                     >
                         LOGIN
                     </button>
@@ -71,8 +71,8 @@ export default function LoginPage() {
                         onClick={() => setActiveTab('signup')}
                         className={`flex-1 py-4 text-sm font-bold tracking-wide transition-colors duration-200 
               ${activeTab === 'signup'
-                                ? 'text-cc-pista-800 bg-white/40 border-b-2 border-cc-pista-500'
-                                : 'text-cc-pista-500 hover:bg-white/20 hover:text-cc-pista-800'}`}
+                                ? 'text-primary bg-muted/40 border-b-2 border-primary'
+                                : 'text-muted-foreground hover:bg-muted/20 hover:text-foreground'}`}
                     >
                         SIGN UP
                     </button>
@@ -83,11 +83,11 @@ export default function LoginPage() {
                         <form onSubmit={handleLogin} className="space-y-6 animate-fadeIn">
                             <div className="space-y-4">
                                 {/* Login As Selector */}
-                                <div className="grid grid-cols-2 gap-3 p-1 bg-cc-beige-300/30 rounded-lg">
+                                <div className="grid grid-cols-2 gap-3 p-1 bg-muted/30 rounded-lg">
                                     <button
                                         type="button"
                                         onClick={() => setUserType('student')}
-                                        className={`flex items-center justify-center gap-2 py-2 rounded-md text-sm font-medium transition-all ${userType === 'student' ? 'bg-white shadow-sm text-cc-pista-800' : 'text-cc-pista-500 hover:text-cc-pista-800'
+                                        className={`flex items-center justify-center gap-2 py-2 rounded-md text-sm font-medium transition-all ${userType === 'student' ? 'bg-card shadow-sm text-foreground ring-2 ring-cc-purple-500' : 'text-muted-foreground hover:text-foreground'
                                             }`}
                                     >
                                         <User size={16} /> Student
@@ -95,7 +95,7 @@ export default function LoginPage() {
                                     <button
                                         type="button"
                                         onClick={() => setUserType('parent')}
-                                        className={`flex items-center justify-center gap-2 py-2 rounded-md text-sm font-medium transition-all ${userType === 'parent' ? 'bg-white shadow-sm text-cc-pista-800' : 'text-cc-pista-500 hover:text-cc-pista-800'
+                                        className={`flex items-center justify-center gap-2 py-2 rounded-md text-sm font-medium transition-all ${userType === 'parent' ? 'bg-card shadow-sm text-foreground ring-2 ring-cc-purple-500' : 'text-muted-foreground hover:text-foreground'
                                             }`}
                                     >
                                         <Shield size={16} /> Parent
@@ -117,7 +117,7 @@ export default function LoginPage() {
                                         required
                                     />
                                     <div className="flex justify-end">
-                                        <Link href="#" className="text-xs text-cc-sky-500 hover:text-cc-sky-300 transition-colors font-medium">
+                                        <Link href="#" className="text-xs text-secondary hover:text-secondary-foreground transition-colors font-medium">
                                             Forgot Password?
                                         </Link>
                                     </div>
@@ -125,9 +125,9 @@ export default function LoginPage() {
                             </div>
 
                             {userType === 'parent' && (
-                                <div className="bg-cc-sky-500/10 border border-cc-sky-300/30 rounded-lg p-3 flex items-start gap-3">
-                                    <div className="bg-cc-sky-500 rounded-full p-0.5 mt-0.5"><div className="w-1 h-1 bg-white rounded-full"></div></div>
-                                    <p className="text-xs text-cc-pista-500 leading-relaxed">
+                                <div className="bg-secondary/10 border border-secondary/30 rounded-lg p-3 flex items-start gap-3">
+                                    <div className="bg-secondary rounded-full p-0.5 mt-0.5"><div className="w-1 h-1 bg-white rounded-full"></div></div>
+                                    <p className="text-xs text-muted-foreground leading-relaxed">
                                         Parents can log in directly using their child&apos;s PRN number to get instant tracking access.
                                     </p>
                                 </div>
@@ -163,12 +163,12 @@ export default function LoginPage() {
                                 Create Account
                             </Button>
 
-                            <p className="text-center text-xs text-cc-pista-500 mt-4">
+                            <p className="text-center text-xs text-muted-foreground mt-4">
                                 Already have an account?{' '}
                                 <button
                                     type="button"
                                     onClick={() => setActiveTab('login')}
-                                    className="text-cc-sky-500 font-bold hover:underline"
+                                    className="text-secondary font-bold hover:underline"
                                 >
                                     Login here
                                 </button>
@@ -179,7 +179,7 @@ export default function LoginPage() {
             </Card>
 
             {/* Footer */}
-            <footer className="absolute bottom-4 text-xs text-cc-pista-500/60 font-medium">
+            <footer className="absolute bottom-4 text-xs text-muted-foreground/60 font-medium">
                 © 2025 Campus Compass. Real-time Transit System.
             </footer>
         </main>

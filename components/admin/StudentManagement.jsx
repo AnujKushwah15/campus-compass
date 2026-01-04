@@ -39,7 +39,7 @@ export default function StudentManagement({ students, buses, onRemoveStudent, on
                         onChange={(e) => setPrnSearch(e.target.value)}
                         onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
                         placeholder="Enter PRN..."
-                        className="flex-1 px-4 py-2 rounded-lg border border-cc-brown-200 focus:outline-none focus:ring-2 focus:ring-cc-pista-500 bg-white"
+                        className="flex-1 px-4 py-2 rounded-lg border border-cc-brown-200 focus:outline-none focus:ring-2 focus:ring-cc-purple-500 bg-white"
                     />
                     <button
                         onClick={handleSearch}
@@ -52,7 +52,7 @@ export default function StudentManagement({ students, buses, onRemoveStudent, on
 
             {/* Found Student Display */}
             {foundStudent && (
-                <div className="mb-8 p-4 bg-cc-pista-200/50 rounded-xl border border-cc-pista-300">
+                <div className="mb-8 p-4 bg-cc-purple-200/50 rounded-xl border border-cc-purple-300">
                     <h3 className="text-md font-bold text-cc-brown-900 mb-2">Student Found</h3>
                     <div className="flex justify-between items-start">
                         <div>
@@ -98,7 +98,7 @@ export default function StudentManagement({ students, buses, onRemoveStudent, on
                                     required
                                     value={newStudent.name}
                                     onChange={e => setNewStudent({ ...newStudent, name: e.target.value })}
-                                    className="w-full px-3 py-2 rounded border border-cc-brown-200 focus:outline-none focus:ring-1 focus:ring-cc-pista-500"
+                                    className="w-full px-3 py-2 rounded border border-cc-brown-200 focus:outline-none focus:ring-1 focus:ring-cc-purple-500"
                                 />
                             </div>
                             <div>
@@ -108,7 +108,7 @@ export default function StudentManagement({ students, buses, onRemoveStudent, on
                                     required
                                     value={newStudent.prn}
                                     onChange={e => setNewStudent({ ...newStudent, prn: e.target.value })}
-                                    className="w-full px-3 py-2 rounded border border-cc-brown-200 focus:outline-none focus:ring-1 focus:ring-cc-pista-500"
+                                    className="w-full px-3 py-2 rounded border border-cc-brown-200 focus:outline-none focus:ring-1 focus:ring-cc-purple-500"
                                 />
                             </div>
                             <div>
@@ -116,7 +116,7 @@ export default function StudentManagement({ students, buses, onRemoveStudent, on
                                 <select
                                     value={newStudent.busId}
                                     onChange={e => setNewStudent({ ...newStudent, busId: e.target.value })}
-                                    className="w-full px-3 py-2 rounded border border-cc-brown-200 focus:outline-none focus:ring-1 focus:ring-cc-pista-500 bg-white"
+                                    className="w-full px-3 py-2 rounded border border-cc-brown-200 focus:outline-none focus:ring-1 focus:ring-cc-purple-500 bg-white"
                                 >
                                     <option value="">No Bus Assigned</option>
                                     {buses && buses.map(bus => (
@@ -127,7 +127,7 @@ export default function StudentManagement({ students, buses, onRemoveStudent, on
                             <div className="flex gap-2 pt-2">
                                 <button
                                     type="submit"
-                                    className="flex-1 bg-cc-pista-600 text-white py-2 rounded hover:bg-cc-pista-700 font-medium"
+                                    className="flex-1 bg-cc-purple-600 text-white py-2 rounded hover:bg-cc-purple-700 font-medium"
                                 >
                                     Add Student
                                 </button>

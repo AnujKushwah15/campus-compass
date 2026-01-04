@@ -1,19 +1,18 @@
-import { MapPin, BusFront } from 'lucide-react';
+import { Bus } from 'lucide-react';
 
 export default function Logo() {
     return (
-        <div className="flex items-center gap-2 select-none group">
-            <div className="relative flex items-center justify-center w-10 h-10 bg-cc-pista-500 rounded-xl shadow-glow text-white overflow-hidden transition-transform transform group-hover:scale-105">
-                {/* Abstract "tech" circles in background */}
-                <div className="absolute -top-2 -right-2 w-6 h-6 bg-white/20 rounded-full blur-[1px]" />
+        <div className="flex items-center gap-3 select-none group">
+            <div className="relative flex items-center justify-center w-12 h-12 bg-gradient-to-br from-cc-purple-500 to-cc-purple-700 rounded-xl shadow-lg shadow-cc-purple-500/30 text-white overflow-hidden transition-transform duration-300 transform group-hover:scale-105 group-hover:rotate-3">
+                {/* Glass shine effect */}
+                <div className="absolute top-0 right-0 w-8 h-8 bg-white/10 rounded-full blur-lg transform translate-x-1/2 -translate-y-1/2 pointer-events-none" />
 
-                {/* Overlapping icons to create a unique mark */}
-                <MapPin className="w-5 h-5 absolute text-cc-sky-300 transform -translate-y-1 translate-x-1" />
-                <BusFront className="w-6 h-6 z-10 relative" />
+                {/* Bus Icon */}
+                <Bus className="w-7 h-7 relative z-10 drop-shadow-md" strokeWidth={1.5} />
             </div>
-            <div className="flex flex-col leading-none">
-                <span className="font-bold text-lg text-cc-pista-800 tracking-tight">Campus</span>
-                <span className="font-medium text-sm text-cc-pista-500 tracking-wider uppercase">Compass</span>
+            <div className="flex flex-col">
+                <span className="font-bold text-xl text-cc-purple-950 leading-none tracking-tight group-hover:text-cc-purple-700 transition-colors">Campus</span>
+                <span className="font-bold text-sm text-cc-purple-500 leading-none tracking-widest uppercase">Compass</span>
             </div>
         </div>
     );

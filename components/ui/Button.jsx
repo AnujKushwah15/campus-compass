@@ -10,9 +10,9 @@ export default function Button({
     const baseStyles = "inline-flex items-center justify-center font-medium transition-all duration-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-offset-1 disabled:opacity-70 disabled:cursor-not-allowed";
 
     const variants = {
-        primary: "bg-cc-pista-500 text-white hover:bg-cc-pista-800 shadow-md hover:shadow-glow active:transform active:scale-95 focus:ring-cc-pista-500",
-        secondary: "bg-white border-2 border-cc-pista-500 text-cc-pista-800 hover:bg-cc-beige-200 focus:ring-cc-pista-500",
-        ghost: "text-cc-pista-800 hover:bg-cc-pista-500/10 focus:ring-cc-pista-500",
+        primary: "bg-primary text-primary-foreground hover:opacity-90 shadow-md hover:shadow-glow active:transform active:scale-95 focus:ring-primary",
+        secondary: "bg-background border-2 border-primary text-primary hover:bg-muted focus:ring-primary",
+        ghost: "text-foreground hover:bg-muted focus:ring-primary",
         danger: "bg-red-500 text-white hover:bg-red-600 focus:ring-red-500"
     };
 
@@ -34,3 +34,4 @@ export default function Button({
         </button>
     );
 }
+

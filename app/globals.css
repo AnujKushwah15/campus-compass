@@ -3,19 +3,19 @@
 @theme {
   /* Campus Compass Custom Colors */
 
-  /* Pista (Green-ish) - Primary Brand Color */
-  --color-cc-pista-50: #f4f7f2;
-  --color-cc-pista-100: #e3ebe0;
-  --color-cc-pista-200: #c5d9bf;
-  --color-cc-pista-300: #9cbd94;
-  --color-cc-pista-400: #749e6b;
-  --color-cc-pista-500: #708F59;
+  /* Purple - Primary Brand Color */
+  --color-cc-purple-50: #f5f3ff;
+  --color-cc-purple-100: #ede9fe;
+  --color-cc-purple-200: #ddd6fe;
+  --color-cc-purple-300: #c4b5fd;
+  --color-cc-purple-400: #a78bfa;
+  --color-cc-purple-500: #8b5cf6;
   /* Seed Base */
-  --color-cc-pista-600: #426638;
-  --color-cc-pista-700: #35512d;
-  --color-cc-pista-800: #2c4126;
-  --color-cc-pista-900: #253621;
-  --color-cc-pista-950: #131d11;
+  --color-cc-purple-600: #7c3aed;
+  --color-cc-purple-700: #6d28d9;
+  --color-cc-purple-800: #5b21b6;
+  --color-cc-purple-900: #4c1d95;
+  --color-cc-purple-950: #2e1065;
 
   /* Brown (Secondary / Accent) */
   --color-cc-brown-50: #fbf8f5;
@@ -87,19 +87,91 @@
 }
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  /* Default Light Mode */
+  --color-background: var(--color-cc-beige-100);
+  --color-foreground: var(--color-cc-purple-950);
+
+  --color-card: #ffffff;
+  --color-card-foreground: var(--color-cc-purple-900);
+  --color-card-border: var(--color-cc-purple-100);
+
+  --color-primary: var(--color-cc-purple-600);
+  --color-primary-foreground: #ffffff;
+
+  --color-secondary: var(--color-cc-sky-500);
+  --color-secondary-foreground: #ffffff;
+
+  --color-accent: var(--color-cc-brown-500);
+  --color-accent-foreground: #ffffff;
+
+  --color-muted: var(--color-cc-purple-100);
+  --color-muted-foreground: var(--color-cc-purple-700);
+
+  --shadow-glow: 0 4px 14px 0 rgba(139, 92, 246, 0.39);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+.dark {
+  /* Dark Mode Overrides */
+  --color-background: #0f172a;
+  /* Deep Navy similar to slate-900 */
+  --color-foreground: #f8fafc;
+  /* Soft White */
+
+  --color-card: #1e293b;
+  /* Lighter Navy similar to slate-800 */
+  --color-card-foreground: #f1f5f9;
+  --color-card-border: #334155;
+
+  --color-primary: var(--color-cc-purple-400);
+  /* Slightly lighter for dark mode */
+  --color-primary-foreground: #ffffff;
+
+  --color-secondary: var(--color-cc-sky-400);
+  --color-secondary-foreground: #ffffff;
+
+  --color-accent: var(--color-cc-brown-400);
+  --color-accent-foreground: #ffffff;
+
+  --color-muted: #334155;
+  --color-muted-foreground: #94a3b8;
+
+  --shadow-glow: 0 4px 14px 0 rgba(167, 139, 250, 0.3);
+  /* Purple glow */
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  background-color: var(--color-background);
+  color: var(--color-foreground);
+  font-family: var(--font-sans);
+  transition: background-color 0.3s ease, color 0.3s ease;
+}
+
+@keyframes blob {
+  0% {
+    transform: translate(0px, 0px) scale(1);
+  }
+
+  33% {
+    transform: translate(30px, -50px) scale(1.1);
+  }
+
+  66% {
+    transform: translate(-20px, 20px) scale(0.9);
+  }
+
+  100% {
+    transform: translate(0px, 0px) scale(1);
+  }
+}
+
+.animate-blob {
+  animation: blob 7s infinite;
+}
+
+.animation-delay-2000 {
+  animation-delay: 2s;
+}
+
+.animation-delay-4000 {
+  animation-delay: 4s;
 }

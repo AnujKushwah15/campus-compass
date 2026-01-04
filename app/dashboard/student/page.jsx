@@ -12,17 +12,17 @@ export default function StudentDashboard() {
             {/* Page Header & Status */}
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                 <div>
-                    <h1 className="text-2xl font-bold text-cc-pista-800">Live Tracking</h1>
-                    <p className="text-cc-pista-500 text-sm">Bus No. 42 • Route 3 (West City)</p>
+                    <h1 className="text-2xl font-bold text-foreground">Live Tracking</h1>
+                    <p className="text-muted-foreground text-sm">Bus No. 42 • Route 3 (West City)</p>
                 </div>
 
                 <div className="flex items-center gap-3">
-                    <Card className="flex items-center gap-3 !py-2 !px-4 bg-white/60" padding="none">
-                        <div className="w-2.5 h-2.5 rounded-full bg-cc-brown-400 animate-pulse"></div>
-                        <span className="text-sm font-semibold text-cc-pista-800">Status: On Time</span>
+                    <Card className="flex items-center gap-3 !py-2 !px-4 bg-card/60" padding="none">
+                        <div className="w-2.5 h-2.5 rounded-full bg-primary animate-pulse"></div>
+                        <span className="text-sm font-semibold text-foreground">Status: On Time</span>
                     </Card>
                     <Button variant="ghost" size="sm" className="hidden md:flex items-center gap-2">
-                        <span className="w-2 h-2 rounded-full border border-cc-pista-800/40"></span> Refresh
+                        <span className="w-2 h-2 rounded-full border border-foreground/40"></span> Refresh
                     </Button>
                 </div>
             </div>
@@ -33,8 +33,8 @@ export default function StudentDashboard() {
                     <MockMap status="ontime" />
 
                     {/* Quick Status Bar below map on mobile, or generally useful */}
-                    <div className="flex items-center gap-2 p-3 bg-cc-brown-400/10 border border-cc-brown-400/20 rounded-lg text-sm text-cc-pista-800">
-                        <CheckCircleIcon className="w-5 h-5 text-cc-brown-600" />
+                    <div className="flex items-center gap-2 p-3 bg-accent/10 border border-accent/20 rounded-lg text-sm text-foreground">
+                        <CheckCircleIcon className="w-5 h-5 text-accent" />
                         <span className="font-medium">Bus is running on schedule. Expected to reach campus by 08:45 AM.</span>
                     </div>
                 </div>
@@ -42,32 +42,32 @@ export default function StudentDashboard() {
                 {/* Info Sidebar */}
                 <div className="space-y-4">
                     {/* ETA Card */}
-                    <Card className="bg-gradient-to-br from-white to-cc-beige-100">
+                    <Card className="bg-gradient-to-br from-card to-muted">
                         <div className="flex items-start justify-between mb-2">
-                            <span className="text-xs font-bold text-cc-pista-500 uppercase tracking-wider">Estimated Arrival</span>
-                            <Clock size={18} className="text-cc-sky-500" />
+                            <span className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Estimated Arrival</span>
+                            <Clock size={18} className="text-secondary" />
                         </div>
-                        <div className="text-3xl font-bold text-cc-pista-800 mb-1">12 <span className="text-lg font-medium text-cc-pista-500">mins</span></div>
-                        <p className="text-sm text-cc-pista-500">to College Campus Stop</p>
+                        <div className="text-3xl font-bold text-foreground mb-1">12 <span className="text-lg font-medium text-muted-foreground">mins</span></div>
+                        <p className="text-sm text-muted-foreground">to College Campus Stop</p>
 
-                        <div className="mt-4 pt-4 border-t border-cc-pista-800/5 space-y-3">
+                        <div className="mt-4 pt-4 border-t border-border space-y-3">
                             <div className="flex items-center gap-3">
                                 <div className="flex flex-col items-center gap-1">
-                                    <div className="w-2 h-2 rounded-full bg-cc-sky-300"></div>
-                                    <div className="w-0.5 h-6 bg-cc-pista-800/10"></div>
+                                    <div className="w-2 h-2 rounded-full bg-secondary"></div>
+                                    <div className="w-0.5 h-6 bg-foreground/10"></div>
                                 </div>
                                 <div>
-                                    <p className="text-xs text-cc-pista-500">Current Stop</p>
-                                    <p className="text-sm font-semibold text-cc-pista-800">Central Library</p>
+                                    <p className="text-xs text-muted-foreground">Current Stop</p>
+                                    <p className="text-sm font-semibold text-foreground">Central Library</p>
                                 </div>
                             </div>
                             <div className="flex items-center gap-3">
                                 <div className="flex flex-col items-center gap-1">
-                                    <div className="w-2 h-2 rounded-full border-2 border-cc-brown-400 bg-white"></div>
+                                    <div className="w-2 h-2 rounded-full border-2 border-accent bg-background"></div>
                                 </div>
                                 <div>
-                                    <p className="text-xs text-cc-pista-500">Next Stop</p>
-                                    <p className="text-sm font-semibold text-cc-pista-800">Stadium Road</p>
+                                    <p className="text-xs text-muted-foreground">Next Stop</p>
+                                    <p className="text-sm font-semibold text-foreground">Stadium Road</p>
                                 </div>
                             </div>
                         </div>
@@ -76,33 +76,33 @@ export default function StudentDashboard() {
                     {/* Driver Info Card */}
                     <Card>
                         <div className="flex items-center gap-4 mb-4">
-                            <div className="w-12 h-12 rounded-full bg-cc-pista-200 flex items-center justify-center text-xl">👨‍✈️</div>
+                            <div className="w-12 h-12 rounded-full bg-muted flex items-center justify-center text-xl">👨‍✈️</div>
                             <div>
-                                <p className="font-bold text-cc-pista-800">Rajesh Kumar</p>
+                                <p className="font-bold text-foreground">Rajesh Kumar</p>
                                 <Badge variant="neutral">Driver</Badge>
                             </div>
                         </div>
 
-                        <div className="flex items-center justify-between bg-white/50 p-3 rounded-lg border border-white">
-                            <div className="flex items-center gap-2 text-sm text-cc-pista-800">
-                                <Phone size={16} className="text-cc-pista-500" />
+                        <div className="flex items-center justify-between bg-background/50 p-3 rounded-lg border border-border">
+                            <div className="flex items-center gap-2 text-sm text-foreground">
+                                <Phone size={16} className="text-muted-foreground" />
                                 +91 98765 43210
                             </div>
-                            <button className="p-2 bg-cc-brown-400 text-white rounded-full hover:bg-cc-brown-600 transition-colors shadow-sm cursor-pointer">
+                            <button className="p-2 bg-accent text-accent-foreground rounded-full hover:bg-accent/80 transition-colors shadow-sm cursor-pointer">
                                 <Phone size={16} />
                             </button>
                         </div>
                     </Card>
 
                     {/* Route Summary */}
-                    <Card padding="sm" className="bg-cc-sky-500/5 border-cc-sky-300/20">
+                    <Card padding="sm" className="bg-secondary/5 border-secondary/20">
                         <div className="flex items-center gap-2 mb-2">
-                            <MapPin size={16} className="text-cc-sky-500" />
-                            <span className="text-xs font-bold text-cc-sky-500 uppercase">Route Details</span>
+                            <MapPin size={16} className="text-secondary" />
+                            <span className="text-xs font-bold text-secondary uppercase">Route Details</span>
                         </div>
-                        <div className="flex items-center justify-between text-sm font-medium text-cc-pista-800">
+                        <div className="flex items-center justify-between text-sm font-medium text-foreground">
                             <span>Shivajinagar</span>
-                            <ArrowRightIcon className="w-4 h-4 text-cc-pista-500/50" />
+                            <ArrowRightIcon className="w-4 h-4 text-muted-foreground/50" />
                             <span>College Campus</span>
                         </div>
                     </Card>
