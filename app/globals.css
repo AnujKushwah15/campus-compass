@@ -175,3 +175,52 @@ body {
 .animation-delay-4000 {
   animation-delay: 4s;
 }
+
+@keyframes moveAlongTrack {
+  0% {
+    offset-distance: 0%;
+  }
+
+  100% {
+    offset-distance: 100%;
+  }
+}
+
+.animate-bus-track {
+  animation: moveAlongTrack 10s infinite linear alternate;
+  offset-path: path("M100,400 Q400,300 700,200");
+  offset-rotate: auto;
+}
+
+@keyframes fadeInScale {
+  0% {
+    opacity: 0;
+    transform: scale(0.95);
+  }
+
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+.animate-pop-in {
+  animation: fadeInScale 0.8s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+@keyframes dropdownEnter {
+  0% {
+    opacity: 0;
+    transform: translateY(-10px) scale(0.95);
+  }
+
+  100% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.animate-dropdown-enter {
+  animation: dropdownEnter 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  transform-origin: top right;
+}

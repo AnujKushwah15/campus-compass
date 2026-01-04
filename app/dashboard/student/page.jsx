@@ -3,6 +3,7 @@
 import MockMap from '@/components/MockMap';
 import Card from '@/components/ui/Card';
 import Badge from '@/components/ui/Badge';
+import AnimatedCounter from '@/components/ui/AnimatedCounter';
 import { Phone, Clock, MapPin } from 'lucide-react';
 import Button from '@/components/ui/Button';
 
@@ -12,17 +13,17 @@ export default function StudentDashboard() {
             {/* Page Header & Status */}
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                 <div>
-                    <h1 className="text-2xl font-bold text-foreground">Live Tracking</h1>
+                    <h1 className="text-2xl font-bold text-cc-purple-500">Live Tracking</h1>
                     <p className="text-muted-foreground text-sm">Bus No. 42 • Route 3 (West City)</p>
                 </div>
 
                 <div className="flex items-center gap-3">
-                    <Card className="flex items-center gap-3 !py-2 !px-4 bg-card/60" padding="none">
+                    <Card className="flex items-center gap-3 !py-2 !px-4 bg-card/60 border border-cc-purple-500 shadow-[0_0_10px_rgba(139,92,246,0.2)] opacity-0 animate-pop-in delay-75" padding="none">
                         <div className="w-2.5 h-2.5 rounded-full bg-primary animate-pulse"></div>
-                        <span className="text-sm font-semibold text-foreground">Status: On Time</span>
+                        <span className="text-sm font-semibold text-cc-purple-500">Status: On Time</span>
                     </Card>
-                    <Button variant="ghost" size="sm" className="hidden md:flex items-center gap-2">
-                        <span className="w-2 h-2 rounded-full border border-foreground/40"></span> Refresh
+                    <Button variant="ghost" size="sm" className="hidden md:flex items-center gap-2 border border-cc-purple-500 hover:shadow-[0_0_15px_rgba(139,92,246,0.5)] transition-all duration-300 text-cc-purple-500 hover:bg-cc-purple-500/10 opacity-0 animate-pop-in delay-150">
+                        <span className="w-2 h-2 rounded-full border border-cc-purple-500 bg-cc-purple-500/30 shadow-[0_0_5px_rgba(139,92,246,0.5)]"></span> Refresh
                     </Button>
                 </div>
             </div>
@@ -33,7 +34,7 @@ export default function StudentDashboard() {
                     <MockMap status="ontime" />
 
                     {/* Quick Status Bar below map on mobile, or generally useful */}
-                    <div className="flex items-center gap-2 p-3 bg-accent/10 border border-accent/20 rounded-lg text-sm text-foreground">
+                    <div className="flex items-center gap-2 p-3 bg-accent/10 border border-cc-purple-500 rounded-lg text-sm text-foreground">
                         <CheckCircleIcon className="w-5 h-5 text-accent" />
                         <span className="font-medium">Bus is running on schedule. Expected to reach campus by 08:45 AM.</span>
                     </div>
@@ -42,12 +43,14 @@ export default function StudentDashboard() {
                 {/* Info Sidebar */}
                 <div className="space-y-4">
                     {/* ETA Card */}
-                    <Card className="bg-gradient-to-br from-card to-muted">
+                    <Card className="bg-gradient-to-br from-card to-muted border-cc-purple-500 opacity-0 animate-pop-in delay-100">
                         <div className="flex items-start justify-between mb-2">
-                            <span className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Estimated Arrival</span>
-                            <Clock size={18} className="text-secondary" />
+                            <span className="text-xs font-bold text-cc-purple-500 uppercase tracking-wider">Estimated Arrival</span>
+                            <div className="p-2 bg-cc-purple-500/10 text-cc-purple-500 rounded-full border border-cc-purple-500/50 shadow-[0_0_10px_rgba(139,92,246,0.3)]">
+                                <Clock size={18} />
+                            </div>
                         </div>
-                        <div className="text-3xl font-bold text-foreground mb-1">12 <span className="text-lg font-medium text-muted-foreground">mins</span></div>
+                        <div className="text-3xl font-bold text-foreground mb-1"><AnimatedCounter end={12} duration={2000} /> <span className="text-lg font-medium text-muted-foreground">mins</span></div>
                         <p className="text-sm text-muted-foreground">to College Campus Stop</p>
 
                         <div className="mt-4 pt-4 border-t border-border space-y-3">
@@ -57,7 +60,7 @@ export default function StudentDashboard() {
                                     <div className="w-0.5 h-6 bg-foreground/10"></div>
                                 </div>
                                 <div>
-                                    <p className="text-xs text-muted-foreground">Current Stop</p>
+                                    <p className="text-xs text-cc-purple-400">Current Stop</p>
                                     <p className="text-sm font-semibold text-foreground">Central Library</p>
                                 </div>
                             </div>
@@ -66,7 +69,7 @@ export default function StudentDashboard() {
                                     <div className="w-2 h-2 rounded-full border-2 border-accent bg-background"></div>
                                 </div>
                                 <div>
-                                    <p className="text-xs text-muted-foreground">Next Stop</p>
+                                    <p className="text-xs text-cc-purple-400">Next Stop</p>
                                     <p className="text-sm font-semibold text-foreground">Stadium Road</p>
                                 </div>
                             </div>
@@ -74,18 +77,20 @@ export default function StudentDashboard() {
                     </Card>
 
                     {/* Driver Info Card */}
-                    <Card>
+                    <Card className="border-cc-purple-500 shadow-[0_0_20px_rgba(139,92,246,0.15)] opacity-0 animate-pop-in delay-200">
                         <div className="flex items-center gap-4 mb-4">
                             <div className="w-12 h-12 rounded-full bg-muted flex items-center justify-center text-xl">👨‍✈️</div>
                             <div>
-                                <p className="font-bold text-foreground">Rajesh Kumar</p>
+                                <p className="font-bold text-cc-purple-500">Rajesh Kumar</p>
                                 <Badge variant="neutral">Driver</Badge>
                             </div>
                         </div>
 
                         <div className="flex items-center justify-between bg-background/50 p-3 rounded-lg border border-border">
                             <div className="flex items-center gap-2 text-sm text-foreground">
-                                <Phone size={16} className="text-muted-foreground" />
+                                <div className="p-1.5 bg-cc-purple-500/10 text-cc-purple-500 rounded-full border border-cc-purple-500/50 shadow-[0_0_10px_rgba(139,92,246,0.3)]">
+                                    <Phone size={14} />
+                                </div>
                                 +91 98765 43210
                             </div>
                             <button className="p-2 bg-accent text-accent-foreground rounded-full hover:bg-accent/80 transition-colors shadow-sm cursor-pointer">
@@ -95,10 +100,12 @@ export default function StudentDashboard() {
                     </Card>
 
                     {/* Route Summary */}
-                    <Card padding="sm" className="bg-secondary/5 border-secondary/20">
+                    <Card padding="sm" className="bg-secondary/5 border-cc-purple-500 opacity-0 animate-pop-in delay-300">
                         <div className="flex items-center gap-2 mb-2">
-                            <MapPin size={16} className="text-secondary" />
-                            <span className="text-xs font-bold text-secondary uppercase">Route Details</span>
+                            <div className="p-1.5 bg-cc-purple-500/10 text-cc-purple-500 rounded-full border border-cc-purple-500/50 shadow-[0_0_10px_rgba(139,92,246,0.3)]">
+                                <MapPin size={14} />
+                            </div>
+                            <span className="text-xs font-bold text-cc-purple-500 uppercase">Route Details</span>
                         </div>
                         <div className="flex items-center justify-between text-sm font-medium text-foreground">
                             <span>Shivajinagar</span>

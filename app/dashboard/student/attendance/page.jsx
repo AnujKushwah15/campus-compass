@@ -16,6 +16,7 @@ export default function StudentAttendancePage() {
             title="My Attendance"
             studentName="Alex Johnson"
             data={studentData}
+            titleClassName="text-white"
         />
     );
 }

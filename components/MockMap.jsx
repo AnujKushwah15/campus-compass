@@ -4,7 +4,7 @@ import { MapPin } from 'lucide-react';
 
 export default function MockMap({ status = 'ontime' }) {
     return (
-        <div className="relative w-full h-[400px] md:h-[500px] bg-[#E5E0D5] rounded-2xl overflow-hidden border border-white shadow-inner group">
+        <div className="relative w-full h-[400px] md:h-[500px] bg-[#E5E0D5] rounded-2xl overflow-hidden border border-cc-purple-500 shadow-inner group animate-pop-in">
             {/* Map Background Pattern (Simulating Streets) */}
             <svg className="absolute inset-0 w-full h-full opacity-30" preserveAspectRatio="xMidYMid slice">
                 {/* Abstract Roads */}
@@ -22,7 +22,7 @@ export default function MockMap({ status = 'ontime' }) {
             </svg>
 
             {/* Bus Marker (Animated) */}
-            <div className="absolute top-[35%] left-[45%] transform -translate-x-1/2 -translate-y-1/2 transition-all duration-1000 ease-in-out hover:scale-110 cursor-pointer z-20">
+            <div className="absolute top-0 left-0 transition-all duration-300 ease-in-out hover:scale-110 cursor-pointer z-20 animate-bus-track">
                 <div className="relative">
                     {/* Pulse Effect */}
                     <div className={`absolute top-0 left-0 w-full h-full rounded-full animate-ping opacity-75 ${status === 'ontime' ? 'bg-cc-brown-400' : status === 'delayed' ? 'bg-amber-400' : 'bg-red-400'

@@ -8,6 +8,7 @@ import Input from '@/components/ui/Input';
 import Button from '@/components/ui/Button';
 import { User, Shield, ArrowRight, Mail, Phone, Hash, School, GraduationCap } from 'lucide-react';
 import Link from 'next/link';
+import BackgroundAnimation from '@/components/ui/BackgroundAnimation';
 
 export default function LoginPage() {
     const [activeTab, setActiveTab] = useState('login');
@@ -29,22 +30,14 @@ export default function LoginPage() {
             {/* Staff Login Button */}
             <div className="absolute top-6 right-6 z-50">
                 <Link href="/staff/login">
-                    <Button variant="outline" className="bg-card/50 backdrop-blur-sm border-primary text-primary hover:bg-primary hover:text-primary-foreground transition-all text-sm py-2 px-4 shadow-sm">
+                    <Button variant="outline" className="bg-card/50 backdrop-blur-sm border border-white text-white hover:bg-white hover:text-cc-purple-900 transition-all text-sm py-2 px-4 shadow-sm hover:shadow-[0_0_15px_rgba(255,255,255,0.6)]">
                         Staff Login
                     </Button>
                 </Link>
             </div>
             {/* Background Elements */}
-            <div className="absolute inset-0 z-0">
-                {/* Abstract Map/Route Pattern */}
-                <svg className="w-full h-full opacity-[0.03]" viewBox="0 0 100 100" preserveAspectRatio="none">
-                    <path d="M0,50 Q25,30 50,50 T100,50" stroke="#708F59" strokeWidth="0.5" fill="none" />
-                    <path d="M0,30 Q40,80 80,30 T120,40" stroke="#5B9BD5" strokeWidth="0.5" fill="none" />
-                    <circle cx="20" cy="20" r="15" fill="#A67B59" className="blur-3xl" />
-                    <circle cx="80" cy="80" r="20" fill="#87CEEB" className="blur-3xl" />
-                </svg>
-                <div className="absolute top-0 right-0 w-1/2 h-1/2 bg-gradient-to-bl from-secondary/10 to-transparent blur-3xl pointer-events-none" />
-                <div className="absolute bottom-0 left-0 w-1/2 h-1/2 bg-gradient-to-tr from-accent/10 to-transparent blur-3xl pointer-events-none" />
+            <div className="absolute inset-0 z-0 opacity-40 pointer-events-none">
+                <BackgroundAnimation />
             </div>
 
             {/* Hero Logo Area */}
@@ -55,7 +48,7 @@ export default function LoginPage() {
             </div>
 
             {/* Auth Card */}
-            <Card className="z-10 w-full max-w-md md:max-w-lg mt-4 backdrop-blur-xl border-border shadow-glow" padding="none">
+            <Card className="z-10 w-full max-w-md md:max-w-lg mt-4 backdrop-blur-xl border-border shadow-glow animate-pop-in" padding="none">
                 {/* Tabs */}
                 <div className="flex border-b border-border">
                     <button
@@ -83,7 +76,7 @@ export default function LoginPage() {
                         <form onSubmit={handleLogin} className="space-y-6 animate-fadeIn">
                             <div className="space-y-4">
                                 {/* Login As Selector */}
-                                <div className="grid grid-cols-2 gap-3 p-1 bg-muted/30 rounded-lg">
+                                <div className="grid grid-cols-2 gap-3 p-1 bg-muted/30 rounded-lg opacity-0 animate-pop-in delay-100">
                                     <button
                                         type="button"
                                         onClick={() => setUserType('student')}
@@ -107,6 +100,7 @@ export default function LoginPage() {
                                     placeholder={userType === 'student' ? "Enter your credentials" : "Enter PRN (e.g., 2023001)"}
                                     type="text"
                                     required
+                                    containerClassName="opacity-0 animate-pop-in delay-200"
                                 />
 
                                 <div className="space-y-1">
@@ -115,6 +109,7 @@ export default function LoginPage() {
                                         type="password"
                                         placeholder="••••••••"
                                         required
+                                        containerClassName="opacity-0 animate-pop-in delay-300"
                                     />
                                     <div className="flex justify-end">
                                         <Link href="#" className="text-xs text-secondary hover:text-secondary-foreground transition-colors font-medium">
@@ -133,7 +128,7 @@ export default function LoginPage() {
                                 </div>
                             )}
 
-                            <Button type="submit" size="lg" className="w-full group">
+                            <Button type="submit" size="lg" className="w-full group opacity-0 animate-pop-in delay-400">
                                 {userType === 'student' ? 'Login to Dashboard' : 'Track Bus'}
                                 <ArrowRight size={18} className="ml-2 group-hover:translate-x-1 transition-transform" />
                             </Button>
@@ -141,25 +136,25 @@ export default function LoginPage() {
                     ) : (
                         <form className="space-y-4 animate-fadeIn" onSubmit={(e) => e.preventDefault()}>
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                <Input label="Full Name" placeholder="John Doe" required icon={<User size={16} />} />
-                                <Input label="Mobile Number" placeholder="+91 98765..." required icon={<Phone size={16} />} />
+                                <Input label="Full Name" placeholder="John Doe" required icon={<User size={16} />} containerClassName="opacity-0 animate-pop-in delay-100" />
+                                <Input label="Mobile Number" placeholder="+91 98765..." required icon={<Phone size={16} />} containerClassName="opacity-0 animate-pop-in delay-100" />
                             </div>
 
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                <Input label="PRN Number" placeholder="University PRN" required icon={<Hash size={16} />} />
-                                <Input label="College Name" placeholder="Engineering College" required icon={<School size={16} />} />
+                                <Input label="PRN Number" placeholder="University PRN" required icon={<Hash size={16} />} containerClassName="opacity-0 animate-pop-in delay-200" />
+                                <Input label="College Name" placeholder="Engineering College" required icon={<School size={16} />} containerClassName="opacity-0 animate-pop-in delay-200" />
                             </div>
 
-                            <Input label="Semester" placeholder="e.g., 5th Semester" required icon={<GraduationCap size={16} />} />
+                            <Input label="Semester" placeholder="e.g., 5th Semester" required icon={<GraduationCap size={16} />} containerClassName="opacity-0 animate-pop-in delay-300" />
 
-                            <Input label="Email" type="email" placeholder="john@example.com" required icon={<Mail size={16} />} />
+                            <Input label="Email" type="email" placeholder="john@example.com" required icon={<Mail size={16} />} containerClassName="opacity-0 animate-pop-in delay-400" />
 
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                <Input label="Password" type="password" placeholder="Create password" required />
-                                <Input label="Confirm Password" type="password" placeholder="Confirm password" required />
+                                <Input label="Password" type="password" placeholder="Create password" required containerClassName="opacity-0 animate-pop-in delay-500" />
+                                <Input label="Confirm Password" type="password" placeholder="Confirm password" required containerClassName="opacity-0 animate-pop-in delay-500" />
                             </div>
 
-                            <Button variant="primary" size="lg" className="w-full mt-2">
+                            <Button variant="primary" size="lg" className="w-full mt-2 border border-cc-purple-400 shadow-lg shadow-cc-purple-500/30 hover:shadow-[0_0_25px_rgba(139,92,246,0.6)] hover:border-cc-purple-300 transition-all duration-300 opacity-0 animate-pop-in delay-700">
                                 Create Account
                             </Button>
 

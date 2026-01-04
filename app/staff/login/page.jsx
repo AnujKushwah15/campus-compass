@@ -8,6 +8,7 @@ import Button from '@/components/ui/Button';
 import Logo from '@/components/Logo';
 import { User, Lock, ArrowRight, Bus } from 'lucide-react';
 import Link from 'next/link';
+import BackgroundAnimation from '@/components/ui/BackgroundAnimation';
 
 export default function StaffLoginPage() {
     const router = useRouter();
@@ -50,20 +51,20 @@ export default function StaffLoginPage() {
     return (
         <main className="min-h-screen w-full relative overflow-hidden bg-background flex flex-col items-center justify-center p-4">
             {/* Background Elements */}
-            <div className="absolute inset-0 z-0">
-                <div className="absolute top-0 left-0 w-full h-full bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-destructive/10 via-background/20 to-transparent pointer-events-none" />
+            <div className="absolute inset-0 z-0 opacity-40 pointer-events-none">
+                <BackgroundAnimation />
             </div>
 
             <div className="z-10 mb-8 scale-110">
                 <Logo />
             </div>
 
-            <Card className="z-10 w-full max-w-md backdrop-blur-xl border-border shadow-glow hover:shadow-lg transition-shadow duration-300" padding="lg">
+            <Card className="z-10 w-full max-w-md backdrop-blur-xl border-border shadow-glow hover:shadow-lg transition-shadow duration-300 animate-pop-in" padding="lg">
                 <div className="text-center mb-8">
                     <div className="w-12 h-12 bg-destructive/10 rounded-full flex items-center justify-center mx-auto mb-4 text-destructive">
                         <Bus size={24} />
                     </div>
-                    <h1 className="text-2xl font-bold text-foreground">Staff Portal</h1>
+                    <h1 className="text-2xl font-bold text-cc-purple-500">Staff Portal</h1>
                     <p className="text-muted-foreground mt-2 text-sm">Welcome back, please login to your account.</p>
                 </div>
 
@@ -77,6 +78,7 @@ export default function StaffLoginPage() {
                             placeholder="Enter username (e.g. admin, driver)"
                             icon={<User size={18} />}
                             required
+                            containerClassName="opacity-0 animate-pop-in delay-100"
                         />
                         <Input
                             label="Password"
@@ -87,13 +89,14 @@ export default function StaffLoginPage() {
                             placeholder="••••••••"
                             icon={<Lock size={18} />}
                             required
+                            containerClassName="opacity-0 animate-pop-in delay-200"
                         />
                     </div>
 
                     <Button
                         type="submit"
                         size="lg"
-                        className="w-full bg-destructive hover:bg-destructive/90 text-destructive-foreground shadow-md shadow-destructive/20"
+                        className="w-full bg-destructive hover:bg-destructive/90 text-destructive-foreground shadow-md shadow-destructive/20 opacity-0 animate-pop-in delay-300"
                         disabled={isLoading}
                     >
                         {isLoading ? 'Verifying...' : 'Login to Dashboard'}

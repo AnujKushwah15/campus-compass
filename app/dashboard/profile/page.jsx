@@ -86,15 +86,15 @@ export default function ProfilePage() {
 
                 {/* Header */}
                 <div className="text-center sm:text-left space-y-1">
-                    <h1 className="text-3xl font-bold text-foreground">My Account</h1>
+                    <h1 className="text-3xl font-bold text-cc-purple-500">My Account</h1>
                     <p className="text-muted-foreground">Manage your personal details</p>
                 </div>
 
                 {/* Profile Card */}
-                <div className="bg-card/70 backdrop-blur-xl border border-border rounded-3xl p-6 sm:p-8 shadow-xl">
+                <div className="bg-card/70 backdrop-blur-xl border border-border rounded-3xl p-6 sm:p-8 shadow-xl animate-pop-in">
                     <div className="flex flex-col items-center sm:flex-row sm:items-start gap-6 mb-8">
                         {/* Avatar */}
-                        <div className="w-24 h-24 rounded-full bg-gradient-to-br from-secondary to-accent p-1 shadow-lg">
+                        <div className="w-24 h-24 rounded-full bg-gradient-to-br from-cc-purple-500 to-cc-purple-700 p-1 shadow-[0_0_20px_rgba(139,92,246,0.5)] animate-pop-in delay-200 opacity-0">
                             <div className="w-full h-full bg-card rounded-full flex items-center justify-center">
                                 <span className="text-4xl font-bold text-primary">{user.name.charAt(0)}</span>
                             </div>
@@ -109,22 +109,22 @@ export default function ProfilePage() {
                     </div>
 
                     <div className="grid gap-6 sm:grid-cols-2">
-                        <InfoItem icon={<Phone size={20} />} label="Mobile Number" value={user.mobile} />
-                        <InfoItem icon={<CreditCard size={20} />} label="PRN" value={user.prn} />
-                        <InfoItem icon={<Bus size={20} />} label="Bus Number" value={user.busNumber} />
+                        <InfoItem className="animate-pop-in delay-300 opacity-0" icon={<Phone size={20} />} label="Mobile Number" value={user.mobile} />
+                        <InfoItem className="animate-pop-in delay-400 opacity-0" icon={<CreditCard size={20} />} label="PRN" value={user.prn} />
+                        <InfoItem className="animate-pop-in delay-500 opacity-0" icon={<Bus size={20} />} label="Bus Number" value={user.busNumber} />
                     </div>
 
-                    <div className="mt-10 pt-6 border-t border-cc-pista-900/10 flex justify-end gap-3">
+                    <div className="mt-10 pt-6 border-t border-cc-pista-900/10 flex justify-end gap-3 animate-pop-in delay-700 opacity-0">
                         <button
                             onClick={handleOpenModal}
-                            className="flex items-center gap-2 px-6 py-2.5 bg-cc-brown-500 hover:bg-cc-brown-600 text-white rounded-xl font-medium shadow-md hover:shadow-lg transition-all active:scale-95"
+                            className="flex items-center gap-2 px-6 py-2.5 bg-cc-purple-600 hover:bg-cc-purple-700 text-white rounded-xl font-medium shadow-md hover:shadow-[0_0_20px_rgba(139,92,246,0.6)] transition-all active:scale-95"
                         >
                             <Lock size={18} />
                             Change Password
                         </button>
                         <button
                             onClick={() => setLogoutModalOpen(true)}
-                            className="flex items-center gap-2 px-6 py-2.5 bg-red-100 hover:bg-red-200 text-red-600 rounded-xl font-medium shadow-sm hover:shadow-md transition-all active:scale-95"
+                            className="flex items-center gap-2 px-6 py-2.5 bg-red-100 hover:bg-red-200 text-red-600 rounded-xl font-medium shadow-sm hover:shadow-[0_0_20px_rgba(239,68,68,0.4)] transition-all active:scale-95"
                         >
                             <LogOut size={18} />
                             Log Out
@@ -202,7 +202,7 @@ export default function ProfilePage() {
                                 <button
                                     onClick={handleVerifyAndChange}
                                     disabled={isLoading}
-                                    className="w-full py-3 bg-cc-brown-500 hover:bg-cc-brown-600 text-white rounded-xl font-semibold shadow-md transition-all flex justify-center items-center"
+                                    className="w-full py-3 bg-cc-purple-600 hover:bg-cc-purple-700 text-white rounded-xl font-semibold shadow-md transition-all flex justify-center items-center"
                                 >
                                     {isLoading ? 'Verifying...' : 'Update Password'}
                                 </button>
@@ -261,10 +261,10 @@ export default function ProfilePage() {
     );
 }
 
-function InfoItem({ icon, label, value }) {
+function InfoItem({ icon, label, value, className }) {
     return (
-        <div className="flex items-start gap-4 p-4 rounded-2xl bg-card/50 border border-border hover:bg-card/80 transition-colors">
-            <div className="p-2.5 bg-secondary/10 text-secondary-foreground rounded-xl">
+        <div className={`flex items-start gap-4 p-4 rounded-2xl bg-card/50 border border-cc-purple-500/50 shadow-[0_0_15px_rgba(139,92,246,0.15)] hover:bg-card/80 transition-all ${className || ''}`}>
+            <div className="p-2.5 bg-cc-purple-500/10 text-cc-purple-500 rounded-xl border border-cc-purple-500/50 shadow-[0_0_10px_rgba(139,92,246,0.3)]">
                 {icon}
             </div>
             <div>

@@ -86,10 +86,10 @@ export default function Navbar() {
 
                         {/* Notification Dropdown */}
                         {showNotifications && (
-                            <div className="absolute right-0 mt-2 w-80 bg-white/90 backdrop-blur-xl border border-white/20 rounded-2xl shadow-xl overflow-hidden z-50 animate-in fade-in zoom-in-95 duration-200">
-                                <div className="p-3 border-b border-gray-100 flex justify-between items-center bg-white/50">
-                                    <h3 className="font-semibold text-gray-800 text-sm">Notifications</h3>
-                                    <span className="text-xs text-cc-purple-600 font-medium px-2 py-0.5 bg-cc-purple-100 rounded-full">
+                            <div className="absolute right-0 mt-2 w-80 bg-white/90 dark:bg-slate-900/95 backdrop-blur-xl border border-white/20 dark:border-slate-700 rounded-2xl shadow-xl overflow-hidden z-50 animate-dropdown-enter">
+                                <div className="p-3 border-b border-gray-100 dark:border-slate-700 flex justify-between items-center bg-white/50 dark:bg-slate-800/50">
+                                    <h3 className="font-semibold text-gray-800 dark:text-slate-100 text-sm">Notifications</h3>
+                                    <span className="text-xs text-cc-purple-600 dark:text-cc-purple-300 font-medium px-2 py-0.5 bg-cc-purple-100 dark:bg-cc-purple-900/30 rounded-full">
                                         {dummyNotifications.length} New
                                     </span>
                                 </div>
@@ -97,9 +97,9 @@ export default function Navbar() {
                                     {dummyNotifications.map((notification) => (
                                         <div
                                             key={notification.id}
-                                            className={`p-3 border-b border-gray-100 last:border-0 hover:bg-black/5 transition-colors cursor-pointer
-                                                ${notification.type === 'emergency' ? 'bg-red-50 hover:bg-red-100/80' : ''}
-                                                ${!notification.read ? 'bg-blue-50/50' : ''}
+                                            className={`p-3 border-b border-gray-100 dark:border-slate-800 last:border-0 hover:bg-black/5 dark:hover:bg-white/5 transition-colors cursor-pointer
+                                                ${notification.type === 'emergency' ? 'bg-red-50 hover:bg-red-100/80 dark:bg-red-900/20 dark:hover:bg-red-900/30' : ''}
+                                                ${!notification.read ? 'bg-blue-50/50 dark:bg-blue-900/10' : ''}
                                             `}
                                         >
                                             <div className="flex gap-3 items-start">
@@ -108,16 +108,16 @@ export default function Navbar() {
                                                 `} />
                                                 <div className="flex-1 space-y-1">
                                                     <div className="flex justify-between items-start">
-                                                        <p className={`text-sm font-medium leading-tight ${notification.type === 'emergency' ? 'text-red-700' : 'text-gray-800'}`}>
-                                                            {notification.type === 'emergency' && <span className="text-red-600 font-bold text-xs uppercase block mb-0.5">Emergency Alert</span>}
+                                                        <p className={`text-sm font-medium leading-tight ${notification.type === 'emergency' ? 'text-red-700 dark:text-red-300' : 'text-gray-800 dark:text-slate-200'}`}>
+                                                            {notification.type === 'emergency' && <span className="text-red-600 dark:text-red-400 font-bold text-xs uppercase block mb-0.5">Emergency Alert</span>}
                                                             {notification.message}
                                                         </p>
-                                                        <span className="text-[10px] text-gray-400 whitespace-nowrap ml-2">{notification.time}</span>
+                                                        <span className="text-[10px] text-gray-400 dark:text-slate-500 whitespace-nowrap ml-2">{notification.time}</span>
                                                     </div>
 
                                                     {notification.location && (
-                                                        <div className="flex items-center gap-1 text-xs text-gray-500 mt-1">
-                                                            <span className="w-1 h-1 rounded-full bg-gray-400" />
+                                                        <div className="flex items-center gap-1 text-xs text-gray-500 dark:text-slate-400 mt-1">
+                                                            <span className="w-1 h-1 rounded-full bg-gray-400 dark:bg-slate-600" />
                                                             <span>Near {notification.location}</span>
                                                         </div>
                                                     )}
@@ -126,8 +126,8 @@ export default function Navbar() {
                                         </div>
                                     ))}
                                 </div>
-                                <div className="p-2 border-t border-gray-100 bg-gray-50/50 text-center">
-                                    <button className="text-xs font-medium text-cc-purple-600 hover:text-cc-purple-700 transition-colors">
+                                <div className="p-2 border-t border-gray-100 dark:border-slate-700 bg-gray-50/50 dark:bg-slate-800/50 text-center">
+                                    <button className="text-xs font-medium text-cc-purple-600 dark:text-cc-purple-400 hover:text-cc-purple-700 dark:hover:text-cc-purple-300 transition-colors">
                                         Mark all as read
                                     </button>
                                 </div>
