@@ -2,6 +2,9 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { auth, db } from '@/lib/firebase';
+import { signInWithEmailAndPassword } from 'firebase/auth';
+import { doc, getDoc } from 'firebase/firestore';
 import Card from '@/components/ui/Card';
 import Input from '@/components/ui/Input';
 import Button from '@/components/ui/Button';
@@ -15,7 +18,7 @@ export default function StaffLoginPage() {
     const [isLoading, setIsLoading] = useState(false);
 
     const [formData, setFormData] = useState({
-        username: '',
+        username: '', // Treated as email
         password: ''
     });
 
@@ -24,28 +27,44 @@ export default function StaffLoginPage() {
         setFormData(prev => ({ ...prev, [name]: value }));
     };
 
-    const handleLogin = (e) => {
+    const handleLogin = async (e) => {
         e.preventDefault();
         setIsLoading(true);
 
-        // Simple hardcoded auth check
-        setTimeout(() => {
-            if (formData.username === 'admin' && formData.password === 'admin') {
-                router.push('/admin/dashboard');
-            } else if (formData.username === 'driver') {
-                // Allow driver to login with just username 'driver' or both 'driver'/'driver'
-                // The prompt said "name and pasword driver" for driver
-                if (formData.password === 'driver') {
-                    router.push('/staff/driver');
+        try {
+            // 1. Sign in with Firebase Auth
+            const userCredential = await signInWithEmailAndPassword(auth, formData.username, formData.password);
+            const user = userCredential.user;
+
+            // 2. Fetch User Role from Firestore
+            const userDocRef = doc(db, "users", user.uid);
+            const userDoc = await getDoc(userDocRef);
+
+            if (userDoc.exists()) {
+                const userData = userDoc.data();
+                const role = userData.role;
+
+                if (role === 'admin') {
+                    router.push('/dashboard/admin');
+                } else if (role === 'driver') {
+                    router.push('/dashboard/driver');
                 } else {
-                    alert('Invalid credentials');
+                    alert("Unauthorized access. You are not a staff member.");
+                    // Optional: Sign out if not authorized
+                    // await auth.signOut();
                     setIsLoading(false);
                 }
             } else {
-                alert('Invalid credentials');
+                console.error("No user document found!");
+                alert("Account configuration error. Please contact Administrator.");
                 setIsLoading(false);
             }
-        }, 1000);
+
+        } catch (error) {
+            console.error("Login Error:", error);
+            alert("Login Failed: " + error.message);
+            setIsLoading(false);
+        }
     };
 
     return (
@@ -71,11 +90,11 @@ export default function StaffLoginPage() {
                 <form onSubmit={handleLogin} className="space-y-6">
                     <div className="space-y-4">
                         <Input
-                            label="Username / Staff ID"
+                            label="Email Address"
                             name="username"
                             value={formData.username}
                             onChange={handleChange}
-                            placeholder="Enter username (e.g. admin, driver)"
+                            placeholder="Enter staff email"
                             icon={<User size={18} />}
                             required
                             containerClassName="opacity-0 animate-pop-in delay-100"

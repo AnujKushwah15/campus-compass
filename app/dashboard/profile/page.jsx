@@ -4,7 +4,7 @@ import { useState, useRef, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { User, Phone, Bus, CreditCard, Lock, ShieldCheck, X, LogOut, AlertTriangle, Camera, Loader2, Save, RotateCw, ZoomIn, ZoomOut } from 'lucide-react';
 import { auth, storage, db } from '@/lib/firebase';
-import { updateProfile } from 'firebase/auth';
+import { updateProfile, signOut } from 'firebase/auth';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { doc, updateDoc } from 'firebase/firestore';
 import Cropper from 'react-easy-crop';
@@ -270,10 +270,14 @@ export default function ProfilePage() {
         }, 1500);
     };
 
-    const handleLogout = () => {
-        // Clear any session data here if needed
-        // For now, just redirect to home
-        router.push('/');
+    const handleLogout = async () => {
+        try {
+            await signOut(auth);
+            router.push('/auth'); // Redirect to auth page
+        } catch (error) {
+            console.error("Logout Error:", error);
+            alert("Failed to log out. Please try again.");
+        }
     };
 
     return (
@@ -536,6 +540,40 @@ export default function ProfilePage() {
                             </div>
                         </div>
 
+                    </div>
+                </div>
+            )}
+
+            {/* Logout Confirmation Modal */}
+            {isLogoutModalOpen && (
+                <div className="fixed inset-0 z-[200] flex items-center justify-center p-4 bg-background/80 backdrop-blur-sm animate-in fade-in duration-200">
+                    <div className="bg-card rounded-3xl shadow-2xl w-full max-w-sm overflow-hidden p-6 border border-border text-center space-y-6">
+                        <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto text-red-600">
+                            <LogOut size={32} />
+                        </div>
+
+                        <div>
+                            <h3 className="text-xl font-bold text-foreground">Sign Out?</h3>
+                            <p className="text-muted-foreground mt-2">Are you sure you want to sign out of your account?</p>
+                        </div>
+
+                        <div className="flex gap-3">
+                            <button
+                                onClick={() => setLogoutModalOpen(false)}
+                                className="flex-1 py-3 bg-muted hover:bg-muted/80 text-foreground rounded-xl font-semibold transition-colors"
+                            >
+                                Cancel
+                            </button>
+                            <button
+                                onClick={() => {
+                                    setLogoutModalOpen(false);
+                                    handleLogout();
+                                }}
+                                className="flex-1 py-3 bg-red-500 hover:bg-red-600 text-white rounded-xl font-semibold shadow-md transition-colors"
+                            >
+                                Sign Out
+                            </button>
+                        </div>
                     </div>
                 </div>
             )}

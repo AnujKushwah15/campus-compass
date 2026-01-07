@@ -1,8 +1,10 @@
 "use client";
 
-import MockMap from '@/components/MockMap';
+import dynamic from 'next/dynamic';
 import Card from '@/components/ui/Card';
 import Badge from '@/components/ui/Badge';
+
+const LiveMap = dynamic(() => import('@/components/ui/LiveMap'), { ssr: false });
 import AnimatedCounter from '@/components/ui/AnimatedCounter';
 import { Phone, Clock, MapPin } from 'lucide-react';
 import Button from '@/components/ui/Button';
@@ -31,7 +33,9 @@ export default function StudentDashboard() {
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                 {/* Main Map Section */}
                 <div className="lg:col-span-2 space-y-4">
-                    <MockMap status="ontime" />
+                    <div className="h-[400px] w-full rounded-2xl overflow-hidden border border-border relative z-0">
+                        <LiveMap busLocation={{ lat: 23.0325, lng: 72.5814, speed: 30 }} />
+                    </div>
 
                     {/* Quick Status Bar below map on mobile, or generally useful */}
                     <div className="flex items-center gap-2 p-3 bg-accent/10 border border-cc-purple-500 rounded-lg text-sm text-foreground">
