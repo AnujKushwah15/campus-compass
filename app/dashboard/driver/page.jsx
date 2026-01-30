@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import RouteMap from '@/components/driver/RouteMap';
 import StudentList from '@/components/driver/StudentList';
@@ -10,11 +10,54 @@ import StreamPlayer from '@/components/ui/StreamPlayer';
 import { db, auth } from '@/lib/firebase';
 import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
 import { signOut } from 'firebase/auth';
+import { useTrip } from '@/context/TripContext';
 
 export default function DriverDashboard() {
     const router = useRouter();
+    const { currentTrip, startTrip, endTrip, updateLocation } = useTrip();
     const [sosActive, setSosActive] = useState(false);
     const [sendingSOS, setSendingSOS] = useState(false);
+
+    // Geolocation Tracker
+    useEffect(() => {
+        let watchId;
+        if (currentTrip?.status === 'active') {
+            if (!navigator.geolocation) {
+                console.log("Geolocation is not supported by your browser");
+                return;
+            }
+
+            watchId = navigator.geolocation.watchPosition(
+                (position) => {
+                    const { latitude, longitude, speed } = position.coords;
+                    // Update Context (which updates Firestore)
+                    updateLocation(latitude, longitude, speed);
+                },
+                (error) => {
+                    console.error("Location Error:", error);
+                },
+                {
+                    enableHighAccuracy: true,
+                    timeout: 5000,
+                    maximumAge: 0
+                }
+            );
+        }
+        return () => {
+            if (watchId) navigator.geolocation.clearWatch(watchId);
+        };
+    }, [currentTrip, updateLocation]);
+
+    const handleToggleTrip = async () => {
+        if (currentTrip) {
+            if (window.confirm("End the current trip?")) {
+                await endTrip();
+            }
+        } else {
+            // Bus ID would ideally come from User Profile
+            await startTrip("1", "route_default");
+        }
+    };
 
     const handleSOS = async () => {
         if (sosActive || sendingSOS) return;
@@ -27,10 +70,10 @@ export default function DriverDashboard() {
         try {
             await addDoc(collection(db, "alerts"), {
                 type: "SOS",
-                busId: "1", // Hardcoded for now, would come from auth/context
+                busId: currentTrip?.busId || "1",
                 busNumber: "GJ-01-AB-1234",
                 driverName: "Mock Driver", // Would come from auth
-                location: { lat: 23.0225, lng: 72.5714 }, // Mock Location
+                location: currentTrip?.location || { lat: 23.0225, lng: 72.5714 },
                 timestamp: serverTimestamp(),
                 status: "active",
                 message: "Emergency Alert Triggered by Driver"
@@ -82,10 +125,17 @@ export default function DriverDashboard() {
                                 </div>
                                 <div>
                                     <h3 className="font-bold text-lg text-foreground">Bus GJ-01-AB-1234</h3>
-                                    <p className="text-sm text-muted-foreground">Fuel: 78% • Odometer: 12,450 km</p>
+                                    <p className="text-sm text-muted-foreground">{currentTrip ? 'Trip Active' : 'Idle'} • Bus 1</p>
                                 </div>
                             </div>
                             <div className="flex gap-3 w-full sm:w-auto">
+                                <Button
+                                    onClick={handleToggleTrip}
+                                    variant={currentTrip ? "warning" : "default"}
+                                    className="flex-1 sm:flex-none font-bold"
+                                >
+                                    {currentTrip ? "STOP TRIP" : "START TRIP"}
+                                </Button>
                                 <Button
                                     onClick={handleLogout}
                                     variant="outline"

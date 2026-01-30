@@ -2,69 +2,96 @@
 
 import { useState, useEffect } from 'react';
 import { Check, X, Users } from 'lucide-react';
-import { db } from '@/lib/firebase';
-import { doc, onSnapshot, updateDoc, setDoc, getDoc } from 'firebase/firestore';
-
-// Mock Student Data to seed the DB if empty (for testing)
-const MOCK_ROSTER = [
-    { id: "101", name: "Aarav Patel", prn: "2023001" },
-    { id: "102", name: "Diya Sharma", prn: "2023002" },
-    { id: "103", name: "Ishaan Gupta", prn: "2023003" },
-    { id: "104", name: "Ananya Singh", prn: "2023004" },
-    { id: "105", name: "Vihaan Kumar", prn: "2023005" },
-];
+import { db, usersRef } from '@/lib/firebase';
+import { doc, onSnapshot, updateDoc, query, where, getDocs } from 'firebase/firestore';
+import { useTrip } from '@/context/TripContext';
+import { useAuth } from '@/components/AuthProvider';
 
 export default function StudentList() {
+    const { currentTrip } = useTrip();
+    const { user } = useAuth();
     const [students, setStudents] = useState([]);
     const [loading, setLoading] = useState(true);
+    const [busId, setBusId] = useState(null);
 
-    // Hardcoded Trip ID for demo purposes. In real app, this comes from context/auth.
-    const TRIP_ID = "trip_demo_1";
-
+    // 1. Determine Bus ID
     useEffect(() => {
-        // 1. Listen to the specific trip document
-        const tripRef = doc(db, "trips", TRIP_ID);
+        if (currentTrip?.busId) {
+            setBusId(currentTrip.busId);
+        } else if (user?.assignedBusId) {
+            // If we had this in the user profile
+            setBusId(user.assignedBusId);
+        } else {
+            // Fallback for demo/dev if not set
+            setBusId("1");
+        }
+    }, [currentTrip, user]);
 
-        const unsubscribe = onSnapshot(tripRef, async (docSnapshot) => {
-            if (docSnapshot.exists()) {
-                const data = docSnapshot.data();
-                const attendanceData = data.attendance || {};
+    // 2. Fetch Roster & Listen for Attendance
+    useEffect(() => {
+        if (!busId) return;
 
-                // Merge roster with attendance status
-                const mergedList = MOCK_ROSTER.map(student => ({
-                    ...student,
-                    status: attendanceData[student.id] ? attendanceData[student.id].status : 'pending'
+        const fetchStudents = async () => {
+            try {
+                // Fetch all students assigned to this bus
+                const q = query(usersRef, where("role", "==", "student"), where("assignedBusId", "==", busId));
+                const querySnapshot = await getDocs(q);
+
+                const roster = querySnapshot.docs.map(doc => ({
+                    id: doc.id,
+                    ...doc.data(),
+                    status: 'pending' // Default
                 }));
 
-                setStudents(mergedList);
+                // If trip is active, listen to attendance changes
+                if (currentTrip) {
+                    const tripRef = doc(db, "trips", currentTrip.id);
+                    const unsubscribe = onSnapshot(tripRef, (docSnap) => {
+                        if (docSnap.exists()) {
+                            const tripData = docSnap.data();
+                            const attendance = tripData.attendance || {};
+
+                            const merged = roster.map(student => ({
+                                ...student,
+                                status: attendance[student.id]?.status || 'pending'
+                            }));
+                            setStudents(merged);
+                        }
+                    });
+                    return unsubscribe;
+                } else {
+                    setStudents(roster);
+                }
+            } catch (error) {
+                console.error("Error fetching students:", error);
+            } finally {
                 setLoading(false);
-            } else {
-                // If trip doc doesn't exist, create it (Self-healing for demo)
-                await setDoc(tripRef, {
-                    busId: "1",
-                    status: "active",
-                    attendance: {}
-                });
             }
-        });
+        };
 
-        return () => unsubscribe();
-    }, []);
+        const unsubscribePromise = fetchStudents();
+        return () => {
+            unsubscribePromise.then(unsub => unsub && unsub());
+        };
+    }, [busId, currentTrip]);
 
-    const updateStatus = async (studentId, newStatus) => {
-        const student = students.find(s => s.id === studentId);
+    const updateStatus = async (studentId, name, newStatus) => {
+        if (!currentTrip) {
+            alert("Please START A TRIP to mark attendance.");
+            return;
+        }
 
         // Confirmation Logic
-        if (student.status !== 'pending' && student.status !== newStatus) {
+        const student = students.find(s => s.id === studentId);
+        if (student && student.status !== 'pending' && student.status !== newStatus) {
             const confirmChange = window.confirm(
-                `Change status for ${student.name} from ${student.status.toUpperCase()} to ${newStatus.toUpperCase()}?`
+                `Change status for ${name} from ${student.status.toUpperCase()} to ${newStatus.toUpperCase()}?`
             );
             if (!confirmChange) return;
         }
 
         try {
-            const tripRef = doc(db, "trips", TRIP_ID);
-            // Update the specific student's field in the map
+            const tripRef = doc(db, "trips", currentTrip.id);
             await updateDoc(tripRef, {
                 [`attendance.${studentId}`]: {
                     status: newStatus,
@@ -73,7 +100,7 @@ export default function StudentList() {
             });
         } catch (error) {
             console.error("Error updating attendance:", error);
-            alert("Failed to update status. Please try again.");
+            alert("Failed to update status.");
         }
     };
 
@@ -91,46 +118,48 @@ export default function StudentList() {
                         <span className="text-xs text-cc-purple-400 font-bold">{presentCount} / {students.length} Onboard</span>
                     </div>
                 </div>
-                <p className="text-xs text-muted-foreground mt-1">Trip ID: #{TRIP_ID.slice(0, 8)}</p>
+                <p className="text-xs text-muted-foreground mt-1">
+                    {currentTrip ? `Trip ID: #${currentTrip.id.slice(0, 8)}` : "No Active Trip"}
+                </p>
             </div>
 
             <div className="divide-y divide-border overflow-y-auto flex-1">
                 {students.map((student) => (
                     <div key={student.id} className={`p-4 flex items-center justify-between transition-colors group ${student.status === 'present' ? 'bg-green-500/5 hover:bg-green-500/10' :
-                            student.status === 'absent' ? 'bg-red-500/5 hover:bg-red-500/10' :
-                                'hover:bg-secondary/10'
+                        student.status === 'absent' ? 'bg-red-500/5 hover:bg-red-500/10' :
+                            'hover:bg-secondary/10'
                         }`}>
                         <div className="flex items-center gap-3">
                             <div className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold shadow-sm transition-colors ${student.status === 'present' ? 'bg-green-500 text-white' :
-                                    student.status === 'absent' ? 'bg-red-500 text-white' :
-                                        'bg-secondary text-muted-foreground'
+                                student.status === 'absent' ? 'bg-red-500 text-white' :
+                                    'bg-secondary text-muted-foreground'
                                 }`}>
-                                {student.name.charAt(0)}
+                                {student.name?.charAt(0) || '?'}
                             </div>
                             <div>
                                 <p className={`font-semibold text-sm ${student.status === 'absent' ? 'text-muted-foreground decoration-slate-500/50' : 'text-foreground'}`}>
-                                    {student.name}
+                                    {student.name || 'Unknown'}
                                 </p>
-                                <p className="text-xs text-muted-foreground">PRN: {student.prn}</p>
+                                <p className="text-xs text-muted-foreground">PRN: {student.prn || 'N/A'}</p>
                             </div>
                         </div>
 
                         <div className="flex gap-2">
                             <button
-                                onClick={() => updateStatus(student.id, 'present')}
+                                onClick={() => updateStatus(student.id, student.name, 'present')}
                                 className={`p-2 rounded-lg transition-all border ${student.status === 'present'
-                                        ? 'bg-green-500 border-green-600 text-white shadow-md scale-105'
-                                        : 'bg-card border-border text-muted-foreground hover:bg-green-500/10 hover:text-green-500 hover:border-green-500/50'
+                                    ? 'bg-green-500 border-green-600 text-white shadow-md scale-105'
+                                    : 'bg-card border-border text-muted-foreground hover:bg-green-500/10 hover:text-green-500 hover:border-green-500/50'
                                     }`}
                                 title="Mark Present"
                             >
                                 <Check size={16} />
                             </button>
                             <button
-                                onClick={() => updateStatus(student.id, 'absent')}
+                                onClick={() => updateStatus(student.id, student.name, 'absent')}
                                 className={`p-2 rounded-lg transition-all border ${student.status === 'absent'
-                                        ? 'bg-red-500 border-red-600 text-white shadow-md scale-105'
-                                        : 'bg-card border-border text-muted-foreground hover:bg-red-500/10 hover:text-red-500 hover:border-red-500/50'
+                                    ? 'bg-red-500 border-red-600 text-white shadow-md scale-105'
+                                    : 'bg-card border-border text-muted-foreground hover:bg-red-500/10 hover:text-red-500 hover:border-red-500/50'
                                     }`}
                                 title="Mark Absent"
                             >
@@ -139,6 +168,11 @@ export default function StudentList() {
                         </div>
                     </div>
                 ))}
+                {students.length === 0 && !loading && (
+                    <div className="p-8 text-center text-muted-foreground text-sm">
+                        No students assigned to Bus {busId}
+                    </div>
+                )}
             </div>
         </div>
     );

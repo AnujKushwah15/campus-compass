@@ -18,3 +18,17 @@ Use this file to track major changes, architectural decisions, and daily progres
   - **AuthContext**: Created `components/AuthProvider.jsx` to track user session.
   - **Root Layout**: Wrapped application in `AuthProvider`.
   - **Dashboard Layout**: Added logic to redirect unauthenticated users to `/auth`.
+
+## [2026-01-30] Core Data & Driver Dashboard Refactor
+
+### Module 1: Core Data Infrastructure
+- **Goal**: Establish real-time data flow for Trips and Location.
+- **Reference**: `lib/firebase.js` exports updated.
+- **Context**: Created `TripContext.jsx` to manage Start/End Trip and Global Location state.
+- **Layout**: Wrapped Root Layout in `TripProvider`.
+
+### Module 2: Driver Dashboard (In Progress)
+- **Goal**: Replace mock data with real Firestore integration without altering UI.
+- **Student List**: Transitioning from `MOCK_ROSTER` to real Firestore query based on `assignedBusId`.
+- **Trip Logic**: Implementing `Start Trip` functionality using `TripContext`.
+- **Geolocation**: Implementing real-time GPS tracking via `navigator.geolocation`.
