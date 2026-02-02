@@ -1,0 +1,13 @@
+{
+    "name": "campus-compass-backend",
+    "version": "1.0.0",
+    "description": "Arbitration service for Campus Compass bus tracking",
+    "main": "index.js",
+    "scripts": {
+        "start": "node index.js",
+        "test": "node scripts/mock_pi.js"
+    },
+    "dependencies": {
+        "firebase-admin": "^11.5.0"
+    }
+}

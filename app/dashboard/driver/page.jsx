@@ -6,56 +6,96 @@ import RouteMap from '@/components/driver/RouteMap';
 import StudentList from '@/components/driver/StudentList';
 import Button from '@/components/ui/Button';
 import { TriangleAlert, Phone, Radio, LogOut } from 'lucide-react';
-import StreamPlayer from '@/components/ui/StreamPlayer';
 import { db, auth } from '@/lib/firebase';
 import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
 import { signOut } from 'firebase/auth';
 import { useTrip } from '@/context/TripContext';
+import Link from 'next/link';
 
 export default function DriverDashboard() {
     const router = useRouter();
     const { currentTrip, startTrip, endTrip, updateLocation } = useTrip();
     const [sosActive, setSosActive] = useState(false);
     const [sendingSOS, setSendingSOS] = useState(false);
+    const [isTripping, setIsTripping] = useState(false); // Local state for immediate UI feedback
 
-    // Geolocation Tracker
+    // 1. Force Location Prompt on Mount & Track Location if Trip Active
     useEffect(() => {
-        let watchId;
-        if (currentTrip?.status === 'active') {
-            if (!navigator.geolocation) {
-                console.log("Geolocation is not supported by your browser");
-                return;
-            }
-
-            watchId = navigator.geolocation.watchPosition(
-                (position) => {
-                    const { latitude, longitude, speed } = position.coords;
-                    // Update Context (which updates Firestore)
-                    updateLocation(latitude, longitude, speed);
-                },
-                (error) => {
-                    console.error("Location Error:", error);
-                },
-                {
-                    enableHighAccuracy: true,
-                    timeout: 5000,
-                    maximumAge: 0
-                }
-            );
+        if (!navigator.geolocation) {
+            console.error("Geolocation is not supported by your browser");
+            return;
         }
-        return () => {
-            if (watchId) navigator.geolocation.clearWatch(watchId);
-        };
-    }, [currentTrip, updateLocation]);
 
-    const handleToggleTrip = async () => {
-        if (currentTrip) {
-            if (window.confirm("End the current trip?")) {
-                await endTrip();
+        // Always request position immediately to trigger permission prompt
+        // We use watchPosition so it persists if the user starts the trip
+        const watchId = navigator.geolocation.watchPosition(
+            (position) => {
+                const { latitude, longitude, speed } = position.coords;
+
+                // Only update context/firestore if we are actually in an active trip
+                if (currentTrip?.status === 'active' || isTripping) {
+                    updateLocation(latitude, longitude, speed);
+                }
+            },
+            (error) => {
+                console.error("Location Error Details:", {
+                    code: error.code,
+                    message: error.message,
+                    PERMISSION_DENIED: error.PERMISSION_DENIED,
+                    POSITION_UNAVAILABLE: error.POSITION_UNAVAILABLE,
+                    TIMEOUT: error.TIMEOUT
+                });
+
+                let errorMsg = "Location Error: " + error.message;
+
+                if (error.code === error.PERMISSION_DENIED) {
+                    errorMsg = "Location access denied. Please enable location permissions in your browser settings.";
+                } else if (error.code === error.POSITION_UNAVAILABLE) {
+                    errorMsg = "Location unavailable. Check your device GPS.";
+                } else if (error.code === error.TIMEOUT) {
+                    errorMsg = "Location request timed out.";
+                }
+
+                // Check for Insecure Context (Common on local network dev)
+                if (!window.isSecureContext) {
+                    errorMsg += " (WARNING: Geolocation requires HTTPS or localhost)";
+                }
+
+                alert(errorMsg);
+            },
+            {
+                enableHighAccuracy: true,
+                timeout: 5000,
+                maximumAge: 0
             }
-        } else {
-            // Bus ID would ideally come from User Profile
-            await startTrip("1", "route_default");
+        );
+
+        return () => {
+            navigator.geolocation.clearWatch(watchId);
+        };
+    }, [currentTrip, isTripping, updateLocation]);
+
+
+    const handleStartTrip = async () => {
+        if (!navigator.geolocation) {
+            alert("Geolocation is not supported by your browser");
+            return;
+        }
+
+        try {
+            // Bus ID would ideally come from User Profile, but for now we use the seeded ID
+            await startTrip("bus-1", "route-1");
+            setIsTripping(true);
+        } catch (error) {
+            console.error("Failed to start trip:", error);
+            alert("Failed to start trip. Please try again.");
+        }
+    };
+
+    const handleEndTrip = async () => {
+        if (window.confirm("End the current trip?")) {
+            await endTrip();
+            setIsTripping(false);
         }
     };
 
@@ -101,6 +141,46 @@ export default function DriverDashboard() {
         }
     };
 
+    // SPLASH SCREEN: Show if no trip is active locally or remotely
+    if (!currentTrip && !isTripping) {
+        return (
+            <div className="min-h-screen bg-background flex items-center justify-center p-4">
+                <div className="max-w-md w-full">
+                    <div className="bg-card rounded-2xl shadow-xl p-8 text-center space-y-6 border border-border">
+                        <div className="w-20 h-20 bg-primary/10 rounded-full flex items-center justify-center mx-auto text-primary">
+                            <Radio size={40} />
+                        </div>
+                        <div>
+                            <h1 className="text-2xl font-bold text-card-foreground">Ready to Start?</h1>
+                            <p className="text-muted-foreground mt-2">Start the trip to begin sharing your live location with parents and students.</p>
+                        </div>
+
+                        <Button
+                            onClick={handleStartTrip}
+                            className="w-full py-6 text-lg font-bold bg-indigo-600 hover:bg-indigo-700 text-white shadow-xl shadow-indigo-500/30 border border-indigo-500/50"
+                        >
+                            Start Trip
+                        </Button>
+
+                        <div className="flex justify-center mt-4">
+                            <Button
+                                onClick={handleLogout}
+                                variant="outline"
+                                className="w-full border-2 border-slate-700 hover:bg-slate-800 text-slate-300 hover:text-white flex items-center justify-center gap-2 font-semibold"
+                            >
+                                <LogOut size={16} /> Logout
+                            </Button>
+                        </div>
+
+                        <p className="text-xs text-muted-foreground">
+                            By clicking Start, you agree to share your real-time location.
+                        </p>
+                    </div>
+                </div>
+            </div>
+        );
+    }
+
     return (
         <div className="pb-20 md:pb-0 min-h-screen bg-background pt-6">
 
@@ -130,18 +210,11 @@ export default function DriverDashboard() {
                             </div>
                             <div className="flex gap-3 w-full sm:w-auto">
                                 <Button
-                                    onClick={handleToggleTrip}
-                                    variant={currentTrip ? "warning" : "default"}
+                                    onClick={handleEndTrip}
+                                    variant="warning"
                                     className="flex-1 sm:flex-none font-bold"
                                 >
-                                    {currentTrip ? "STOP TRIP" : "START TRIP"}
-                                </Button>
-                                <Button
-                                    onClick={handleLogout}
-                                    variant="outline"
-                                    className="flex-1 sm:flex-none border-border hover:bg-secondary text-foreground"
-                                >
-                                    <LogOut size={18} className="mr-2" /> Logout
+                                    STOP TRIP
                                 </Button>
                                 <Button variant="outline" className="flex-1 sm:flex-none border-border hover:bg-secondary text-foreground">
                                     <Phone size={18} className="mr-2" /> Support

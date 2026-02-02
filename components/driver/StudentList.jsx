@@ -2,16 +2,16 @@
 
 import { useState, useEffect } from 'react';
 import { Check, X, Users } from 'lucide-react';
-import { db, usersRef } from '@/lib/firebase';
-import { doc, onSnapshot, updateDoc, query, where, getDocs } from 'firebase/firestore';
+import { db } from '@/lib/firebase';
+import { doc, updateDoc } from 'firebase/firestore';
 import { useTrip } from '@/context/TripContext';
 import { useAuth } from '@/components/AuthProvider';
 
 export default function StudentList() {
-    const { currentTrip } = useTrip();
+    const { currentTrip, students: studentsFromContext, loading: contextLoading, markAttendance } = useTrip();
     const { user } = useAuth();
-    const [students, setStudents] = useState([]);
-    const [loading, setLoading] = useState(true);
+    // const [students, setStudents] = useState([]); // REMOVED: Using context
+    // const [loading, setLoading] = useState(true); // REMOVED: Using context loading or derived state
     const [busId, setBusId] = useState(null);
 
     // 1. Determine Bus ID
@@ -28,52 +28,16 @@ export default function StudentList() {
     }, [currentTrip, user]);
 
     // 2. Fetch Roster & Listen for Attendance
+    // Logic moved to TripContext. We now just consume 'students'
     useEffect(() => {
-        if (!busId) return;
+        if (!currentTrip?.busId) return;
 
-        const fetchStudents = async () => {
-            try {
-                // Fetch all students assigned to this bus
-                const q = query(usersRef, where("role", "==", "student"), where("assignedBusId", "==", busId));
-                const querySnapshot = await getDocs(q);
+        // If no active trip, we might want to show empty or fetch default roster.
+        // For now, let's rely on Context to give us the list for the ACTIVE trip.
+        // If we want to show roster BEFORE trip starts, we need a separate context call or helper.
+    }, [currentTrip]);
 
-                const roster = querySnapshot.docs.map(doc => ({
-                    id: doc.id,
-                    ...doc.data(),
-                    status: 'pending' // Default
-                }));
-
-                // If trip is active, listen to attendance changes
-                if (currentTrip) {
-                    const tripRef = doc(db, "trips", currentTrip.id);
-                    const unsubscribe = onSnapshot(tripRef, (docSnap) => {
-                        if (docSnap.exists()) {
-                            const tripData = docSnap.data();
-                            const attendance = tripData.attendance || {};
-
-                            const merged = roster.map(student => ({
-                                ...student,
-                                status: attendance[student.id]?.status || 'pending'
-                            }));
-                            setStudents(merged);
-                        }
-                    });
-                    return unsubscribe;
-                } else {
-                    setStudents(roster);
-                }
-            } catch (error) {
-                console.error("Error fetching students:", error);
-            } finally {
-                setLoading(false);
-            }
-        };
-
-        const unsubscribePromise = fetchStudents();
-        return () => {
-            unsubscribePromise.then(unsub => unsub && unsub());
-        };
-    }, [busId, currentTrip]);
+    const displayStudents = studentsFromContext.length > 0 ? studentsFromContext : [];
 
     const updateStatus = async (studentId, name, newStatus) => {
         if (!currentTrip) {
@@ -82,7 +46,7 @@ export default function StudentList() {
         }
 
         // Confirmation Logic
-        const student = students.find(s => s.id === studentId);
+        const student = displayStudents.find(s => s.id === studentId);
         if (student && student.status !== 'pending' && student.status !== newStatus) {
             const confirmChange = window.confirm(
                 `Change status for ${name} from ${student.status.toUpperCase()} to ${newStatus.toUpperCase()}?`
@@ -91,22 +55,16 @@ export default function StudentList() {
         }
 
         try {
-            const tripRef = doc(db, "trips", currentTrip.id);
-            await updateDoc(tripRef, {
-                [`attendance.${studentId}`]: {
-                    status: newStatus,
-                    timestamp: new Date().toISOString()
-                }
-            });
+            await markAttendance(studentId, newStatus);
         } catch (error) {
             console.error("Error updating attendance:", error);
             alert("Failed to update status.");
         }
     };
 
-    const presentCount = students.filter(s => s.status === 'present').length;
+    const presentCount = displayStudents.filter(s => s.status === 'present').length;
 
-    if (loading) return <div className="h-full bg-card rounded-xl border border-border p-4 text-muted-foreground animate-pulse">Loading Manifest...</div>;
+    if (contextLoading && !currentTrip) return <div className="h-full bg-card rounded-xl border border-border p-4 text-muted-foreground animate-pulse">Loading Manifest...</div>;
 
     return (
         <div className="h-full bg-card rounded-xl border border-border shadow-lg flex flex-col overflow-hidden">
@@ -115,7 +73,7 @@ export default function StudentList() {
                     <h3 className="font-bold text-foreground">Student Manifest</h3>
                     <div className="flex items-center gap-2 bg-cc-purple-500/10 px-2 py-1 rounded-full border border-cc-purple-500/20">
                         <Users size={12} className="text-cc-purple-400" />
-                        <span className="text-xs text-cc-purple-400 font-bold">{presentCount} / {students.length} Onboard</span>
+                        <span className="text-xs text-cc-purple-400 font-bold">{presentCount} / {displayStudents.length} Onboard</span>
                     </div>
                 </div>
                 <p className="text-xs text-muted-foreground mt-1">
@@ -124,7 +82,7 @@ export default function StudentList() {
             </div>
 
             <div className="divide-y divide-border overflow-y-auto flex-1">
-                {students.map((student) => (
+                {displayStudents.map((student) => (
                     <div key={student.id} className={`p-4 flex items-center justify-between transition-colors group ${student.status === 'present' ? 'bg-green-500/5 hover:bg-green-500/10' :
                         student.status === 'absent' ? 'bg-red-500/5 hover:bg-red-500/10' :
                             'hover:bg-secondary/10'
@@ -168,7 +126,7 @@ export default function StudentList() {
                         </div>
                     </div>
                 ))}
-                {students.length === 0 && !loading && (
+                {displayStudents.length === 0 && !contextLoading && (
                     <div className="p-8 text-center text-muted-foreground text-sm">
                         No students assigned to Bus {busId}
                     </div>

@@ -1,61 +1,8 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-    
-    // Helper Functions
-    function isSignedIn() {
-      return request.auth != null;
-    }
-    
-    function isOwner(userId) {
-      return request.auth.uid == userId;
-    }
-    
-    function isAdmin() {
-      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
-    }
-    
-    function isDriver() {
-      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'driver';
-    }
-
-    // USERS Collection
-    // - Users can read/write their own data.
-    // - Admins can read/write everyone.
-    match /users/{userId} {
-      allow read, write: if isSignedIn() && (isOwner(userId) || isAdmin());
-    }
-    
-    // BUSES Collection
-    // - Public read (or authenticated read) for basic bus info.
-    // - Only Admins can edit fleet details.
-    match /buses/{busId} {
-      allow read: if isSignedIn();
-      allow write: if isSignedIn() && isAdmin();
-    }
-
-    // TRIPS Collection
-    // - Drivers can create trips and update their own trips.
-    // - Parents/Students can read trips (real-time tracking).
-    match /trips/{tripId} {
-      allow read: if isSignedIn();
-      allow create: if isSignedIn() && isDriver();
-      allow update: if isSignedIn() && (isDriver() || isAdmin());
-    }
-
-    // ALERTS Collection
-    // - Drivers create SOS alerts.
-    // - Admins read and resolve access.
-    match /alerts/{alertId} {
-      allow create: if isSignedIn() && (isDriver() || isAdmin());
-      allow read, update: if isSignedIn(); // Staff/Parents might need to see critical alerts too? Restricted to Admin for management.
-    }
-    
-    // STUDENTS Collection
-    // - Parents can read their own kids (logic complex for rules, simplifying to auth read for now or admin)
-    match /students/{studentId} {
-        allow read: if isSignedIn();
-        allow write: if isSignedIn() && isAdmin();
+    match /{document=**} {
+      allow read, write: if true;
     }
   }
 }
