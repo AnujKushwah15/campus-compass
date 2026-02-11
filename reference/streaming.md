@@ -108,7 +108,10 @@ journalctl -u mediamtx -f
 
 ------------------------------------------------------------------------
 
-# 4️⃣ MediaMTX Configuration (Hardened)
+# 4️⃣ MediaMTX Configuration (Secured — Updated 2026-02-11)
+
+> **Breaking Change**: Static viewer credentials (`viewer` / `StrongViewerPass123`) are removed.
+> Viewers now authenticate via JWT tokens issued by the backend.
 
     logLevel: info
 
@@ -119,23 +122,38 @@ journalctl -u mediamtx -f
     hlsAddress: ""
     srtAddress: ""
 
-    authMethod: internal
+    api: yes
+    apiAddress: ":9997"
+
+    # HTTP auth for viewers (calls backend to verify JWT)
+    authMethod: http
+    authHTTPAddress: http://localhost:3001/stream-auth
+    authHTTPExclude:
+      - action: publish    # Pi uses internal static auth
 
     authInternalUsers:
       - user: pi
-        pass: StrongPublishPass123
+        pass: StrongPublishPass123    # ← Change this!
         permissions:
           - action: publish
             path: live
-
-      - user: viewer
-        pass: StrongViewerPass123
-        permissions:
-          - action: read
-            path: live
+          - action: publish
+            path: live_bus-1
+          - action: publish
+            path: live_bus-2
+          - action: publish
+            path: live_bus-3
 
     paths:
       live:
+        source: publisher
+      live_bus-1:
+        source: publisher
+      live_bus-2:
+        source: publisher
+      live_bus-3:
+        source: publisher
+      "live_bus-~.*":
         source: publisher
 
 Restart server:
@@ -160,26 +178,29 @@ Allowed ports:
 -   8554/tcp (RTSP publish)
 -   8889/tcp (WebRTC)
 -   8000-9000/udp (RTP + ICE)
+-   3001/tcp (Backend API — internal only, block external access)
 
 ------------------------------------------------------------------------
 
-# 6️⃣ Stream Access
+# 6️⃣ Stream Access (Updated — JWT Auth)
 
-## WebRTC Playback
+## How It Works Now
 
-URL:
+1. **Frontend** calls `POST /api/stream-token` with Firebase ID token
+2. **Backend** verifies identity + role → issues short-lived JWT (10 min)
+3. **Frontend** opens `http://VPS_IP:8889/live_bus-1/?token=<JWT>`
+4. **MediaMTX** calls `POST /stream-auth` on backend to verify JWT
+5. Stream plays if valid, denied if not
 
-    http://VPS_IP:8889/live
-
-Viewer Credentials: - Username: viewer - Password: StrongViewerPass123
-
-------------------------------------------------------------------------
-
-## Publish Credentials (Pi → VPS)
+## Publish Credentials (Pi → VPS — unchanged)
 
 RTSP Publish URL:
 
-    rtsp://pi:StrongPublishPass123@VPS_IP:8554/live
+    rtsp://pi:StrongPublishPass123@VPS_IP:8554/live_bus-1
+
+## Environment Variable Required
+
+    STREAM_JWT_SECRET=<generate with: openssl rand -base64 32>
 
 ------------------------------------------------------------------------
 
@@ -216,19 +237,35 @@ sudo systemctl status camstream
 journalctl -u mediamtx -f
 ```
 
-3.  Restart services if needed:
+3.  Check backend auth service:
+
+``` bash
+journalctl -u campus-compass -f
+```
+
+4.  Restart services if needed:
 
 ``` bash
 sudo systemctl restart camstream
 sudo systemctl restart mediamtx
+sudo systemctl restart campus-compass
 ```
 
 ------------------------------------------------------------------------
 
-# 9️⃣ Final Architecture
+# 9️⃣ Final Architecture (Updated 2026-02-11)
 
-Camera (Private Subnet) ↓ Raspberry Pi (RTSP Pull + Authenticated
-Publish) ↓ VPS (MediaMTX) ↓ Authenticated WebRTC Playback
+```
+Camera (Private Subnet)
+    ↓
+Raspberry Pi (RTSP Pull + RTSP Publish + Sensor Service)
+    ↓ streams to                ↓ writes GPS/IMU to
+VPS (MediaMTX)              Firebase RTDB
+    ↓                           ↓
+Backend (Express:3001)      Arbitration → /buses/{id}/location
+    ↓ verifies JWT              ↓
+Authenticated WebRTC        Dashboard Maps (Leaflet)
+```
 
 ------------------------------------------------------------------------
 

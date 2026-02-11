@@ -36,19 +36,31 @@ The core application area, protected by `AuthProvider`.
 - **Route Protection**: `DashboardLayout` redirects unauthenticated users to `/auth`.
 
 ### 3. Backend Services (`/backend`)
-Running on VPS (Node.js Service).
-- **Arbitration Service**: Listens to Realtime Database.
-- **Role**: Decides "Official Location" by comparing Phone vs Hardware inputs.
-- **Output**: Writes to `/buses/{id}/location`.
+Running on VPS (Node.js/Express Service — port 3001).
+- **Arbitration Service**: Compares Phone GPS, Neo-8M GPS, and MPU6500 IMU data.
+  - IMU-enhanced: stationary correction, degraded GPS mode.
+  - **Output**: Writes to `/buses/{id}/location` in RTDB.
+- **Stream Auth**: JWT-based authentication for MediaMTX video streams.
+  - `POST /api/stream-token` — Issue short-lived stream access tokens.
+  - `POST /stream-auth` — MediaMTX HTTP auth callback.
+- **Monitoring**: Stream status poller + Pi heartbeat stale detection.
+
+### 4. Raspberry Pi Sensor Service (`/backend/pi`)
+- **sensor_service.py**: Reads MPU6500 (I2C) + Neo-8M GPS (UART), writes to RTDB.
+- **Heartbeat**: Built-in Pi health reporting to `/buses/{busId}/piStatus`.
 
 ## Key Features
 - **Hybrid Real-Time Tracking**: Combines Firestore (Session) and Realtime DB (Location) for performance.
+- **Secure Streaming**: Firebase-verified, JWT-based video stream access with per-bus paths.
+- **Real Hardware Sensors**: MPU6500 IMU + Neo-8M GPS on Raspberry Pi.
 - **Optimized Attendance**: Batches attendance writes to reduce database costs.
-- **Role-Based Access**: Specialized views for Drivers and Parents.
+- **Role-Based Access**: Specialized views for Drivers, Parents, and Admins.
+- **Device Health Monitoring**: Real-time Pi/GPS/IMU/Camera status on all dashboards.
 - **Session Management**: Secure login/logout flows.
 - **Image Processing**: Basic cropping for profile pictures.
 
 ## Recent Updates
+- **[2026-02-11]**: Implemented Secure Streaming (JWT auth, MediaMTX HTTP auth) + Real Hardware Sensor Integration (MPU6500 + Neo-8M GPS on Pi) + Frontend StreamContext + Dashboard data flow fixes.
 - **[2026-02-04]**: Enforced mandatory PRN linking for Parent Verification.
 - **[2026-02-02]**: Implemented Hybrid Location System (RTDB), Cost-Optimized Attendance (Batching), and Firestore Data Seeding.
 - **[2026-01-30]**: Implemented TripContext and Core Data Infrastructure.

@@ -80,3 +80,47 @@ Use this file to track major changes, architectural decisions, and daily progres
 - **Goal**: Transition Parent Dashboard from mock data to real Firestore/RTDB streams.
 - **Linking**: Implement `MOCK_PARENT_LINKING` replacement using real `users/{parentId}` data to find `assignedStudentId`.
 - **Live Tracking**: Subscribe to `trips` collection to find the active trip for the child's bus and update `LiveMap` using real coordinates.
+
+## [2026-02-11] Secure Streaming + Real Hardware Sensor Integration
+
+### Phase 0: Raspberry Pi Sensor Service
+- **New**: `backend/pi/sensor_service.py` — Python service reading MPU6500 (I2C) + Neo-8M GPS (UART).
+- **Features**: IMU calibration, heading integration, stationary detection, 10Hz internal / 1Hz RTDB publish.
+- **RTDB Writes**: `/buses/{busId}/sources/neo_m8n`, `/buses/{busId}/sources/imu`, `/buses/{busId}/piStatus`.
+- **Files**: `pi/requirements.txt`, `pi/sensor_service.service`, `pi/README.md`.
+- **Status**: ✅ Tested on Pi — MPU6500 confirmed working.
+
+### Phase 1: Backend Refactored to Express Server
+- **Refactored**: `backend/index.js` — Now a combined Express app (port 3001) with:
+  - IMU-enhanced location arbitration (stationary correction, degraded GPS mode).
+  - `POST /api/stream-token` — Firebase-verified JWT stream token endpoint.
+  - `POST /stream-auth` — MediaMTX HTTP auth callback.
+  - Stream status monitor (polls MediaMTX API → RTDB).
+  - Pi heartbeat monitor (stale detection).
+  - Rate limiting (10 req/min per user).
+- **Deps**: Added `express`, `jsonwebtoken`, `cors`, `node-fetch`.
+
+### Phase 2: MediaMTX Secured
+- **Updated**: `backend/mediamtx.yml` — HTTP auth for viewers (calls backend), static auth for Pi publisher, per-bus paths with wildcard support.
+
+### Phase 4: Frontend Integration
+- **New**: `context/StreamContext.jsx` — RTDB subscriptions for stream/Pi/IMU status + token acquisition.
+- **Updated**: `VideoPlayer.jsx` — Accepts authenticated stream URL.
+- **Updated**: `StreamPlayer.jsx` — Device health indicators (Pi/GPS/IMU), viewer count, request-feed UX.
+- **Updated**: Parent Dashboard — RTDB location subscription + `LiveFeedOverlay` with authenticated streaming.
+- **Updated**: Driver Dashboard — `DriverSplashScreen` with device health panel before trip start.
+- **Updated**: Admin Dashboard — `AdminStreamWidget` + `FleetMap` (RTDB-backed bus location map).
+
+### Phase 5: Security Rules
+- **Updated**: `database.rules.json` — Granular per-node rules (location/streamStatus server-write only, all reads require auth).
+- **Updated**: `firestore.rules` — User-scoped writes, streamLogs server-only.
+
+### Data Flow Fix
+- **Fixed**: Parent map now reads from RTDB (was only reading stale Firestore trip doc).
+- **Fixed**: Driver `RouteMap` now receives `busLocation` from `TripContext`.
+- **Fixed**: Admin dashboard now has a fleet map with RTDB bus location subscriptions.
+
+### Remaining (Tomorrow)
+- Deploy updated backend + MediaMTX config to VPS.
+- Test GPS outdoors on Pi.
+- End-to-end verification across all dashboards.
