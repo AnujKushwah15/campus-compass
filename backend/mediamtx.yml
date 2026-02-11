@@ -1,0 +1,62 @@
+# Campus Compass — MediaMTX Configuration (Secured)
+# =================================================
+# This replaces the old static-credential config.
+# Publisher auth: internal (Pi uses static credentials)
+# Viewer auth: HTTP (calls backend /stream-auth endpoint)
+
+logLevel: info
+
+# Protocol Addresses
+rtspAddress: ":8554"
+webrtcAddress: ":8889"
+
+# Disabled protocols
+rtmpAddress: ""
+hlsAddress: ""
+srtAddress: ""
+
+# API (for stream monitoring)
+api: yes
+apiAddress: ":9997"
+
+# Authentication
+# Publishers use internal auth, readers use HTTP auth
+authMethod: http
+authHTTPAddress: http://localhost:3001/stream-auth
+authHTTPExclude:
+  # Allow publisher to use internal credentials
+  - action: publish
+
+authInternalUsers:
+  # Pi publisher credentials (one per bus — add more as needed)
+  - user: pi
+    pass: StrongPublishPass123
+    permissions:
+      - action: publish
+        path: live
+      - action: publish
+        path: live_bus-1
+      - action: publish
+        path: live_bus-2
+      - action: publish
+        path: live_bus-3
+
+# Stream Paths
+paths:
+  # Legacy single path (backwards compat)
+  live:
+    source: publisher
+
+  # Per-bus paths (production)
+  live_bus-1:
+    source: publisher
+
+  live_bus-2:
+    source: publisher
+
+  live_bus-3:
+    source: publisher
+
+  # Wildcard for dynamic buses
+  "live_bus-~.*":
+    source: publisher

@@ -1,13 +1,18 @@
 {
     "name": "campus-compass-backend",
-    "version": "1.0.0",
-    "description": "Arbitration service for Campus Compass bus tracking",
+    "version": "2.0.0",
+    "description": "Arbitration + Stream Auth service for Campus Compass",
     "main": "index.js",
     "scripts": {
         "start": "node index.js",
-        "test": "node scripts/mock_pi.js"
+        "test": "node scripts/test_auth.js",
+        "mock-pi": "node scripts/mock_pi.js"
     },
     "dependencies": {
-        "firebase-admin": "^11.5.0"
+        "cors": "^2.8.5",
+        "express": "^4.21.0",
+        "firebase-admin": "^11.5.0",
+        "jsonwebtoken": "^9.0.2",
+        "node-fetch": "^3.3.2"
     }
 }

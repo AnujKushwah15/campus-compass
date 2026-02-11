@@ -49,6 +49,7 @@ Running on VPS (Node.js Service).
 - **Image Processing**: Basic cropping for profile pictures.
 
 ## Recent Updates
+- **[2026-02-04]**: Enforced mandatory PRN linking for Parent Verification.
 - **[2026-02-02]**: Implemented Hybrid Location System (RTDB), Cost-Optimized Attendance (Batching), and Firestore Data Seeding.
 - **[2026-01-30]**: Implemented TripContext and Core Data Infrastructure.
 - **[2026-01-07]**: Implemented Session Management (AuthContext) and Logout functionalities.

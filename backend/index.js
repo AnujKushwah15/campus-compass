@@ -1,27 +1,51 @@
+/**
+ * Campus Compass — VPS Backend Service
+ * =====================================
+ * Combined service running:
+ *   1. Location Arbitration (existing) — enhanced with IMU signals
+ *   2. Stream Auth Server (new) — Express on port 3001
+ *   3. Stream Monitor (new) — polls MediaMTX API
+ *   4. Heartbeat Monitor (new) — checks Pi liveness
+ */
+
 const admin = require('firebase-admin');
+const express = require('express');
+const cors = require('cors');
+const jwt = require('jsonwebtoken');
 const serviceAccount = require('./service-account.json');
 
-// 1. Initialize Firebase
+// ─── Configuration ──────────────────────────────────────────────────────────
+const PORT = process.env.PORT || 3001;
+const JWT_SECRET = process.env.STREAM_JWT_SECRET || 'campus-compass-stream-secret-CHANGE-ME';
+const JWT_EXPIRY = '10m'; // 10 minute stream tokens
+const VPS_IP = process.env.VPS_IP || '72.61.250.73';
+const MEDIAMTX_API = process.env.MEDIAMTX_API || 'http://localhost:9997';
+
+// ─── Firebase Init ──────────────────────────────────────────────────────────
 if (!admin.apps.length) {
     admin.initializeApp({
         credential: admin.credential.cert(serviceAccount),
         databaseURL: "https://transportation-system-1c24e-default-rtdb.firebaseio.com"
     });
 }
-const db = admin.database();
+const rtdb = admin.database();
+const firestore = admin.firestore();
 
-const PI_TIMEOUT_MS = 10000; // 10 seconds (Pi considered offline)
-const PHONE_TIMEOUT_MS = 30000; // 30 seconds
+// ═══════════════════════════════════════════════════════════════════════════
+// SECTION 1: LOCATION ARBITRATION (Enhanced with IMU)
+// ═══════════════════════════════════════════════════════════════════════════
 
-// Local cache for Heartbeat
+const PI_TIMEOUT_MS = 10000;
+const PHONE_TIMEOUT_MS = 30000;
+const IMU_TIMEOUT_MS = 5000;
+const PI_DEGRADED_TIMEOUT_MS = 30000; // Allow degraded GPS up to 30s if IMU says moving
+
 const knownBuses = {};
 
 console.log("🚀 Arbitration Service Started.");
 
-// 2. Listen to ALL Buses
-const busesRef = db.ref('buses');
+const busesRef = rtdb.ref('buses');
 
-// Initial Scan
 busesRef.once('value', (snapshot) => {
     const count = snapshot.numChildren();
     console.log(`📦 Initial Scan found ${count} buses.`);
@@ -30,31 +54,26 @@ busesRef.once('value', (snapshot) => {
     });
 });
 
-// Realtime Listeners
 busesRef.on('child_changed', (snapshot) => {
     const busId = snapshot.key;
     const busData = snapshot.val();
-    knownBuses[busId] = busData; // Update cache
+    knownBuses[busId] = busData;
     evaluateSources(busId, busData);
 });
 
 busesRef.on('child_added', (snapshot) => {
     const busId = snapshot.key;
     const busData = snapshot.val();
-    knownBuses[busId] = busData; // Update cache
+    knownBuses[busId] = busData;
     evaluateSources(busId, busData);
 });
 
-// 3. Heartbeat Loop (Crucial for Timeouts)
-// If data STOPS coming (e.g. Pi dies), no events fire. 
-// We must manually check "Are we stale?" periodically.
+// Heartbeat loop
 setInterval(() => {
     Object.keys(knownBuses).forEach(busId => {
-        // We re-evaluate using the cached data. 
-        // The 'last_seen' inside cached data is old, so 'Age' will increase correctly.
         evaluateSources(busId, knownBuses[busId]);
     });
-}, 2000); // Check every 2 seconds
+}, 2000);
 
 async function evaluateSources(busId, busData) {
     if (!busData || !busData.sources) return;
@@ -62,21 +81,52 @@ async function evaluateSources(busId, busData) {
     const sources = busData.sources;
     const pi = sources.neo_m8n || {};
     const phone = sources.phone || {};
-    const currentOutput = busData.location || {}; // cached view
+    const imu = sources.imu || {};       // [NEW] IMU data
+    const currentOutput = busData.location || {};
 
     const now = Date.now();
     const piAge = now - (pi.last_seen || 0);
     const phoneAge = now - (phone.last_seen || 0);
+    const imuAge = now - (imu.last_seen || 0);
+
+    // [NEW] IMU quality signals
+    const imuFresh = imuAge < IMU_TIMEOUT_MS;
+    const imuMoving = imuFresh && imu.is_moving === true;
+    const imuStationary = imuFresh && imu.is_moving === false;
 
     let bestSource = 'none';
     let finalLocation = null;
 
-    // Rule 1: Priority to Pi (Hardware) if Fresh & Good Fix
+    // Rule 1: Pi GPS fresh + good fix
     if (piAge < PI_TIMEOUT_MS && pi.fix_type === '3D') {
         bestSource = 'neo_m8n';
         finalLocation = { ...pi, source: 'neo_m8n', arbitrated_at: now };
+
+        // [NEW] IMU fusion: if GPS says moving but IMU says stationary, zero speed
+        if (imuStationary && finalLocation.speed > 0) {
+            finalLocation.speed = 0;
+            finalLocation.source = 'neo_m8n_imu_corrected';
+        }
+
+        // [NEW] Use IMU heading if GPS heading is unavailable or speed is very low
+        if (imuFresh && imu.heading_imu !== undefined) {
+            if (!finalLocation.heading || finalLocation.speed < 2) {
+                finalLocation.heading_imu = imu.heading_imu;
+            }
+        }
     }
-    // Rule 2: Fallback to Phone if Fresh
+    // [NEW] Rule 1.5: Pi GPS stale BUT IMU says still moving → degraded mode
+    else if (piAge < PI_DEGRADED_TIMEOUT_MS && pi.fix_type === '3D' && imuMoving) {
+        bestSource = 'neo_m8n_degraded';
+        finalLocation = {
+            ...pi,
+            source: 'neo_m8n_degraded',
+            arbitrated_at: now,
+            gps_age_ms: piAge,
+            imu_confirms_motion: true
+        };
+    }
+    // Rule 2: Fallback to phone
     else if (phoneAge < PHONE_TIMEOUT_MS) {
         bestSource = 'phone';
         finalLocation = { ...phone, source: 'phone', arbitrated_at: now };
@@ -84,24 +134,15 @@ async function evaluateSources(busId, busData) {
     // Rule 3: Offline
     else {
         bestSource = 'none';
-        // Note: We don't necessarily wipe the location, just set source to none
     }
 
-    // [CRITICAL FIX]: Redundant Write Prevention
-
-    // 1. If we have a new location candidate
+    // Redundant write prevention
     if (finalLocation) {
-        // If DB already matching source and timestamp, SKIP.
         if (currentOutput.source === finalLocation.source &&
             currentOutput.timestamp === finalLocation.timestamp) {
             return;
         }
-    }
-    // 2. If we decided "None"
-    else {
-        // If DB is already active_source=none, SKIP.
-        // We check cached currentOutput.source (which usually stores the 'source' string inside location object)
-        // OR check busData.active_source
+    } else {
         if ((!busData.active_source || busData.active_source === 'none' || busData.active_source === 'offline') &&
             (!currentOutput.source || currentOutput.source === 'none')) {
             return;
@@ -115,22 +156,20 @@ async function evaluateSources(busId, busData) {
 
         if (finalLocation) {
             updatePayload.location = finalLocation;
-            console.log(`[${busId}] 🔄 UPDATE: ${bestSource.toUpperCase()} (Pi Age: ${piAge}ms)`);
+            const imuStatus = imuFresh ? (imuMoving ? 'MOVING' : 'STATIONARY') : 'NO_IMU';
+            console.log(`[${busId}] 🔄 UPDATE: ${bestSource.toUpperCase()} | IMU: ${imuStatus} | GPS Age: ${piAge}ms`);
         } else {
-            console.log(`[${busId}] 🔻 OFFLINE (Pi: ${piAge}ms, Phone: ${phoneAge}ms)`);
-
-            // Explicitly mark offline in location object too, so clients know
+            console.log(`[${busId}] 🔻 OFFLINE (Pi: ${piAge}ms, Phone: ${phoneAge}ms, IMU: ${imuAge}ms)`);
             updatePayload.location = {
                 source: 'none',
-                lat: currentOutput.lat || 0, // Keep last known pos?
+                lat: currentOutput.lat || 0,
                 lng: currentOutput.lng || 0,
                 timestamp: now
             };
         }
 
-        await db.ref(`buses/${busId}`).update(updatePayload);
+        await rtdb.ref(`buses/${busId}`).update(updatePayload);
 
-        // Update local cache to reflect what we just wrote (prevent immediate re-fire)
         if (knownBuses[busId]) {
             knownBuses[busId].active_source = bestSource;
             if (updatePayload.location) knownBuses[busId].location = updatePayload.location;
@@ -140,3 +179,340 @@ async function evaluateSources(busId, busData) {
         console.error(`[${busId}] Error writing arbitration:`, error.message);
     }
 }
+
+// ═══════════════════════════════════════════════════════════════════════════
+// SECTION 2: EXPRESS SERVER (Stream Auth)
+// ═══════════════════════════════════════════════════════════════════════════
+
+const app = express();
+app.use(cors());
+app.use(express.json());
+
+// Health check
+app.get('/health', (req, res) => {
+    res.json({ status: 'ok', service: 'campus-compass-backend', uptime: process.uptime() });
+});
+
+// ─── POST /api/stream-token ─────────────────────────────────────────────────
+// Frontend calls this to get a signed stream URL.
+// Requires Firebase ID token in Authorization header.
+
+// Simple rate limiter
+const tokenRateLimit = {};
+const RATE_LIMIT_MAX = 10;    // max requests
+const RATE_LIMIT_WINDOW = 60000; // per 1 minute
+
+app.post('/api/stream-token', async (req, res) => {
+    try {
+        // 1. Extract Firebase ID token
+        const authHeader = req.headers.authorization;
+        if (!authHeader || !authHeader.startsWith('Bearer ')) {
+            return res.status(401).json({ error: 'Missing Authorization header' });
+        }
+        const idToken = authHeader.split('Bearer ')[1];
+
+        // 2. Verify Firebase ID token
+        let decodedToken;
+        try {
+            decodedToken = await admin.auth().verifyIdToken(idToken);
+        } catch (err) {
+            return res.status(401).json({ error: 'Invalid or expired Firebase token' });
+        }
+
+        const uid = decodedToken.uid;
+
+        // 3. Rate limiting
+        const now = Date.now();
+        if (!tokenRateLimit[uid]) tokenRateLimit[uid] = [];
+        tokenRateLimit[uid] = tokenRateLimit[uid].filter(t => now - t < RATE_LIMIT_WINDOW);
+        if (tokenRateLimit[uid].length >= RATE_LIMIT_MAX) {
+            return res.status(429).json({ error: 'Too many stream token requests. Try again later.' });
+        }
+        tokenRateLimit[uid].push(now);
+
+        // 4. Fetch user from Firestore
+        const userDoc = await firestore.collection('users').doc(uid).get();
+        if (!userDoc.exists) {
+            return res.status(403).json({ error: 'User not found in system' });
+        }
+        const userData = userDoc.data();
+        const role = userData.role; // 'parent' | 'driver' | 'admin'
+
+        // 5. Determine which bus to access
+        const requestedBusId = req.body.busId;
+        if (!requestedBusId) {
+            return res.status(400).json({ error: 'busId is required' });
+        }
+
+        // 6. Role-based access control
+        let allowed = false;
+
+        if (role === 'admin') {
+            // Admin can access all buses
+            allowed = true;
+        } else if (role === 'driver') {
+            // Driver can only access their assigned bus
+            allowed = userData.assignedBusId === requestedBusId;
+        } else if (role === 'parent') {
+            // Parent can only access their child's bus
+            // Find the student linked to this parent
+            const studentsSnap = await firestore.collection('students')
+                .where('parentId', '==', uid)
+                .limit(1)
+                .get();
+
+            if (!studentsSnap.empty) {
+                const studentData = studentsSnap.docs[0].data();
+                const childBusId = studentData.assignedBusId || studentData.busId;
+                allowed = childBusId === requestedBusId;
+            }
+        }
+
+        if (!allowed) {
+            // Log denied attempt
+            await logStreamAccess(uid, role, requestedBusId, 'denied');
+            return res.status(403).json({ error: 'You do not have access to this bus stream' });
+        }
+
+        // 7. Check active trip exists for this bus
+        const tripsSnap = await firestore.collection('trips')
+            .where('busId', '==', requestedBusId)
+            .where('status', '==', 'active')
+            .limit(1)
+            .get();
+
+        if (tripsSnap.empty) {
+            return res.status(404).json({ error: 'No active trip for this bus' });
+        }
+
+        // 8. Generate short-lived JWT stream token
+        const streamToken = jwt.sign(
+            {
+                uid: uid,
+                role: role,
+                busId: requestedBusId,
+                type: 'stream_access'
+            },
+            JWT_SECRET,
+            { expiresIn: JWT_EXPIRY }
+        );
+
+        // 9. Build stream URL
+        const streamPath = `live_${requestedBusId}`;
+        const streamUrl = `http://${VPS_IP}:8889/${streamPath}/?token=${streamToken}`;
+
+        // Log access
+        await logStreamAccess(uid, role, requestedBusId, 'granted');
+
+        res.json({
+            streamUrl,
+            streamPath,
+            token: streamToken,
+            expiresIn: JWT_EXPIRY
+        });
+
+    } catch (error) {
+        console.error('Stream token error:', error);
+        res.status(500).json({ error: 'Internal server error' });
+    }
+});
+
+// ─── POST /stream-auth ──────────────────────────────────────────────────────
+// MediaMTX calls this on every read/publish attempt.
+// See: https://github.com/bluenviron/mediamtx#authentication
+
+app.post('/stream-auth', async (req, res) => {
+    try {
+        const { action, path, query, user, password, ip, protocol } = req.body;
+
+        console.log(`[stream-auth] action=${action} path=${path} ip=${ip} protocol=${protocol}`);
+
+        // Allow publish actions with static Pi credentials (checked by MediaMTX internally)
+        if (action === 'publish') {
+            // Publisher auth is handled by MediaMTX internal users for now
+            // We just allow it through the HTTP endpoint
+            return res.status(200).json({ ok: true });
+        }
+
+        // For read actions, verify our JWT
+        if (action === 'read') {
+            // Extract token from query string
+            let token = null;
+            if (query) {
+                const params = new URLSearchParams(query);
+                token = params.get('token');
+            }
+
+            if (!token) {
+                console.log(`[stream-auth] DENIED: No token provided from ${ip}`);
+                return res.status(401).json({ error: 'No stream token provided' });
+            }
+
+            // Verify JWT
+            try {
+                const decoded = jwt.verify(token, JWT_SECRET);
+
+                // Verify the token is for the right stream path
+                const expectedPath = `live_${decoded.busId}`;
+                if (path !== expectedPath) {
+                    console.log(`[stream-auth] DENIED: Path mismatch. Expected ${expectedPath}, got ${path}`);
+                    return res.status(403).json({ error: 'Stream path mismatch' });
+                }
+
+                console.log(`[stream-auth] ALLOWED: uid=${decoded.uid} role=${decoded.role} bus=${decoded.busId}`);
+                return res.status(200).json({ ok: true });
+
+            } catch (jwtErr) {
+                if (jwtErr.name === 'TokenExpiredError') {
+                    console.log(`[stream-auth] DENIED: Token expired from ${ip}`);
+                    return res.status(401).json({ error: 'Stream token expired' });
+                }
+                console.log(`[stream-auth] DENIED: Invalid token from ${ip}: ${jwtErr.message}`);
+                return res.status(403).json({ error: 'Invalid stream token' });
+            }
+        }
+
+        // Unknown action
+        return res.status(400).json({ error: 'Unknown action' });
+
+    } catch (error) {
+        console.error('[stream-auth] Error:', error);
+        return res.status(500).json({ error: 'Internal server error' });
+    }
+});
+
+// ─── Stream Access Logging ──────────────────────────────────────────────────
+async function logStreamAccess(uid, role, busId, result) {
+    try {
+        await firestore.collection('streamLogs').add({
+            uid,
+            role,
+            busId,
+            result, // 'granted' | 'denied'
+            timestamp: admin.firestore.FieldValue.serverTimestamp()
+        });
+    } catch (e) {
+        console.error('Stream log write failed:', e.message);
+    }
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// SECTION 3: STREAM STATUS MONITOR
+// ═══════════════════════════════════════════════════════════════════════════
+
+async function pollStreamStatus() {
+    try {
+        // Dynamic import for node-fetch (ESM module)
+        const fetch = (...args) => import('node-fetch').then(({ default: f }) => f(...args));
+
+        const response = await fetch(`${MEDIAMTX_API}/v3/paths/list`);
+        if (!response.ok) {
+            // Try v2 API
+            const response2 = await fetch(`${MEDIAMTX_API}/v2/paths/list`);
+            if (!response2.ok) {
+                console.error('[StreamMonitor] MediaMTX API not reachable');
+                return;
+            }
+            var data = await response2.json();
+        } else {
+            var data = await response.json();
+        }
+
+        const paths = data.items || data.paths || [];
+        const now = Date.now();
+
+        for (const pathInfo of paths) {
+            const pathName = pathInfo.name;
+
+            // Match live_{busId} pattern
+            const match = pathName.match(/^live[_-](.+)$/);
+            if (!match) {
+                // Also handle bare "live" path for backwards compat
+                if (pathName === 'live') {
+                    await updateStreamStatus('bus-1', pathInfo, now);
+                }
+                continue;
+            }
+
+            const busId = match[1];
+            await updateStreamStatus(busId, pathInfo, now);
+        }
+
+    } catch (error) {
+        // MediaMTX might not be running yet — that's OK
+        if (error.code !== 'ECONNREFUSED') {
+            console.error('[StreamMonitor] Poll error:', error.message);
+        }
+    }
+}
+
+async function updateStreamStatus(busId, pathInfo, now) {
+    const hasPublisher = pathInfo.source && pathInfo.source.type !== '';
+    const readerCount = (pathInfo.readers || []).length;
+
+    const status = {
+        isLive: hasPublisher,
+        lastPublisherSeen: hasPublisher ? now : null,
+        viewerCount: readerCount,
+        lastChecked: now,
+        pathName: pathInfo.name
+    };
+
+    try {
+        await rtdb.ref(`buses/${busId}/streamStatus`).update(status);
+    } catch (e) {
+        console.error(`[StreamMonitor] RTDB write failed for ${busId}:`, e.message);
+    }
+}
+
+// Poll every 5 seconds
+setInterval(pollStreamStatus, 5000);
+// Initial poll
+setTimeout(pollStreamStatus, 2000);
+
+// ═══════════════════════════════════════════════════════════════════════════
+// SECTION 4: PI HEARTBEAT MONITOR
+// ═══════════════════════════════════════════════════════════════════════════
+
+const PI_HEARTBEAT_TIMEOUT = 30000; // 30 seconds
+
+async function checkPiHeartbeats() {
+    try {
+        const busesSnap = await rtdb.ref('buses').once('value');
+        const buses = busesSnap.val() || {};
+        const now = Date.now();
+
+        for (const [busId, busData] of Object.entries(buses)) {
+            const piStatus = busData.piStatus;
+            if (!piStatus) continue;
+
+            if (piStatus.alive && piStatus.lastSeen) {
+                const age = now - piStatus.lastSeen;
+                if (age > PI_HEARTBEAT_TIMEOUT) {
+                    console.log(`[Heartbeat] ⚠ Pi for ${busId} is STALE (${Math.round(age / 1000)}s old). Marking offline.`);
+                    await rtdb.ref(`buses/${busId}/piStatus`).update({
+                        alive: false,
+                        markedOfflineAt: now,
+                        lastSeen: piStatus.lastSeen
+                    });
+                }
+            }
+        }
+    } catch (error) {
+        console.error('[Heartbeat] Check error:', error.message);
+    }
+}
+
+// Check heartbeats every 10 seconds
+setInterval(checkPiHeartbeats, 10000);
+
+// ═══════════════════════════════════════════════════════════════════════════
+// START SERVER
+// ═══════════════════════════════════════════════════════════════════════════
+
+app.listen(PORT, () => {
+    console.log(`🌐 Stream Auth Server running on port ${PORT}`);
+    console.log(`   POST /api/stream-token  — Get signed stream URL`);
+    console.log(`   POST /stream-auth       — MediaMTX auth callback`);
+    console.log(`   GET  /health            — Health check`);
+});

@@ -1,6 +1,6 @@
 import { useState } from 'react';
 
-export default function StudentManagement({ students, buses, onRemoveStudent, onAddStudent }) {
+export default function StudentManagement({ students, buses, selectedBus, onRemoveStudent, onAddStudent, onAssignStudent }) {
     const [prnSearch, setPrnSearch] = useState('');
     const [foundStudent, setFoundStudent] = useState(null);
     const [showAddForm, setShowAddForm] = useState(false);
@@ -8,17 +8,34 @@ export default function StudentManagement({ students, buses, onRemoveStudent, on
 
     const handleSearch = () => {
         const student = students.find(s => s.prn === prnSearch);
-        setFoundStudent(student || null);
-        if (!student && prnSearch) {
+
+        if (student) {
+            setFoundStudent(student);
+
+            // Auto-assign logic
+            if (selectedBus) {
+                // If bus is selected, assign functionality
+                onAssignStudent(student.id, selectedBus.id);
+                // We don't need to manually update local state as real-time listener will propogate changes
+                alert(`Assigned ${student.name} to ${selectedBus.number}`);
+            }
+        } else if (prnSearch) {
+            // Student Not Found Logic
             alert('Student not found');
+        }
+
+        // Warning if no bus selected but found (User request: warn if trying to add/assign without bus)
+        // Since the requirement says "if no bus is selected and we try to add student to the bus",
+        // context implies "assigning existing student".
+        if (student && !selectedBus) {
+            alert("Please select a bus first to assign this student.");
         }
     };
 
     const handleAddSubmit = (e) => {
         e.preventDefault();
         if (newStudent.name && newStudent.prn) {
-            onAddStudent({ ...newStudent, id: Date.now() });
-            onAddStudent({ ...newStudent, id: Date.now() });
+            onAddStudent(newStudent);
             setNewStudent({ name: '', prn: '', busId: '' });
             setShowAddForm(false);
             alert('Student added successfully');
@@ -67,7 +84,7 @@ export default function StudentManagement({ students, buses, onRemoveStudent, on
                                 {foundStudent.busId ? (
                                     <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-green-500/10 text-green-600 text-xs font-bold border border-green-500/20">
                                         <span className="w-1.5 h-1.5 rounded-full bg-green-500"></span>
-                                        Assigned to {foundStudent.busId}
+                                        Assigned to {buses.find(b => b.id === foundStudent.busId || b.number === foundStudent.busId)?.number || foundStudent.busId}
                                     </span>
                                 ) : (
                                     <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-yellow-500/10 text-yellow-600 text-xs font-bold border border-yellow-500/20">
@@ -140,7 +157,7 @@ export default function StudentManagement({ students, buses, onRemoveStudent, on
                                 >
                                     <option value="">No Bus Assigned</option>
                                     {buses && buses.map(bus => (
-                                        <option key={bus.id} value={bus.number}>{bus.number} - {bus.route}</option>
+                                        <option key={bus.id} value={bus.id}>{bus.number} - {bus.route}</option>
                                     ))}
                                 </select>
                             </div>

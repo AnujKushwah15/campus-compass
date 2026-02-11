@@ -10,11 +10,12 @@ import { db, auth } from '@/lib/firebase';
 import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
 import { signOut } from 'firebase/auth';
 import { useTrip } from '@/context/TripContext';
+import { StreamProvider, useStream } from '@/context/StreamContext';
 import Link from 'next/link';
 
 export default function DriverDashboard() {
     const router = useRouter();
-    const { currentTrip, startTrip, endTrip, updateLocation } = useTrip();
+    const { currentTrip, startTrip, endTrip, updateLocation, busLocation } = useTrip();
     const [sosActive, setSosActive] = useState(false);
     const [sendingSOS, setSendingSOS] = useState(false);
     const [isTripping, setIsTripping] = useState(false); // Local state for immediate UI feedback
@@ -144,40 +145,12 @@ export default function DriverDashboard() {
     // SPLASH SCREEN: Show if no trip is active locally or remotely
     if (!currentTrip && !isTripping) {
         return (
-            <div className="min-h-screen bg-background flex items-center justify-center p-4">
-                <div className="max-w-md w-full">
-                    <div className="bg-card rounded-2xl shadow-xl p-8 text-center space-y-6 border border-border">
-                        <div className="w-20 h-20 bg-primary/10 rounded-full flex items-center justify-center mx-auto text-primary">
-                            <Radio size={40} />
-                        </div>
-                        <div>
-                            <h1 className="text-2xl font-bold text-card-foreground">Ready to Start?</h1>
-                            <p className="text-muted-foreground mt-2">Start the trip to begin sharing your live location with parents and students.</p>
-                        </div>
-
-                        <Button
-                            onClick={handleStartTrip}
-                            className="w-full py-6 text-lg font-bold bg-indigo-600 hover:bg-indigo-700 text-white shadow-xl shadow-indigo-500/30 border border-indigo-500/50"
-                        >
-                            Start Trip
-                        </Button>
-
-                        <div className="flex justify-center mt-4">
-                            <Button
-                                onClick={handleLogout}
-                                variant="outline"
-                                className="w-full border-2 border-slate-700 hover:bg-slate-800 text-slate-300 hover:text-white flex items-center justify-center gap-2 font-semibold"
-                            >
-                                <LogOut size={16} /> Logout
-                            </Button>
-                        </div>
-
-                        <p className="text-xs text-muted-foreground">
-                            By clicking Start, you agree to share your real-time location.
-                        </p>
-                    </div>
-                </div>
-            </div>
+            <StreamProvider busId="bus-1">
+                <DriverSplashScreen
+                    onStartTrip={handleStartTrip}
+                    onLogout={handleLogout}
+                />
+            </StreamProvider>
         );
     }
 
@@ -245,7 +218,7 @@ export default function DriverDashboard() {
                                 <h3 className="font-bold text-foreground">Live Route Map</h3>
                                 <span className="text-xs text-muted-foreground">Updated: Just now</span>
                             </div>
-                            <RouteMap />
+                            <RouteMap busLocation={busLocation} />
                         </div>
                     </div>
 
@@ -255,6 +228,79 @@ export default function DriverDashboard() {
                     </div>
                 </div>
             </main>
+        </div>
+    );
+}
+
+/**
+ * DriverSplashScreen — Shows Pi/camera health before trip start.
+ */
+function DriverSplashScreen({ onStartTrip, onLogout }) {
+    const { isPiOnline, isGpsFix, isImuOk, isLive } = useStream();
+
+    return (
+        <div className="min-h-screen bg-background flex items-center justify-center p-4">
+            <div className="max-w-md w-full">
+                <div className="bg-card rounded-2xl shadow-xl p-8 text-center space-y-6 border border-border">
+                    <div className="w-20 h-20 bg-primary/10 rounded-full flex items-center justify-center mx-auto text-primary">
+                        <Radio size={40} />
+                    </div>
+                    <div>
+                        <h1 className="text-2xl font-bold text-card-foreground">Ready to Start?</h1>
+                        <p className="text-muted-foreground mt-2">Start the trip to begin sharing your live location with parents and students.</p>
+                    </div>
+
+                    {/* Device Health Panel */}
+                    <div className="bg-muted/50 rounded-xl p-4 space-y-3">
+                        <h3 className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Device Status</h3>
+                        <div className="grid grid-cols-2 gap-3">
+                            <div className={`flex items-center gap-2 p-2 rounded-lg ${isPiOnline ? 'bg-green-500/10' : 'bg-red-500/10'}`}>
+                                <span className={`w-2 h-2 rounded-full ${isPiOnline ? 'bg-green-500' : 'bg-red-500'}`} />
+                                <span className="text-xs font-medium">Pi {isPiOnline ? 'Online' : 'Offline'}</span>
+                            </div>
+                            <div className={`flex items-center gap-2 p-2 rounded-lg ${isGpsFix ? 'bg-green-500/10' : 'bg-yellow-500/10'}`}>
+                                <span className="text-sm">🛰</span>
+                                <span className="text-xs font-medium">GPS {isGpsFix ? 'Fix' : 'No Fix'}</span>
+                            </div>
+                            <div className={`flex items-center gap-2 p-2 rounded-lg ${isImuOk ? 'bg-green-500/10' : 'bg-yellow-500/10'}`}>
+                                <span className="text-sm">📐</span>
+                                <span className="text-xs font-medium">IMU {isImuOk ? 'OK' : 'N/A'}</span>
+                            </div>
+                            <div className={`flex items-center gap-2 p-2 rounded-lg ${isLive ? 'bg-green-500/10' : 'bg-gray-500/10'}`}>
+                                <span className="text-sm">📹</span>
+                                <span className="text-xs font-medium">Camera {isLive ? 'Live' : 'Off'}</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <Button
+                        onClick={onStartTrip}
+                        className="w-full py-6 text-lg font-bold bg-indigo-600 hover:bg-indigo-700 text-white shadow-xl shadow-indigo-500/30 border border-indigo-500/50"
+                    >
+                        Start Trip
+                    </Button>
+
+                    {!isPiOnline && (
+                        <p className="text-xs text-yellow-500 font-medium">
+                            ⚠ Pi is offline. Camera & GPS from the Pi won’t be available.
+                        </p>
+                    )}
+
+                    <div className="flex justify-center mt-4">
+                        <Button
+                            onClick={onLogout}
+                            variant="outline"
+                            className="w-full border-2 border-slate-700 hover:bg-slate-800 text-slate-300 hover:text-white flex items-center justify-center gap-2 font-semibold"
+                        >
+                            <LogOut size={16} /> Logout
+                        </Button>
+                    </div>
+
+                    <p className="text-xs text-muted-foreground">
+                        By clicking Start, you agree to share your real-time location.
+                    </p>
+                </div>
+            </div>
         </div>
     );
 }

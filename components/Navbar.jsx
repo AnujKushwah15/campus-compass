@@ -66,7 +66,7 @@ export default function Navbar() {
                 <div className="hidden md:flex items-center gap-1 bg-white/40 p-1 rounded-full border border-white/50 backdrop-blur-md">
                     <NavItem href={basePath} icon={<Home size={18} />} label="Home" active={pathname === basePath} />
                     <NavItem href={`${basePath}/attendance`} icon={<Calendar size={18} />} label="Attendance" active={pathname.startsWith(`${basePath}/attendance`)} />
-                    <NavItem href="/dashboard/profile" icon={<User size={18} />} label="Profile" active={isActive('/dashboard/profile')} />
+                    <NavItem href={`${basePath}/profile`} icon={<User size={18} />} label="Profile" active={isActive(`${basePath}/profile`)} />
                 </div>
 
                 {/* Right: User Profile */}

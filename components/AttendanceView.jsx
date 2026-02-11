@@ -105,10 +105,30 @@ export default function AttendanceView({ data, title, studentName, titleClassNam
                         // Accurate day of week calculation
                         const dateObj = new Date(currentYear, currentDate.getMonth(), day);
                         const dayOfWeek = dateObj.getDay(); // 0 = Sun, 6 = Sat
-
                         const isWeekend = dayOfWeek === 0 || dayOfWeek === 6;
-                        const isAbsent = !isWeekend && (day === 4 || day === 12 || day === 21 || day === 25);
-                        const isPresent = !isWeekend && !isAbsent;
+
+                        let isPresent = false;
+                        let isAbsent = false;
+
+                        if (data.history && Array.isArray(data.history)) {
+                            // Real Data Logic
+                            // Format date as YYYY-MM-DD to match Firestore keys/fields
+                            // We need to be careful with timezones, but for now assuming strings match
+                            const year = dateObj.getFullYear();
+                            const month = String(dateObj.getMonth() + 1).padStart(2, '0');
+                            const dayStr = String(day).padStart(2, '0');
+                            const dateString = `${year}-${month}-${dayStr}`;
+
+                            const record = data.history.find(r => r.date === dateString);
+                            if (record) {
+                                isPresent = record.status === 'present';
+                                isAbsent = record.status === 'absent';
+                            }
+                        } else {
+                            // Mock Logic (Fallback)
+                            isAbsent = !isWeekend && (day === 4 || day === 12 || day === 21 || day === 25);
+                            isPresent = !isWeekend && !isAbsent;
+                        }
 
                         let bgClass = "bg-gray-50 text-gray-400 dark:bg-slate-800/50 dark:text-gray-500"; // Default/Weekend
                         let borderClass = "border-gray-100 dark:border-slate-700"

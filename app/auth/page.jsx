@@ -11,11 +11,12 @@ import Link from 'next/link';
 import BackgroundAnimation from '@/components/ui/BackgroundAnimation';
 import { auth, db } from '@/lib/firebase';
 import { createUserWithEmailAndPassword, signInWithEmailAndPassword, updateProfile } from 'firebase/auth';
-import { doc, setDoc, query, collection, where, getDocs } from 'firebase/firestore';
+import { doc, setDoc, query, collection, where, getDocs, getDoc } from 'firebase/firestore';
+import { studentsRef, parentsRef } from '@/lib/firebase';
 
 export default function LoginPage() {
     const [activeTab, setActiveTab] = useState('login');
-    const [userType, setUserType] = useState('student');
+    const [signupRole, setSignupRole] = useState('student');
     const router = useRouter();
 
     const [loading, setLoading] = useState(false);
@@ -35,6 +36,13 @@ export default function LoginPage() {
     const handleChange = (e) => {
         setFormData({ ...formData, [e.target.name]: e.target.value });
         setAuthError('');
+    };
+
+    // Helper: Find student by PRN to link parent
+    const findStudentByPRN = async (prn) => {
+        const q = query(studentsRef, where("prn", "==", prn));
+        const querySnapshot = await getDocs(q);
+        return !querySnapshot.empty ? querySnapshot.docs[0] : null;
     };
 
     const handleLogin = async (e) => {
@@ -57,7 +65,7 @@ export default function LoginPage() {
             if (!isEmail) {
                 // Determine query field based on format or userType
                 let field = "prn"; // Default to PRN
-                if (userType === 'student' && loginInput.match(/^\d{10}$/)) {
+                if (loginInput.match(/^\d{10}$/)) {
                     field = "mobile";
                 }
 
@@ -66,19 +74,43 @@ export default function LoginPage() {
                 const querySnapshot = await getDocs(q);
 
                 if (querySnapshot.empty) {
-                    throw new Error(userType === 'student' ? "User not found." : "Student with this PRN not found.");
+                    throw new Error("User not found.");
                 }
 
                 targetEmail = querySnapshot.docs[0].data().email;
             }
 
-            await signInWithEmailAndPassword(auth, targetEmail, formData.password);
+            const userCredential = await signInWithEmailAndPassword(auth, targetEmail, formData.password);
+            const user = userCredential.user;
 
-            if (userType === 'student') {
-                router.push('/dashboard/student');
+            // Fetch User Role to determine redirect
+            const userDocRef = doc(db, "users", user.uid);
+            const userDocSnap = await getDoc(userDocRef);
+
+            if (userDocSnap.exists()) {
+                const userData = userDocSnap.data();
+                const role = userData.role || 'student';
+
+                switch (role) {
+                    case 'parent':
+                        router.push('/dashboard/parent');
+                        break;
+                    case 'driver':
+                        router.push('/dashboard/driver');
+                        break;
+                    case 'admin':
+                        router.push('/dashboard/admin');
+                        break;
+                    case 'student':
+                    default:
+                        router.push('/dashboard/student');
+                        break;
+                }
             } else {
-                router.push('/dashboard/parent');
+                // Fallback if no user doc found (shouldn't happen in normal flow)
+                router.push('/dashboard/student');
             }
+
         } catch (err) {
             console.error("Login Error:", err);
             // Customize error message for better UX
@@ -92,6 +124,9 @@ export default function LoginPage() {
         }
     };
 
+
+
+    // Pre-validation for Parent Signup to avoid creating Auth user if PRN is invalid
     const handleSignup = async (e) => {
         e.preventDefault();
         setLoading(true);
@@ -104,6 +139,17 @@ export default function LoginPage() {
         }
 
         try {
+            // New Validation Block: Check PRN *before* creating Firebase Auth User
+            if (signupRole === 'parent') {
+                if (!formData.childPrn) {
+                    throw new Error("Child's PRN is required.");
+                }
+                const studentDoc = await findStudentByPRN(formData.childPrn);
+                if (!studentDoc) {
+                    throw new Error(`Student with PRN "${formData.childPrn}" not found. Please sign up your child first.`);
+                }
+            }
+
             const userCredential = await createUserWithEmailAndPassword(auth, formData.email, formData.password);
             const user = userCredential.user;
 
@@ -117,14 +163,47 @@ export default function LoginPage() {
                 email: formData.email,
                 fullName: formData.fullName,
                 mobile: formData.mobile,
-                prn: formData.prn,
+                prn: formData.prn || (formData.childPrn ? `PARENT-OF-${formData.childPrn}` : ''),
                 college: formData.college,
                 semester: formData.semester,
-                role: 'student',
+                role: signupRole,
                 createdAt: new Date().toISOString()
             });
 
-            router.push('/dashboard/student');
+            // Store role-specific data
+            if (signupRole === 'student') {
+                await setDoc(doc(studentsRef, user.uid), {
+                    id: user.uid,
+                    fullName: formData.fullName,
+                    mobileNumber: formData.mobile,
+                    prnNumber: formData.prn,
+                    collegeName: formData.college,
+                    semester: formData.semester,
+                    email: formData.email,
+                    parentId: null,
+                });
+                router.push('/dashboard/student');
+            } else if (signupRole === 'parent') {
+                // We already validated studentDoc exists above, but need to fetch it again or store it? 
+                // Let's just refetch or assume it's there. 
+                // Optimization: Just refetch to be safe/clean code wise or trust the pre-check.
+                const studentDoc = await findStudentByPRN(formData.childPrn); // Guaranteed to exist now
+                const childId = studentDoc.id;
+
+                await setDoc(doc(studentsRef, studentDoc.id), {
+                    parentId: user.uid
+                }, { merge: true });
+
+                await setDoc(doc(parentsRef, user.uid), {
+                    id: user.uid,
+                    fullName: formData.fullName,
+                    email: formData.email,
+                    mobileNumber: formData.mobile,
+                    child_id: childId
+                });
+                router.push('/dashboard/parent');
+            }
+
         } catch (err) {
             console.error("Signup Error:", err);
             setAuthError(err.message.replace('Firebase:', '').trim());
@@ -182,32 +261,12 @@ export default function LoginPage() {
                 <div className="p-6 md:p-8">
                     {activeTab === 'login' ? (
                         <form onSubmit={handleLogin} className="space-y-6 animate-fadeIn">
-                            {/* Login As Selector */}
-                            <div className="grid grid-cols-2 gap-3 p-1 bg-muted/30 rounded-lg opacity-0 animate-pop-in delay-100">
-                                <button
-                                    type="button"
-                                    onClick={() => setUserType('student')}
-                                    className={`flex items-center justify-center gap-2 py-2 rounded-md text-sm font-medium transition-all ${userType === 'student' ? 'bg-card shadow-sm text-foreground ring-2 ring-cc-purple-500' : 'text-muted-foreground hover:text-foreground'
-                                        }`}
-                                >
-                                    <User size={16} /> Student
-                                </button>
-                                <button
-                                    type="button"
-                                    onClick={() => setUserType('parent')}
-                                    className={`flex items-center justify-center gap-2 py-2 rounded-md text-sm font-medium transition-all ${userType === 'parent' ? 'bg-card shadow-sm text-foreground ring-2 ring-cc-purple-500' : 'text-muted-foreground hover:text-foreground'
-                                        }`}
-                                >
-                                    <Shield size={16} /> Parent
-                                </button>
-                            </div>
-
                             <Input
                                 name="email"
                                 value={formData.email}
                                 onChange={handleChange}
-                                label={userType === 'student' ? "Email / Mobile / PRN" : "Child's PRN Number"}
-                                placeholder={userType === 'student' ? "Enter your credentials" : "Enter PRN (e.g., 2023001)"}
+                                label="Email / Mobile / PRN"
+                                placeholder="Enter your credentials"
                                 type="text"
                                 required
                                 containerClassName="opacity-0 animate-pop-in delay-200"
@@ -237,34 +296,61 @@ export default function LoginPage() {
                                 </div>
                             )}
 
-                            {userType === 'parent' && (
-                                <div className="bg-secondary/10 border border-secondary/30 rounded-lg p-3 flex items-start gap-3">
-                                    <div className="bg-secondary rounded-full p-0.5 mt-0.5"><div className="w-1 h-1 bg-white rounded-full"></div></div>
-                                    <p className="text-xs text-muted-foreground leading-relaxed">
-                                        Parents can log in directly using their child&apos;s PRN number to get instant tracking access.
-                                    </p>
-                                </div>
-                            )}
+
 
                             <Button type="submit" size="lg" className="w-full group opacity-0 animate-pop-in delay-400" disabled={loading}>
                                 {loading ? <Loader2 className="animate-spin mr-2" /> : null}
-                                {userType === 'student' ? 'Login to Dashboard' : 'Track Bus'}
+                                Login
                                 {!loading && <ArrowRight size={18} className="ml-2 group-hover:translate-x-1 transition-transform" />}
                             </Button>
                         </form>
                     ) : (
                         <form className="space-y-4 animate-fadeIn" onSubmit={handleSignup}>
+                            {/* Signup Role Selector */}
+                            <div className="grid grid-cols-2 gap-3 p-1 bg-muted/30 rounded-lg mb-4 opacity-0 animate-pop-in delay-100">
+                                <button
+                                    type="button"
+                                    onClick={() => setSignupRole('student')}
+                                    className={`flex items-center justify-center gap-2 py-2 rounded-md text-sm font-medium transition-all ${signupRole === 'student' ? 'bg-card shadow-sm text-foreground ring-2 ring-cc-purple-500' : 'text-muted-foreground hover:text-foreground'
+                                        }`}
+                                >
+                                    <User size={16} /> Student
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={() => setSignupRole('parent')}
+                                    className={`flex items-center justify-center gap-2 py-2 rounded-md text-sm font-medium transition-all ${signupRole === 'parent' ? 'bg-card shadow-sm text-foreground ring-2 ring-cc-purple-500' : 'text-muted-foreground hover:text-foreground'
+                                        }`}
+                                >
+                                    <Shield size={16} /> Parent
+                                </button>
+                            </div>
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                 <Input name="fullName" value={formData.fullName} onChange={handleChange} label="Full Name" placeholder="John Doe" required icon={<User size={16} />} containerClassName="opacity-0 animate-pop-in delay-100" />
                                 <Input name="mobile" value={formData.mobile} onChange={handleChange} label="Mobile Number" placeholder="+91 98765..." required icon={<Phone size={16} />} containerClassName="opacity-0 animate-pop-in delay-100" />
                             </div>
 
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                <Input name="prn" value={formData.prn} onChange={handleChange} label="PRN Number" placeholder="University PRN" required icon={<Hash size={16} />} containerClassName="opacity-0 animate-pop-in delay-200" />
-                                <Input name="college" value={formData.college} onChange={handleChange} label="College Name" placeholder="Engineering College" required icon={<School size={16} />} containerClassName="opacity-0 animate-pop-in delay-200" />
-                            </div>
-
-                            <Input name="semester" value={formData.semester} onChange={handleChange} label="Semester" placeholder="e.g., 5th Semester" required icon={<GraduationCap size={16} />} containerClassName="opacity-0 animate-pop-in delay-300" />
+                            {/* Conditional Inputs based on Role */}
+                            {signupRole === 'student' ? (
+                                <>
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                        <Input name="prn" value={formData.prn} onChange={handleChange} label="PRN Number" placeholder="University PRN" required icon={<Hash size={16} />} containerClassName="opacity-0 animate-pop-in delay-200" />
+                                        <Input name="college" value={formData.college} onChange={handleChange} label="College Name" placeholder="Engineering College" required icon={<School size={16} />} containerClassName="opacity-0 animate-pop-in delay-200" />
+                                    </div>
+                                    <Input name="semester" value={formData.semester} onChange={handleChange} label="Semester" placeholder="e.g., 5th Semester" required icon={<GraduationCap size={16} />} containerClassName="opacity-0 animate-pop-in delay-300" />
+                                </>
+                            ) : (
+                                <Input
+                                    name="childPrn"
+                                    value={formData.childPrn || ''}
+                                    onChange={handleChange}
+                                    label="Child's PRN"
+                                    placeholder="Enter Student PRN to link"
+                                    required
+                                    icon={<Hash size={16} />}
+                                    containerClassName="opacity-0 animate-pop-in delay-200"
+                                />
+                            )}
 
                             <Input name="email" value={formData.email} onChange={handleChange} label="Email" type="email" placeholder="john@example.com" required icon={<Mail size={16} />} containerClassName="opacity-0 animate-pop-in delay-400" />
 
@@ -303,6 +389,6 @@ export default function LoginPage() {
             <footer className="absolute bottom-4 text-xs text-muted-foreground/60 font-medium">
                 © 2025 Campus Compass. Real-time Transit System.
             </footer>
-        </main>
+        </main >
     );
 }

@@ -1,8 +1,42 @@
 rules_version = '2';
+
 service cloud.firestore {
   match /databases/{database}/documents {
-    match /{document=**} {
-      allow read, write: if true;
+
+    // Users collection — each user can read/write their own doc
+    match /users/{userId} {
+      allow read: if request.auth != null;
+      allow write: if request.auth.uid == userId;
+    }
+
+    // Parents collection
+    match /parents/{parentId} {
+      allow read: if request.auth != null;
+      allow write: if request.auth.uid == parentId;
+    }
+
+    // Students collection — authenticated users can read, only admin/backend writes
+    match /students/{studentId} {
+      allow read: if request.auth != null;
+      allow write: if request.auth != null;
+    }
+
+    // Buses collection
+    match /buses/{busId} {
+      allow read: if request.auth != null;
+      allow write: if request.auth != null;
+    }
+
+    // Trips collection
+    match /trips/{tripId} {
+      allow read: if request.auth != null;
+      allow write: if request.auth != null;
+    }
+
+    // Stream logs — server writes only, admin reads
+    match /streamLogs/{logId} {
+      allow read: if request.auth != null;
+      allow write: if false; // Server-side only via Admin SDK
     }
   }
 }

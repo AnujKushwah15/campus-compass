@@ -3,7 +3,7 @@ import Badge from '../ui/Badge';
 import { db } from '@/lib/firebase';
 import { doc, onSnapshot } from 'firebase/firestore';
 
-export default function BusManagement({ buses, selectedBus, onSelectBus, onUpdateBus }) {
+export default function BusManagement({ buses, selectedBus, onSelectBus, onUpdateBus, onUnassignStudent }) {
     const [searchTerm, setSearchTerm] = useState('');
     const [attendanceData, setAttendanceData] = useState({});
 
@@ -53,8 +53,7 @@ export default function BusManagement({ buses, selectedBus, onSelectBus, onUpdat
 
     const handleRemoveStudentFromBus = (studentId) => {
         if (!selectedBus) return;
-        const newMembers = selectedBus.currentMembers.filter(m => m.id !== studentId);
-        onUpdateBus({ ...selectedBus, currentMembers: newMembers });
+        onUnassignStudent(studentId);
     };
 
     const getStatusParams = (studentId) => {

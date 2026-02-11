@@ -39,12 +39,23 @@ Defined paths.
 
 ### `students`
 Roster data.
-- `id` (string)
-- `name` (string)
-- `prn` (string)
-- `busId` (string): Links student to a specific bus.
+- `id` (string): Auto-generated or custom ID (e.g., '2')
+- `fullName` (string)
+- `mobileNumber` (string)
+- `prnNumber` (string)
+- `semester` (string)
+- `collegeName` (string)
+- `email` (string)
+- `parentId` (string): Link to parent document (e.g., 'XWjKfKi0yLTA87v7Q68YPO6vxUD3')
 - `routeId` (string)
-- `parentId` (string)
+
+### `parents`
+Parent profiles.
+- `id` (string): Auth ID (e.g., 'XWjKfKi0yLTA87v7Q68YPO6vxUD3')
+- `fullName` (string)
+- `email` (string)
+- `mobileNumber` (string): **Mandatory**
+- `child_id` (string): Link to child (e.g., '2')
 
 ### `trips`
 Active session for a journey.
