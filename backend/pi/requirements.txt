@@ -1,0 +1,4 @@
+pyserial==3.5
+pynmea2==1.19.0
+smbus2==0.4.3
+firebase-admin==6.5.0

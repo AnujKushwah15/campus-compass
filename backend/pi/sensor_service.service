@@ -1,0 +1,23 @@
+[Unit]
+Description=Campus Compass Pi Sensor Service
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=pi
+WorkingDirectory=/home/pi/campus-compass-pi
+ExecStart=/usr/bin/python3 sensor_service.py
+Restart=always
+RestartSec=5
+StartLimitIntervalSec=0
+
+# Environment — override BUS_ID per-bus
+Environment=BUS_ID=bus-1
+Environment=GPS_ENABLED=true
+Environment=IMU_ENABLED=true
+Environment=GPS_PORT=/dev/ttyS0
+Environment=I2C_BUS=1
+
+[Install]
+WantedBy=multi-user.target
