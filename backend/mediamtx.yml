@@ -26,6 +26,8 @@ authHTTPAddress: http://localhost:3001/stream-auth
 authHTTPExclude:
   # Allow publisher to use internal credentials
   - action: publish
+  # Allow API access without HTTP auth (needed for stream monitoring)
+  - action: api
 
 authInternalUsers:
   # Pi publisher credentials (one per bus — add more as needed)
@@ -57,6 +59,6 @@ paths:
   live_bus-3:
     source: publisher
 
-  # Wildcard for dynamic buses
-  "live_bus-~.*":
-    source: publisher
+  # Add more bus paths here as needed, e.g.:
+  # live_bus-4:
+  #   source: publisher

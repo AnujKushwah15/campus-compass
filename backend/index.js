@@ -327,6 +327,11 @@ app.post('/stream-auth', async (req, res) => {
 
         console.log(`[stream-auth] action=${action} path=${path} ip=${ip} protocol=${protocol}`);
 
+        // Allow API actions (MediaMTX internal API queries)
+        if (action === 'api') {
+            return res.status(200).json({ ok: true });
+        }
+
         // Allow publish actions with static Pi credentials (checked by MediaMTX internally)
         if (action === 'publish') {
             // Publisher auth is handled by MediaMTX internal users for now
