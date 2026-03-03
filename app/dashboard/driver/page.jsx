@@ -8,8 +8,8 @@ import Button from '@/components/ui/Button';
 import StreamPlayer from '@/components/ui/StreamPlayer';
 import { TriangleAlert, Phone, Radio, LogOut, Video } from 'lucide-react';
 import { db, auth } from '@/lib/firebase';
-import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
-import { signOut } from 'firebase/auth';
+import { collection, addDoc, serverTimestamp, doc, getDoc } from 'firebase/firestore';
+import { signOut, onAuthStateChanged } from 'firebase/auth';
 import { useTrip } from '@/context/TripContext';
 import { StreamProvider, useStream } from '@/context/StreamContext';
 import Link from 'next/link';
@@ -19,7 +19,43 @@ export default function DriverDashboard() {
     const { currentTrip, startTrip, endTrip, updateLocation, busLocation } = useTrip();
     const [sosActive, setSosActive] = useState(false);
     const [sendingSOS, setSendingSOS] = useState(false);
-    const [isTripping, setIsTripping] = useState(false); // Local state for immediate UI feedback
+    const [isTripping, setIsTripping] = useState(false);
+
+    // ── Driver profile from Firestore ──────────────────────────────────────────
+    const [driverProfile, setDriverProfile] = useState({
+        displayName: 'Driver',
+        assignedBusId: 'bus-1',
+        busNumber: '—',
+    });
+
+    useEffect(() => {
+        const unsubAuth = onAuthStateChanged(auth, async (user) => {
+            if (!user) return;
+            try {
+                const userSnap = await getDoc(doc(db, 'users', user.uid));
+                if (userSnap.exists()) {
+                    const data = userSnap.data();
+                    const busId = data.assignedBusId || 'bus-1';
+                    // Fetch bus doc to get plate number
+                    let busNumber = busId;
+                    try {
+                        const busSnap = await getDoc(doc(db, 'buses', busId));
+                        if (busSnap.exists()) {
+                            busNumber = busSnap.data().number || busSnap.data().plateNumber || busId;
+                        }
+                    } catch (_) { }
+                    setDriverProfile({
+                        displayName: user.displayName || data.fullName || 'Driver',
+                        assignedBusId: busId,
+                        busNumber,
+                    });
+                }
+            } catch (e) {
+                console.error('[DriverDashboard] Failed to load profile:', e);
+            }
+        });
+        return () => unsubAuth();
+    }, []);
 
     // 1. Force Location Prompt on Mount & Track Location if Trip Active
     useEffect(() => {
@@ -80,17 +116,15 @@ export default function DriverDashboard() {
 
     const handleStartTrip = async () => {
         if (!navigator.geolocation) {
-            alert("Geolocation is not supported by your browser");
+            alert('Geolocation is not supported by your browser');
             return;
         }
-
         try {
-            // Bus ID would ideally come from User Profile, but for now we use the seeded ID
-            await startTrip("bus-1", "route-1");
+            await startTrip(driverProfile.assignedBusId, 'route-1');
             setIsTripping(true);
         } catch (error) {
-            console.error("Failed to start trip:", error);
-            alert("Failed to start trip. Please try again.");
+            console.error('Failed to start trip:', error);
+            alert('Failed to start trip. Please try again.');
         }
     };
 
@@ -110,15 +144,15 @@ export default function DriverDashboard() {
         setSendingSOS(true);
 
         try {
-            await addDoc(collection(db, "alerts"), {
-                type: "SOS",
-                busId: currentTrip?.busId || "1",
-                busNumber: "GJ-01-AB-1234",
-                driverName: "Mock Driver", // Would come from auth
-                location: currentTrip?.location || { lat: 23.0225, lng: 72.5714 },
+            await addDoc(collection(db, 'alerts'), {
+                type: 'SOS',
+                busId: currentTrip?.busId || driverProfile.assignedBusId,
+                busNumber: driverProfile.busNumber,
+                driverName: driverProfile.displayName,
+                location: currentTrip?.location || { lat: 0, lng: 0 },
                 timestamp: serverTimestamp(),
-                status: "active",
-                message: "Emergency Alert Triggered by Driver"
+                status: 'active',
+                message: 'Emergency Alert Triggered by Driver'
             });
 
             setSosActive(true);
@@ -143,19 +177,20 @@ export default function DriverDashboard() {
         }
     };
 
-    // SPLASH SCREEN: Show if no trip is active locally or remotely
     if (!currentTrip && !isTripping) {
         return (
-            <StreamProvider busId="bus-1">
+            <StreamProvider busId={driverProfile.assignedBusId}>
                 <DriverSplashScreen
                     onStartTrip={handleStartTrip}
                     onLogout={handleLogout}
+                    driverName={driverProfile.displayName}
+                    busNumber={driverProfile.busNumber}
                 />
             </StreamProvider>
         );
     }
 
-    const busId = currentTrip?.busId || 'bus-1';
+    const busId = currentTrip?.busId || driverProfile.assignedBusId;
 
     return (
         <StreamProvider busId={busId}>
@@ -181,7 +216,9 @@ export default function DriverDashboard() {
                                         <div className="text-2xl">🚌</div>
                                     </div>
                                     <div>
-                                        <h3 className="font-bold text-lg text-foreground">Bus GJ-01-AB-1234</h3>
+                                        <h3 className="font-bold text-lg text-foreground">
+                                            Bus {driverProfile.busNumber}
+                                        </h3>
                                         <p className="text-sm text-muted-foreground">{currentTrip ? 'Trip Active' : 'Idle'} • {busId}</p>
                                     </div>
                                 </div>
@@ -249,6 +286,11 @@ function DriverCameraFeed({ busId }) {
         streamUrl, isLive, isPiOnline, isGpsFix, isImuOk,
         isMoving, viewerCount, tokenLoading, tokenError, getStreamToken
     } = useStream();
+
+    // Auto-request token on mount so the feed plays without user interaction
+    useEffect(() => {
+        getStreamToken(busId);
+    }, [busId]); // eslint-disable-line react-hooks/exhaustive-deps
 
     return (
         <div className="bg-card rounded-2xl border border-border shadow-sm overflow-hidden">

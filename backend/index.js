@@ -16,10 +16,23 @@ const serviceAccount = require('./service-account.json');
 
 // ─── Configuration ──────────────────────────────────────────────────────────
 const PORT = process.env.PORT || 3001;
-const JWT_SECRET = process.env.STREAM_JWT_SECRET || 'campus-compass-stream-secret-CHANGE-ME';
+const JWT_SECRET = process.env.STREAM_JWT_SECRET;
 const JWT_EXPIRY = '10m'; // 10 minute stream tokens
 const VPS_IP = process.env.VPS_IP || '72.61.250.73';
-const MEDIAMTX_API = process.env.MEDIAMTX_API || 'http://localhost:9997';
+const MEDIAMTX_API = process.env.MEDIAMTX_API || 'http://127.0.0.1:9997';
+
+// Fail fast — never run with a missing JWT secret
+if (!JWT_SECRET) {
+    console.error('❌ FATAL: STREAM_JWT_SECRET environment variable is not set.');
+    console.error('   Set it in /etc/campus-compass.env and reload the service.');
+    process.exit(1);
+}
+
+console.log('🔐 Config loaded:');
+console.log(`   PORT        = ${PORT}`);
+console.log(`   VPS_IP      = ${VPS_IP}`);
+console.log(`   MEDIAMTX_API= ${MEDIAMTX_API}`);
+console.log(`   JWT_SECRET  = [SET, ${JWT_SECRET.length} chars]`);
 
 // ─── Firebase Init ──────────────────────────────────────────────────────────
 if (!admin.apps.length) {
@@ -251,8 +264,12 @@ app.post('/api/stream-token', async (req, res) => {
             // Admin can access all buses
             allowed = true;
         } else if (role === 'driver') {
-            // Driver can only access their assigned bus
-            allowed = userData.assignedBusId === requestedBusId;
+            // Driver can only access their assigned bus.
+            // Normalize IDs: 'bus-1' and '1' are treated as the same.
+            const normalize = (id) => id ? String(id).replace(/^bus-/, '') : '';
+            const assignedNorm = normalize(userData.assignedBusId);
+            const requestedNorm = normalize(requestedBusId);
+            allowed = assignedNorm === requestedNorm && assignedNorm !== '';
         } else if (role === 'parent') {
             // Parent can only access their child's bus
             // Find the student linked to this parent
@@ -274,18 +291,9 @@ app.post('/api/stream-token', async (req, res) => {
             return res.status(403).json({ error: 'You do not have access to this bus stream' });
         }
 
-        // 7. Check active trip exists for this bus
-        const tripsSnap = await firestore.collection('trips')
-            .where('busId', '==', requestedBusId)
-            .where('status', '==', 'active')
-            .limit(1)
-            .get();
-
-        if (tripsSnap.empty) {
-            return res.status(404).json({ error: 'No active trip for this bus' });
-        }
-
-        // 8. Generate short-lived JWT stream token
+        // 7. Generate short-lived JWT stream token
+        //    (No active-trip check — stream is available whenever the camera is live.
+        //     Role-based access is still enforced above.)
         const streamToken = jwt.sign(
             {
                 uid: uid,
@@ -297,11 +305,11 @@ app.post('/api/stream-token', async (req, res) => {
             { expiresIn: JWT_EXPIRY }
         );
 
-        // 9. Build stream URL
+        // 8. Build stream URL
         const streamPath = `live_${requestedBusId}`;
         const streamUrl = `http://${VPS_IP}:8889/${streamPath}/?token=${streamToken}`;
 
-        // Log access
+        // 9. Log access
         await logStreamAccess(uid, role, requestedBusId, 'granted');
 
         res.json({
@@ -407,20 +415,36 @@ async function logStreamAccess(uid, role, busId, result) {
 
 async function pollStreamStatus() {
     try {
-        // Dynamic import for node-fetch (ESM module)
         const fetch = (...args) => import('node-fetch').then(({ default: f }) => f(...args));
 
-        const response = await fetch(`${MEDIAMTX_API}/v3/paths/list`);
-        if (!response.ok) {
-            // Try v2 API
-            const response2 = await fetch(`${MEDIAMTX_API}/v2/paths/list`);
-            if (!response2.ok) {
-                console.error('[StreamMonitor] MediaMTX API not reachable');
+        // Try v3 API first (MediaMTX ≥ 1.0), fall back to v2
+        let data = null;
+        for (const version of ['v3', 'v2']) {
+            const url = `${MEDIAMTX_API}/${version}/paths/list`;
+            let res;
+            try {
+                res = await fetch(url);
+            } catch (connErr) {
+                if (connErr.code === 'ECONNREFUSED') {
+                    console.warn('[StreamMonitor] MediaMTX not running (ECONNREFUSED) — will retry');
+                } else {
+                    console.error(`[StreamMonitor] Connection error to ${url}:`, connErr.message);
+                }
                 return;
             }
-            var data = await response2.json();
-        } else {
-            var data = await response.json();
+
+            if (!res.ok) {
+                console.warn(`[StreamMonitor] ${version} API returned HTTP ${res.status} — trying next version`);
+                continue;
+            }
+
+            data = await res.json();
+            break;
+        }
+
+        if (!data) {
+            console.error('[StreamMonitor] All MediaMTX API versions failed');
+            return;
         }
 
         const paths = data.items || data.paths || [];
@@ -428,26 +452,19 @@ async function pollStreamStatus() {
 
         for (const pathInfo of paths) {
             const pathName = pathInfo.name;
-
-            // Match live_{busId} pattern
             const match = pathName.match(/^live[_-](.+)$/);
             if (!match) {
-                // Also handle bare "live" path for backwards compat
                 if (pathName === 'live') {
                     await updateStreamStatus('bus-1', pathInfo, now);
                 }
                 continue;
             }
-
             const busId = match[1];
             await updateStreamStatus(busId, pathInfo, now);
         }
 
     } catch (error) {
-        // MediaMTX might not be running yet — that's OK
-        if (error.code !== 'ECONNREFUSED') {
-            console.error('[StreamMonitor] Poll error:', error.message);
-        }
+        console.error('[StreamMonitor] Unexpected poll error:', error.message);
     }
 }
 

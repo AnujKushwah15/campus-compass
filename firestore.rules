@@ -1,42 +1,87 @@
 rules_version = '2';
 
+// ─────────────────────────────────────────────────────────────────────────────
+// Campus Compass — Firestore Security Rules
+//
+// Role hierarchy (stored in users/{uid}.role):
+//   admin  → full access to everything
+//   driver → read most things; write trips for their own bus
+//   parent → read own student + linked bus data; no writes to system collections
+//
+// NOTE: Custom claims are not used here — role checks read the users collection.
+// The backend (Admin SDK) bypasses these rules entirely.
+// ─────────────────────────────────────────────────────────────────────────────
+
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    // Users collection — each user can read/write their own doc
+    // ── Helper functions ─────────────────────────────────────────────────────
+
+    function isAuth() {
+      return request.auth != null;
+    }
+
+    function isAdmin() {
+      return isAuth() &&
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
+    }
+
+    function isDriver() {
+      return isAuth() &&
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'driver';
+    }
+
+    function driverOwnsBus(busId) {
+      return isDriver() &&
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.assignedBusId == busId;
+    }
+
+    // ── Users ────────────────────────────────────────────────────────────────
     match /users/{userId} {
-      allow read: if request.auth != null;
-      allow write: if request.auth.uid == userId;
+      allow read: if isAuth() && (request.auth.uid == userId || isAdmin());
+      allow update: if request.auth.uid == userId
+        && !('role' in request.resource.data.diff(resource.data).affectedKeys())
+        && !('assignedBusId' in request.resource.data.diff(resource.data).affectedKeys());
+      allow create, delete: if isAdmin();
     }
 
-    // Parents collection
-    match /parents/{parentId} {
-      allow read: if request.auth != null;
-      allow write: if request.auth.uid == parentId;
-    }
-
-    // Students collection — authenticated users can read, only admin/backend writes
+    // ── Students ─────────────────────────────────────────────────────────────
     match /students/{studentId} {
-      allow read: if request.auth != null;
-      allow write: if request.auth != null;
+      allow read: if isAuth();
+      allow write: if isAdmin();
     }
 
-    // Buses collection
+    // ── Buses ────────────────────────────────────────────────────────────────
     match /buses/{busId} {
-      allow read: if request.auth != null;
-      allow write: if request.auth != null;
+      allow read: if isAuth();
+      allow write: if isAdmin();
     }
 
-    // Trips collection
+    // ── Trips ────────────────────────────────────────────────────────────────
     match /trips/{tripId} {
-      allow read: if request.auth != null;
-      allow write: if request.auth != null;
+      allow read: if isAuth();
+      allow create: if isAdmin() || driverOwnsBus(request.resource.data.busId);
+      allow update: if isAdmin() || driverOwnsBus(resource.data.busId);
+      allow delete: if isAdmin();
     }
 
-    // Stream logs — server writes only, admin reads
+    // ── Alerts ───────────────────────────────────────────────────────────────
+    match /alerts/{alertId} {
+      allow read: if isAdmin() || isDriver();
+      allow create: if isDriver();
+      allow update, delete: if isAdmin();
+    }
+
+    // ── Stream Logs ──────────────────────────────────────────────────────────
     match /streamLogs/{logId} {
-      allow read: if request.auth != null;
-      allow write: if false; // Server-side only via Admin SDK
+      allow read: if isAdmin();
+      allow write: if false;
+    }
+
+    // ── Parents (legacy) ─────────────────────────────────────────────────────
+    match /parents/{parentId} {
+      allow read: if isAuth() && (request.auth.uid == parentId || isAdmin());
+      allow write: if request.auth.uid == parentId || isAdmin();
     }
   }
 }

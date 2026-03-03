@@ -1,0 +1,20 @@
+[Unit]
+Description=Campus Compass MCP Server
+After=network.target
+
+[Service]
+Type=simple
+User=mcp-user
+Group=mcp-user
+WorkingDirectory=/opt/campus-compass-backend/mcp-control
+Environment="NODE_ENV=production"
+Environment="MCP_PORT=3002"
+Environment="MCP_AUTH_TOKEN=your-very-secure-mcp-token"
+Environment="MEDIAMTX_API_URL=http://127.0.0.1:9997/v2/paths/list"
+
+ExecStart=/usr/bin/node /opt/campus-compass-backend/mcp-control/server.mjs
+Restart=on-failure
+RestartSec=10
+
+[Install]
+WantedBy=multi-user.target

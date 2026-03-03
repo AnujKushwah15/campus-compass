@@ -6,30 +6,29 @@ import StudentManagement from '@/components/admin/StudentManagement';
 import StreamPlayer from '@/components/ui/StreamPlayer';
 import SettingsModal from '@/components/admin/SettingsModal';
 import CameraSelector from '@/components/admin/CameraSelector';
-import { LogOut, ShieldCheck, Settings, Search } from 'lucide-react';
+import { LogOut, ShieldCheck, Settings, Search, Bell } from 'lucide-react';
 import { signOut } from 'firebase/auth';
 import { auth, db, rtdb } from '@/lib/firebase';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { collection, onSnapshot, addDoc, deleteDoc, doc, updateDoc, query } from 'firebase/firestore';
+import { collection, onSnapshot, addDoc, deleteDoc, doc, updateDoc, query, where, orderBy } from 'firebase/firestore';
 import { ref, onValue } from 'firebase/database';
 import { StreamProvider, useStream } from '@/context/StreamContext';
 import dynamic from 'next/dynamic';
 
 const LiveMap = dynamic(() => import('@/components/ui/LiveMap'), { ssr: false });
 
-const INITIAL_CAMERAS = [
-    { id: 1, name: 'Front Cam', busId: 1, busNumber: 'Bus 1', status: 'online' },
-    { id: 2, name: 'Rear Cam', busId: 1, busNumber: 'Bus 1', status: 'offline' },
-    { id: 3, name: 'Driver View', busId: 2, busNumber: 'Bus 2', status: 'online' },
-];
+// Camera list is now derived from real Firestore buses (no hardcoded data)
+
 
 export default function AdminDashboardPage() {
     const [buses, setBuses] = useState([]);
     const [students, setStudents] = useState([]);
-    const [cameras, setCameras] = useState(INITIAL_CAMERAS);
+    const [cameras, setCameras] = useState([]);
     const [selectedBus, setSelectedBus] = useState(null);
     const [selectedCamera, setSelectedCamera] = useState(null);
+    const [activeAlerts, setActiveAlerts] = useState([]);
+    const [showAlertPanel, setShowAlertPanel] = useState(false);
 
     // Modal States
     const [isSettingsOpen, setIsSettingsOpen] = useState(false);
@@ -41,14 +40,22 @@ export default function AdminDashboardPage() {
     useEffect(() => {
         const q = query(collection(db, 'buses'));
         const unsubscribe = onSnapshot(q, (snapshot) => {
-            const busData = snapshot.docs.map(doc => ({
-                id: doc.id,
-                ...doc.data(),
-                number: doc.data().number || doc.data().plateNumber || "Unknown Bus",
-                stops: doc.data().stops || [], // Ensure stops exist
-                currentMembers: [] // Will be populated in the render or derived state
+            const busData = snapshot.docs.map(d => ({
+                id: d.id,
+                ...d.data(),
+                number: d.data().number || d.data().plateNumber || 'Unknown Bus',
+                stops: d.data().stops || [],
+                currentMembers: []
             }));
             setBuses(busData);
+            // Derive camera list from real buses
+            setCameras(busData.map((bus, i) => ({
+                id: bus.id,
+                name: `${bus.number || bus.id} — Camera`,
+                busId: bus.id,
+                busNumber: bus.number || bus.id,
+                status: 'online',
+            })));
         });
         return () => unsubscribe();
     }, []);
@@ -65,6 +72,26 @@ export default function AdminDashboardPage() {
         });
         return () => unsubscribe();
     }, []);
+
+    // ── Real-time SOS alert listener ─────────────────────────────────────────
+    useEffect(() => {
+        const alertsQ = query(
+            collection(db, 'alerts'),
+            where('status', '==', 'active')
+        );
+        const unsub = onSnapshot(alertsQ, (snap) => {
+            setActiveAlerts(snap.docs.map(d => ({ id: d.id, ...d.data() })));
+        });
+        return () => unsub();
+    }, []);
+
+    const handleResolveAlert = async (alertId) => {
+        try {
+            await updateDoc(doc(db, 'alerts', alertId), { status: 'resolved' });
+        } catch (e) {
+            console.error('Failed to resolve alert:', e);
+        }
+    };
 
     // Derive Buses with Members
     const busesWithMembers = buses.map(bus => ({
@@ -281,6 +308,11 @@ function AdminStreamWidget({ selectedCamera, onCameraSelect }) {
         streamUrl, isLive, isPiOnline, isGpsFix, isImuOk, isMoving,
         viewerCount, tokenLoading, tokenError, getStreamToken
     } = useStream();
+
+    // Auto-request token on mount
+    useEffect(() => {
+        getStreamToken();
+    }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
     return (
         <StreamPlayer

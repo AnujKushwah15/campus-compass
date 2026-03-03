@@ -6,21 +6,27 @@ import { rtdb, auth } from '@/lib/firebase';
 
 const StreamContext = createContext(null);
 
+const VPS_IP = process.env.NEXT_PUBLIC_VPS_IP || '72.61.250.73';
+const VPS_URL = process.env.NEXT_PUBLIC_VPS_URL || `http://${VPS_IP}:3001`;
+const WEBRTC_PORT = process.env.NEXT_PUBLIC_WEBRTC_PORT || '8889';
+
 /**
  * StreamProvider — Manages stream status, Pi health, and stream token acquisition.
- * 
+ *
  * Subscribes to RTDB for:
- *   - /buses/{busId}/streamStatus  → isLive, viewerCount
+ *   - /buses/{busId}/streamStatus  → isLive, viewerCount, pathName
  *   - /buses/{busId}/piStatus      → alive, gps_fix, imu_ok
- *   - /buses/{busId}/sources/imu   → IMU telemetry (accelerometer, gyro, heading)
- * 
- * Provides getStreamToken(busId) to request an authenticated stream URL.
+ *   - /buses/{busId}/sources/imu   → IMU telemetry
+ *
+ * Auto-requests a JWT stream token when the stream goes live.
+ * Exposes `directStreamUrl` as a direct WebRTC URL (no JWT, for fallback).
  */
 export function StreamProvider({ children, busId }) {
     const [streamStatus, setStreamStatus] = useState({
         isLive: false,
         viewerCount: 0,
         lastChecked: null,
+        pathName: null,
     });
 
     const [piStatus, setPiStatus] = useState({
@@ -43,10 +49,14 @@ export function StreamProvider({ children, busId }) {
     const [tokenLoading, setTokenLoading] = useState(false);
     const [tokenError, setTokenError] = useState(null);
     const tokenRefreshTimer = useRef(null);
+    // Prevents duplicate auto-requests when isLive fires multiple RTDB updates
+    const autoRequestedRef = useRef(false);
 
     // ─── RTDB Subscriptions ─────────────────────────────────────────────
     useEffect(() => {
         if (!busId) return;
+
+        autoRequestedRef.current = false; // reset on busId change
 
         const streamRef = ref(rtdb, `buses/${busId}/streamStatus`);
         const piRef = ref(rtdb, `buses/${busId}/piStatus`);
@@ -80,24 +90,18 @@ export function StreamProvider({ children, busId }) {
 
         const unsubImu = onValue(imuRef, (snapshot) => {
             const data = snapshot.val();
-            if (data) {
-                setImuData(data);
-            }
+            if (data) setImuData(data);
         });
 
         return () => {
             off(streamRef);
             off(piRef);
             off(imuRef);
-            if (tokenRefreshTimer.current) {
-                clearTimeout(tokenRefreshTimer.current);
-            }
+            if (tokenRefreshTimer.current) clearTimeout(tokenRefreshTimer.current);
         };
     }, [busId]);
 
     // ─── Stream Token Acquisition ───────────────────────────────────────
-    const VPS_URL = process.env.NEXT_PUBLIC_VPS_URL || 'http://72.61.250.73:3001';
-
     const getStreamToken = useCallback(async (targetBusId) => {
         const busToRequest = targetBusId || busId;
         if (!busToRequest) {
@@ -110,9 +114,7 @@ export function StreamProvider({ children, busId }) {
 
         try {
             const user = auth.currentUser;
-            if (!user) {
-                throw new Error('Not authenticated');
-            }
+            if (!user) throw new Error('Not authenticated');
 
             const idToken = await user.getIdToken();
 
@@ -134,18 +136,17 @@ export function StreamProvider({ children, busId }) {
             setStreamToken(data.token);
             setStreamUrl(data.streamUrl);
 
-            // Auto-refresh token before expiry (refresh at 8 minutes for 10min tokens)
-            if (tokenRefreshTimer.current) {
-                clearTimeout(tokenRefreshTimer.current);
-            }
+            // Auto-refresh token before expiry (8 min for 10-min tokens)
+            if (tokenRefreshTimer.current) clearTimeout(tokenRefreshTimer.current);
             tokenRefreshTimer.current = setTimeout(() => {
+                autoRequestedRef.current = false; // allow refresh
                 getStreamToken(busToRequest);
             }, 8 * 60 * 1000);
 
             return data;
 
         } catch (error) {
-            console.error('Stream token error:', error);
+            console.error('[StreamContext] Token error:', error);
             setTokenError(error.message);
             setStreamToken(null);
             setStreamUrl(null);
@@ -156,12 +157,29 @@ export function StreamProvider({ children, busId }) {
         }
     }, [busId, VPS_URL]);
 
+    // ─── Auto-request token when stream goes live ───────────────────────
+    useEffect(() => {
+        if (streamStatus.isLive && !streamToken && !tokenLoading && !autoRequestedRef.current) {
+            const user = auth.currentUser;
+            if (user) {
+                autoRequestedRef.current = true;
+                getStreamToken(busId);
+            }
+        }
+    }, [streamStatus.isLive, streamToken, tokenLoading, busId, getStreamToken]);
+
     // ─── Clear token on busId change ────────────────────────────────────
     useEffect(() => {
         setStreamToken(null);
         setStreamUrl(null);
         setTokenError(null);
+        autoRequestedRef.current = false;
     }, [busId]);
+
+    // ─── Direct URL (no JWT — for fallback when auth is excluded for reads) ─
+    // Built from RTDB pathName; useful if MediaMTX read auth is bypassed.
+    const pathName = streamStatus.pathName || (busId ? `live_${busId}` : 'live');
+    const directStreamUrl = `http://${VPS_IP}:${WEBRTC_PORT}/${pathName}/`;
 
     const value = {
         // Status
@@ -177,12 +195,15 @@ export function StreamProvider({ children, busId }) {
         isMoving: imuData.is_moving,
         viewerCount: streamStatus.viewerCount,
 
-        // Token
+        // Token (JWT flow)
         streamToken,
         streamUrl,
         tokenLoading,
         tokenError,
         getStreamToken,
+
+        // Direct URL (no-JWT fallback)
+        directStreamUrl,
     };
 
     return (

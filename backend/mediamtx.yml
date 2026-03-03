@@ -15,9 +15,11 @@ rtmpAddress: ""
 hlsAddress: ""
 srtAddress: ""
 
-# API (for stream monitoring)
+# Management API — bound to localhost ONLY (not reachable from internet)
+# MediaMTX v1.9.1 has no native API credentials; security is by network
+# isolation — ensure port 9997 is NOT opened in the firewall.
 api: yes
-apiAddress: ":9997"
+apiAddress: "127.0.0.1:9997"
 
 # Authentication
 # Publishers use internal auth, readers use HTTP auth
@@ -26,8 +28,6 @@ authHTTPAddress: http://localhost:3001/stream-auth
 authHTTPExclude:
   # Allow publisher to use internal credentials
   - action: publish
-  # Allow API access without HTTP auth (needed for stream monitoring)
-  - action: api
 
 authInternalUsers:
   # Pi publisher credentials (one per bus — add more as needed)

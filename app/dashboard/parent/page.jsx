@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import Card from '@/components/ui/Card';
 import Input from '@/components/ui/Input';
 import Button from '@/components/ui/Button';
@@ -9,7 +10,7 @@ import Badge from '@/components/ui/Badge';
 import { Search, MapPin, Phone, ShieldCheck, Video, User } from 'lucide-react';
 import { auth, db, rtdb } from '@/lib/firebase';
 import { doc, onSnapshot, collection, query, where, getDocs, limit } from 'firebase/firestore';
-import { onAuthStateChanged } from 'firebase/auth';
+import { onAuthStateChanged, signOut } from 'firebase/auth';
 import { ref, onValue } from 'firebase/database';
 import { StreamProvider, useStream } from '@/context/StreamContext';
 import StreamPlayer from '@/components/ui/StreamPlayer';
@@ -17,12 +18,12 @@ import StreamPlayer from '@/components/ui/StreamPlayer';
 const LiveMap = dynamic(() => import('@/components/ui/LiveMap'), { ssr: false });
 
 export default function ParentDashboard() {
+    const router = useRouter();
     const [user, setUser] = useState(null);
-    const [studentLink, setStudentLink] = useState(null); // The linked child
-    const [tripData, setTripData] = useState(null);       // Live trip data
+    const [studentLink, setStudentLink] = useState(null);
+    const [tripData, setTripData] = useState(null);
     const [loading, setLoading] = useState(true);
-    const [showLiveFeed, setShowLiveFeed] = useState(false);
-    const [liveLocation, setLiveLocation] = useState(null); // Real-time from RTDB
+    const [liveLocation, setLiveLocation] = useState(null);
 
     useEffect(() => {
         const unsubscribeAuth = onAuthStateChanged(auth, async (currentUser) => {
@@ -119,16 +120,6 @@ export default function ParentDashboard() {
 
     const status = getStudentStatus();
 
-    if (showLiveFeed) {
-        return (
-            <StreamProvider busId={studentLink?.busId}>
-                <LiveFeedOverlay
-                    busNumber={studentLink?.busNumber}
-                    onClose={() => setShowLiveFeed(false)}
-                />
-            </StreamProvider>
-        );
-    }
 
     if (loading) {
         return <div className="min-h-screen flex items-center justify-center text-muted-foreground animate-pulse">Loading Secure Parent Portal...</div>;
@@ -145,8 +136,40 @@ export default function ParentDashboard() {
         );
     }
 
+    const busId = studentLink?.busId || 'bus-1';
+
+    // ── No linked student: show setup screen ──
+    if (!studentLink) {
+        return (
+            <div className="min-h-screen flex flex-col items-center justify-center p-6 text-center gap-4">
+                <div className="w-16 h-16 rounded-full bg-cc-purple-100 dark:bg-cc-purple-900/30 flex items-center justify-center mb-2">
+                    <User size={32} className="text-cc-purple-500" />
+                </div>
+                <h1 className="text-2xl font-bold text-foreground">No Student Linked</h1>
+                <p className="text-muted-foreground max-w-sm">
+                    Your account isn't linked to a student yet. To get started, sign up using
+                    your <strong>child's PRN number</strong> so we can connect your account.
+                </p>
+                <div className="flex flex-col sm:flex-row gap-3 mt-4">
+                    <Button href="/auth" variant="primary">
+                        Link My Child's Account
+                    </Button>
+                    <Button
+                        variant="outline"
+                        onClick={async () => { await signOut(auth); router.push('/auth'); }}
+                    >
+                        Sign Out
+                    </Button>
+                </div>
+                <p className="text-xs text-muted-foreground mt-2">
+                    Already linked? Try refreshing the page.
+                </p>
+            </div>
+        );
+    }
+
     return (
-        <div className="space-y-6 animate-fadeIn pb-20">
+        <StreamProvider busId={busId}>
             {/* Header */}
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                 <div>
@@ -226,17 +249,6 @@ export default function ParentDashboard() {
                         </div>
                     </Card>
 
-                    {/* Request Live Feed Button */}
-                    <Button
-                        variant="danger"
-                        className="w-full flex items-center justify-center gap-2 shadow-md hover:shadow-lg transition-all"
-                        onClick={() => setShowLiveFeed(true)}
-                        disabled={!tripData}
-                    >
-                        <Video size={18} />
-                        {tripData ? 'Request Live Feed' : 'Feed Unavailable (No Active Trip)'}
-                    </Button>
-
                     <Card>
                         <h3 className="text-sm font-bold text-muted-foreground uppercase tracking-wider mb-4">Trip Timeline</h3>
                         <div className="space-y-6 relative">
@@ -258,41 +270,43 @@ export default function ParentDashboard() {
                     </Card>
                 </div>
             </div>
-        </div>
+
+            {/* Live Camera Feed — always visible, no trip gate */}
+            <BusCameraFeed busId={busId} busNumber={studentLink?.busNumber} />
+        </StreamProvider>
     );
 }
 
 /**
- * LiveFeedOverlay — Fullscreen stream viewer with auth token flow.
- * Must be rendered inside a <StreamProvider>.
+ * BusCameraFeed — Inline stream card for parent dashboard.
+ * Must be rendered inside a <StreamProvider> (which wraps the whole page).
  */
-function LiveFeedOverlay({ busNumber, onClose }) {
+function BusCameraFeed({ busId, busNumber }) {
     const {
-        streamUrl, streamStatus, piStatus, imuData,
-        isLive, isPiOnline, isGpsFix, isImuOk, isMoving,
-        viewerCount, tokenLoading, tokenError, getStreamToken
+        streamUrl, isLive, isPiOnline, isGpsFix, isImuOk,
+        isMoving, viewerCount, tokenLoading, tokenError, getStreamToken
     } = useStream();
 
-    // Auto-request token on mount
-    useEffect(() => {
-        getStreamToken();
-    }, [getStreamToken]);
-
     return (
-        <div className="fixed inset-0 z-50 bg-black/95 flex flex-col items-center justify-center animate-fadeIn p-4">
-            <div className="w-full max-w-4xl">
-                <div className="flex justify-between items-center mb-4 text-white">
-                    <h2 className="text-xl font-bold tracking-widest flex items-center gap-2">
-                        <span className="w-3 h-3 bg-red-500 rounded-full animate-pulse"></span>
-                        LIVE FEED: {busNumber}
-                    </h2>
-                    <button
-                        onClick={onClose}
-                        className="bg-white/10 hover:bg-white/20 text-white px-4 py-2 rounded-full text-sm transition-colors"
-                    >
-                        Close Feed
-                    </button>
+        <div className="bg-card rounded-2xl border border-border shadow-sm overflow-hidden">
+            <div className="p-4 flex justify-between items-center">
+                <div className="flex items-center gap-2">
+                    <Video size={18} className="text-muted-foreground" />
+                    <h3 className="font-bold text-foreground">Bus Camera</h3>
+                    <span className="text-xs text-muted-foreground">{busNumber}</span>
                 </div>
+                {isLive ? (
+                    <span className="flex items-center gap-1.5 px-2 py-0.5 bg-red-500/10 rounded-full text-[10px] font-bold text-red-400 uppercase">
+                        <span className="w-1.5 h-1.5 bg-red-500 rounded-full animate-pulse" />
+                        Live
+                    </span>
+                ) : (
+                    <span className="px-2 py-0.5 bg-gray-500/10 rounded-full text-[10px] font-medium text-muted-foreground uppercase">
+                        Offline
+                    </span>
+                )}
+            </div>
+            <div className="px-4 pb-4">
                 <StreamPlayer
                     streamUrl={streamUrl}
                     isLive={isLive}
@@ -301,11 +315,11 @@ function LiveFeedOverlay({ busNumber, onClose }) {
                     isImuOk={isImuOk}
                     isMoving={isMoving}
                     viewerCount={viewerCount}
-                    onRequestFeed={getStreamToken}
+                    onRequestFeed={() => getStreamToken(busId)}
                     loading={tokenLoading}
                     error={tokenError}
-                    cameraName={busNumber}
-                    className="w-full"
+                    cameraName={`Camera — ${busNumber || busId}`}
+                    className="rounded-xl"
                 />
             </div>
         </div>

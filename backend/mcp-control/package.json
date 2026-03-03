@@ -1,0 +1,19 @@
+{
+    "name": "campus-compass-mcp",
+    "version": "1.0.0",
+    "description": "Secure MCP Server for Campus Compass",
+    "main": "server.js",
+    "scripts": {
+        "start": "node server.js",
+        "dev": "nodemon server.js"
+    },
+    "dependencies": {
+        "@modelcontextprotocol/sdk": "^1.27.1",
+        "axios": "^1.13.6",
+        "body-parser": "^2.2.2",
+        "cors": "^2.8.6",
+        "dotenv": "^17.3.1",
+        "express": "^4.22.1",
+        "jsonwebtoken": "^9.0.3"
+    }
+}

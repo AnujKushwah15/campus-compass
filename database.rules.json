@@ -1,42 +1,52 @@
 {
-    "rules": {
-        "buses": {
-            "$busId": {
-                "location": {
-                    ".read": "auth != null",
-                    ".write": false
-                },
-                "sources": {
-                    "neo_m8n": {
-                        ".read": "auth != null",
-                        ".write": "auth != null"
-                    },
-                    "phone": {
-                        ".read": "auth != null",
-                        ".write": "auth != null"
-                    },
-                    "imu": {
-                        ".read": "auth != null",
-                        ".write": "auth != null"
-                    }
-                },
-                "streamStatus": {
-                    ".read": "auth != null",
-                    ".write": false
-                },
-                "piStatus": {
-                    ".read": "auth != null",
-                    ".write": "auth != null"
-                },
-                "active_source": {
-                    ".read": "auth != null",
-                    ".write": false
-                },
-                "$other": {
-                    ".read": "auth != null",
-                    ".write": "auth != null"
-                }
-            }
+  "rules": {
+    "buses": {
+      "$busId": {
+        "location": {
+          ".read": "auth != null",
+          ".write": false
+        },
+        "sources": {
+          "neo_m8n": {
+            ".read": "auth != null",
+            ".write": false
+          },
+          "phone": {
+            ".read": "auth != null",
+            ".write": false
+          },
+          "imu": {
+            ".read": "auth != null",
+            ".write": false
+          }
+        },
+        "streamStatus": {
+          ".read": "auth != null",
+          ".write": false
+        },
+        "piStatus": {
+          ".read": "auth != null",
+          ".write": false
+        },
+        "active_source": {
+          ".read": "auth != null",
+          ".write": false
+        },
+        "$other": {
+          ".read": "auth != null",
+          ".write": false
         }
+      }
+    },
+    "users": {
+      "$uid": {
+        ".read": "$uid === auth.uid",
+        ".write": "$uid === auth.uid"
+      }
+    },
+    "$other": {
+      ".read": false,
+      ".write": false
     }
+  }
 }

@@ -10,10 +10,17 @@ WorkingDirectory=/root/campus-compass-backend
 ExecStart=/usr/bin/node index.js
 Restart=on-failure
 RestartSec=5
+
+# ── Non-secret config (safe to store inline) ──────────────────────────────────
 Environment=NODE_ENV=production
-Environment=STREAM_JWT_SECRET=YOUR_STRONG_SECRET_HERE
 Environment=VPS_IP=72.61.250.73
-Environment=MEDIAMTX_API=http://localhost:9997
+Environment=MEDIAMTX_API=http://127.0.0.1:9997
+
+# ── Secrets loaded from restricted file (chmod 600, root only) ────────────────
+# Create /etc/campus-compass.env on the VPS with:
+#   STREAM_JWT_SECRET=<your-generated-secret>
+# Then: chmod 600 /etc/campus-compass.env
+EnvironmentFile=/etc/campus-compass.env
 
 [Install]
 WantedBy=multi-user.target
