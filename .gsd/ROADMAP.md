@@ -4,7 +4,7 @@
 > **Milestone**: v1.0 (Infrastructure Stabilization & Reliability)
 
 ## Must-Haves (from SPEC)
-- [ ] Fully automated edge device (Pi) provisioning and service supervision.
+- [x] Fully automated edge device (Pi) provisioning and service supervision.
 - [ ] Robust stream authentication pipeline (Token generation -> MediaMTX Webhook).
 - [ ] Real-time device health monitoring (Heartbeats, GPS/IMU status).
 - [ ] Role-based UI access to streams and tracking.
@@ -12,7 +12,7 @@
 ## Phases
 
 ### Phase 1: Edge Layer Hardening (Raspberry Pi)
-**Status**: ⬜ Not Started
+**Status**: ✅ Complete
 **Objective**: Automate Pi provisioning, implement read-only overlays to protect the SD card, and finalize `camstream` and `sensor_service` systemd configurations for maximum resilience.
 **Requirements**: REQ-01, REQ-02, REQ-06
 
