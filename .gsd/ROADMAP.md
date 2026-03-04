@@ -1,6 +1,6 @@
 # ROADMAP.md
 
-> **Current Phase**: Phase 3.1
+> **Current Phase**: Phase 3 — COMPLETE
 > **Milestone**: v3.0 (Firebase Auth Stream — Remove Custom JWT)
 
 ## Must-Haves (from SPEC)
@@ -27,12 +27,12 @@
 > The stream URL carries the idToken as a query param; MediaMTX calls /stream-auth to validate it.
 
 ### Phase 3: Remove Custom JWT & Use Firebase idToken Auth
-**Status**: ⬜ Not Started
+**Status**: ✅ Complete
 **Objective**: Remove the `/api/stream-token` endpoint and custom JWT secret. Update `/stream-auth` to verify Firebase idTokens directly via Admin SDK. Update frontend to build stream URLs using the Firebase idToken instead of requesting a custom token.
 
 **Sub-phases:**
-- [ ] 3.1 — Backend: Strip JWT minting, update /stream-auth
-- [ ] 3.2 — Frontend: Remove `getStreamToken`, use `buildStreamUrl`
+- [x] 3.1 — Backend: Strip JWT minting, update /stream-auth ✅
+- [x] 3.2 — Frontend: Remove `getStreamToken`, use `buildStreamUrl` ✅
 
 **Verification**:
 - POST `/api/stream-token` returns 404 (route deleted)
