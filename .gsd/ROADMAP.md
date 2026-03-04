@@ -1,37 +1,20 @@
 # ROADMAP.md
 
-> **Current Phase**: Phase 5
-> **Milestone**: v1.0 (Infrastructure Stabilization & Reliability)
+> **Current Phase**: Phase 1
+> **Milestone**: v2.0 (Next.js Hosting on Vercel)
 
 ## Must-Haves (from SPEC)
-- [x] Fully automated edge device (Pi) provisioning and service supervision.
-- [x] Robust stream authentication pipeline (Token generation -> MediaMTX Webhook).
-- [x] Real-time device health monitoring (Heartbeats, GPS/IMU status).
-- [x] Role-based UI access to streams and tracking.
+- [ ] Next.js app deployed and accessible on Vercel
+- [ ] Auto-deploy on push to `anuj` (or `main`) branch
+- [ ] Environment variables configured for production Firebase
+- [ ] Custom domain (if available) or Vercel URL working
 
 ## Phases
 
-### Phase 1: Edge Layer Hardening (Raspberry Pi)
-**Status**: ✅ Complete
-**Objective**: Automate Pi provisioning, implement read-only overlays to protect the SD card, and finalize `camstream` and `sensor_service` systemd configurations for maximum resilience.
-**Requirements**: REQ-01, REQ-02, REQ-06
+### Phase 1: Vercel Deployment & CI/CD
+**Status**: 🔄 In Progress
+**Objective**: Deploy the Campus Compass Next.js app to Vercel with auto-deploy from GitHub, configure production environment variables, and verify live deployment.
 
-### Phase 2: Cloud Layer Consolidation (VPS)
-**Status**: ✅ Complete
-**Objective**: Containerize MediaMTX and the Node.js backend using Docker Compose for consistent deployment, and harden the Nginx reverse proxy configurations.
-**Requirements**: REQ-03, REQ-07
-
-### Phase 3: Arbitration & Health Monitoring
-**Status**: ✅ Complete
-**Objective**: Refine the Pi vs. Phone location arbitration logic to use IMU confidence metrics, implement the heartbeat status watcher in the backend, and build a dedicated Admin Dashboard UI to visualize device health.
-**Requirements**: REQ-04, REQ-08
-
-### Phase 4: Security & Access Control
-**Status**: ✅ Complete
-**Objective**: Finalize the role-based JWT issuing in the backend and ensure the Next.js frontend properly handles token expiration, renewals, and stream access denials. Supported multiple stream access per authorized parent.
-**Requirements**: REQ-05
-
-### Phase 5: CI/CD & Production Polish
-**Status**: ✅ Complete
-**Objective**: Setup automated deployment workflows (GitHub actions) to push backend updates to the VPS, and implement application-wide error boundaries in the Next.js app.
-**Requirements**: REQ-07
+### Phase 2: VPS SSL & Domains
+**Status**: 🆕 Planned
+**Objective**: Validate Cloudflare to Nginx reverse proxy routing and correctly bind the Nginx systemd service on ports 80 and 443. Adjust frontend environment variables to point to the `thanganat25.com` secure URLs, fixing Mixed Content errors.

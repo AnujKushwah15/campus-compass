@@ -1,92 +1,77 @@
-# Phase 2, Plan 2: Cloud Layer Nginx Reverse Proxy Containerization
+---
+phase: 2
+plan: 2
+wave: 2
+depends_on: [1]
+files_modified: [".env.local", "src/context/StreamContext.jsx", "src/components/VideoPlayer.jsx"]
+autonomous: true
+user_setup: []
+must_haves:
+  truths:
+    - "Frontend URLs must point to HTTPS via the domain (thanganat25.com)"
+  artifacts:
+    - ".env.local contains updated NEXT_PUBLIC_API_URL and NEXT_PUBLIC_STREAM_URL (WSS)"
+---
 
-## 1. Objective
-Containerize the Nginx reverse proxy to eliminate the need for the host-level `setup_nginx_ssl.sh` script, integrating it fully into the Docker Compose stack for the cloud layer.
+# Plan 2.2: Updating Frontend URLs to use HTTPS
 
-## 2. Pre-requisites & Context
-- The current `setup_nginx_ssl.sh` script installs Nginx directly on the VPS, configures it to proxy requests from `api.domain.com` to `localhost:3001` (Node backend), and uses `certbot` for Let's Encrypt SSL certificates.
-- The new architecture will use Docker Compose with `host` networking for MediaMTX and Backend. Nginx must also be dockerized to manage its config declaratively.
+<objective>
+Update the Next.js frontend application to use the secure domain for all API and WebSocket (WebRTC) connections to resolve the Mixed Content errors on Vercel.
 
-## 3. Implementation Steps
+Purpose: Browsers block mixed content. Our backend and MediaMTX stream are now behind HTTPS via Cloudflare -> VPS Nginx. We need the frontend to point to these secure URLs.
+Output: Updated .env and config to enforce `https://` and `wss://`.
+</objective>
 
-### Step 3.1: Nginx Configuration File
-We need to create a static Nginx configuration that can be mounted into the container.
-Create `nginx/nginx.conf`:
-```nginx
-events {}
+<context>
+Load for context:
+- .gsd/SPEC.md
+- .env.local
+- src/context/StreamContext.jsx
+- src/components/VideoPlayer.jsx
+</context>
 
-http {
-    limit_req_zone $binary_remote_addr zone=api:10m rate=30r/m;
+<tasks>
 
-    server {
-        listen 80;
-        server_name api.yourdomain.com; # This will need to be configured/templated per environment
+<task type="auto">
+  <name>Update API base URLs</name>
+  <files>src/context/StreamContext.jsx, src/components/VideoPlayer.jsx</files>
+  <action>
+    Search for hardcoded `http://72.61.250.73` or `http://` patterns in fetching backend APIs. Replace them with `https://thanganat25.com/api`. Be careful to replace HTTP strings exactly, especially for the JWT token endpoint.
+  </action>
+  <verify>grep -r "thanganat25.com" src/</verify>
+  <done>Frontend files use the domain explicitly and avoid raw IPs.</done>
+</task>
 
-        location /.well-known/acme-challenge/ {
-            root /var/www/certbot;
-        }
+<task type="auto">
+  <name>Update WHEP stream URL</name>
+  <files>src/components/VideoPlayer.jsx, src/context/StreamContext.jsx</files>
+  <action>
+    Update WebRTC URL from `http://...:8889` to `https://thanganat25.com/stream` or `https://thanganat25.com/whep`.
+    MediaMTX's WebRTC relies on its `/stream/` mapping defined in Nginx. Ensure the `endpoint` or `url` passed to the WebRTC player component reads the secure URI.
+  </action>
+  <verify>grep -r "8889" src/ || echo "Port removed from code"</verify>
+  <done>No hardcoded :8889 ports remain in the client code.</done>
+</task>
 
-        location / {
-            return 301 https://$host$request_uri;
-        }
-    }
+<task type="auto">
+  <name>Update environment variables</name>
+  <files>.env.local</files>
+  <action>
+    Update local dot-env (and subsequently Vercel) variables referencing API and stream endpoints.
+  </action>
+  <verify>cat .env.local | grep "thanganat25.com"</verify>
+  <done>Local environment points to the secure production backend.</done>
+</task>
 
-    server {
-        listen 443 ssl http2;
-        server_name api.yourdomain.com;
+</tasks>
 
-        ssl_certificate /etc/letsencrypt/live/api.yourdomain.com/fullchain.pem;
-        ssl_certificate_key /etc/letsencrypt/live/api.yourdomain.com/privkey.pem;
-        
-        # Security headers
-        add_header X-Frame-Options "SAMEORIGIN" always;
-        add_header X-XSS-Protection "1; mode=block" always;
-        add_header CORS "Access-Control-Allow-Origin: *" always;
+<verification>
+After all tasks, verify:
+- [ ] No mixed-content URLs exist for VPS endpoints
+- [ ] Frontend builds successfully (`npm run build`)
+</verification>
 
-        location / {
-            limit_req zone=api burst=10 nodelay;
-            proxy_pass http://127.0.0.1:3001; # Pointing to the backend on the host network
-            proxy_set_header Host $host;
-            proxy_set_header X-Real-IP $remote_addr;
-            proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-            proxy_set_header X-Forwarded-Proto $scheme;
-        }
-    }
-}
-```
-
-### Step 3.2: Update `docker-compose.yml` for Nginx + Certbot
-Add Nginx and Certbot services to the `docker-compose.yml` created in Plan 1.
-
-```yaml
-  nginx:
-    image: nginx:alpine
-    container_name: campus_nginx
-    restart: always
-    network_mode: "host"
-    volumes:
-      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
-      - ./certbot/conf:/etc/letsencrypt
-      - ./certbot/www:/var/www/certbot
-    depends_on:
-      - backend
-
-  certbot:
-    image: certbot/certbot
-    container_name: campus_certbot
-    volumes:
-      - ./certbot/conf:/etc/letsencrypt
-      - ./certbot/www:/var/www/certbot
-    entrypoint: "/bin/sh -c 'trap exit TERM; while :; do certbot renew; sleep 12h & wait $${!}; done;'"
-```
-
-### Step 3.3: SSL Initialization Script
-Provide a script `scripts/init-letsencrypt.sh` to request the initial certificate before Nginx starts (since Nginx will crash if it looks for SSL certs that don't exist yet).
-
-## 4. Verification Plan
-1. **Verify Artifacts:** Ensure `nginx/nginx.conf`, `docker-compose.yml` additions, and `init-letsencrypt.sh` are created.
-2. **Syntax Check:** Run `docker run --rm -v $(pwd)/nginx/nginx.conf:/etc/nginx/nginx.conf nginx:alpine nginx -t` (if docker is available locally during checking) to verify config syntax.
-3. **Execution Test:**
-   - The primary test is execution on the VPS. 
-   - HTTP requests to port 80 should redirect to 443.
-   - HTTPS requests should proxy to the backend health check endpoint (`/health`).
+<success_criteria>
+- [ ] All tasks verified
+- [ ] Ready for redeploy to Vercel
+</success_criteria>
