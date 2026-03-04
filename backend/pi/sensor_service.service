@@ -5,9 +5,9 @@ Wants=network-online.target
 
 [Service]
 Type=simple
-User=pi
-WorkingDirectory=/opt/campus-compass/pi
-ExecStart=/opt/campus-compass/venv/bin/python3 sensor_service.py
+User=pi1
+WorkingDirectory=/home/pi1/campus-compass/backend/pi
+ExecStart=/home/pi1/campus-compass/backend/pi/venv/bin/python3 sensor_service.py
 Restart=always
 RestartSec=5
 StartLimitIntervalSec=0

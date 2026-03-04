@@ -5,7 +5,7 @@ Wants=network-online.target
 
 [Service]
 Type=simple
-User=pi
+User=pi1
 # ──────────────────────────────────────────────────────────────────────────────
 # Architecture: IP Camera (RTSP) → Pi (ffmpeg relay) → VPS (MediaMTX)
 #
