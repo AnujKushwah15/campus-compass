@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import Card from '@/components/ui/Card';
 import Input from '@/components/ui/Input';
@@ -283,9 +283,27 @@ export default function ParentDashboard() {
  */
 function BusCameraFeed({ busId, busNumber }) {
     const {
-        streamUrl, isLive, isPiOnline, isGpsFix, isImuOk,
-        isMoving, viewerCount, tokenLoading, tokenError, getStreamToken
+        isLive, isPiOnline, isGpsFix, isImuOk,
+        isMoving, viewerCount, buildStreamUrl
     } = useStream();
+
+    const [streamUrl, setStreamUrl] = useState(null);
+    const [urlLoading, setUrlLoading] = useState(false);
+    const [urlError, setUrlError] = useState(null);
+
+    const requestFeed = useCallback(async () => {
+        setUrlLoading(true);
+        setUrlError(null);
+        try {
+            const url = await buildStreamUrl();
+            if (!url) throw new Error('Could not retrieve stream URL');
+            setStreamUrl(url);
+        } catch (err) {
+            setUrlError(err.message);
+        } finally {
+            setUrlLoading(false);
+        }
+    }, [buildStreamUrl]);
 
     return (
         <div className="bg-card rounded-2xl border border-border shadow-sm overflow-hidden">
@@ -315,9 +333,9 @@ function BusCameraFeed({ busId, busNumber }) {
                     isImuOk={isImuOk}
                     isMoving={isMoving}
                     viewerCount={viewerCount}
-                    onRequestFeed={() => getStreamToken(busId)}
-                    loading={tokenLoading}
-                    error={tokenError}
+                    onRequestFeed={requestFeed}
+                    loading={urlLoading}
+                    error={urlError}
                     cameraName={`Camera — ${busNumber || busId}`}
                     className="rounded-xl"
                 />

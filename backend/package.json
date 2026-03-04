@@ -12,7 +12,6 @@
         "cors": "^2.8.5",
         "express": "^4.21.0",
         "firebase-admin": "^11.5.0",
-        "jsonwebtoken": "^9.0.2",
         "node-fetch": "^3.3.2"
     }
 }

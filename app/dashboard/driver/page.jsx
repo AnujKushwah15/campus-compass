@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import RouteMap from '@/components/driver/RouteMap';
 import StudentList from '@/components/driver/StudentList';
@@ -283,14 +283,30 @@ export default function DriverDashboard() {
  */
 function DriverCameraFeed({ busId }) {
     const {
-        streamUrl, isLive, isPiOnline, isGpsFix, isImuOk,
-        isMoving, viewerCount, tokenLoading, tokenError, getStreamToken
+        isLive, isPiOnline, isGpsFix, isImuOk,
+        isMoving, viewerCount, buildStreamUrl
     } = useStream();
 
-    // Auto-request token on mount so the feed plays without user interaction
-    useEffect(() => {
-        getStreamToken(busId);
-    }, [busId]); // eslint-disable-line react-hooks/exhaustive-deps
+    const [streamUrl, setStreamUrl] = useState(null);
+    const [urlLoading, setUrlLoading] = useState(false);
+    const [urlError, setUrlError] = useState(null);
+
+    const requestFeed = useCallback(async () => {
+        setUrlLoading(true);
+        setUrlError(null);
+        try {
+            const url = await buildStreamUrl();
+            if (!url) throw new Error('Could not retrieve stream URL');
+            setStreamUrl(url);
+        } catch (err) {
+            setUrlError(err.message);
+        } finally {
+            setUrlLoading(false);
+        }
+    }, [buildStreamUrl]);
+
+    // Auto-request URL on mount
+    useEffect(() => { requestFeed(); }, [requestFeed]);
 
     return (
         <div className="bg-card rounded-2xl border border-border shadow-sm overflow-hidden">
@@ -321,9 +337,9 @@ function DriverCameraFeed({ busId }) {
                     isImuOk={isImuOk}
                     isMoving={isMoving}
                     viewerCount={viewerCount}
-                    onRequestFeed={() => getStreamToken(busId)}
-                    loading={tokenLoading}
-                    error={tokenError}
+                    onRequestFeed={requestFeed}
+                    loading={urlLoading}
+                    error={urlError}
                     busId={busId}
                     cameraName={`Camera — ${busId}`}
                     className="rounded-xl"

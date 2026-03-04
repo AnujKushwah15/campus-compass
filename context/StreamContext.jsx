@@ -6,8 +6,7 @@ import { rtdb, auth } from '@/lib/firebase';
 
 const StreamContext = createContext(null);
 
-const VPS_DOMAIN = process.env.NEXT_PUBLIC_VPS_DOMAIN || process.env.NEXT_PUBLIC_VPS_IP || 'thanganat25.com';
-const VPS_URL = process.env.NEXT_PUBLIC_VPS_URL || `https://${VPS_DOMAIN}`;
+const VPS_DOMAIN = process.env.NEXT_PUBLIC_VPS_DOMAIN || 'thanganat25.com';
 
 /**
  * StreamProvider — Manages stream status, Pi health, and stream token acquisition.
@@ -43,19 +42,10 @@ export function StreamProvider({ children, busId }) {
         temperature: 0,
     });
 
-    const [streamToken, setStreamToken] = useState(null);
-    const [streamUrl, setStreamUrl] = useState(null);
-    const [tokenLoading, setTokenLoading] = useState(false);
-    const [tokenError, setTokenError] = useState(null);
-    const tokenRefreshTimer = useRef(null);
-    // Prevents duplicate auto-requests when isLive fires multiple RTDB updates
-    const autoRequestedRef = useRef(false);
 
     // ─── RTDB Subscriptions ─────────────────────────────────────────────
     useEffect(() => {
         if (!busId) return;
-
-        autoRequestedRef.current = false; // reset on busId change
 
         const streamRef = ref(rtdb, `buses/${busId}/streamStatus`);
         const piRef = ref(rtdb, `buses/${busId}/piStatus`);
@@ -96,84 +86,24 @@ export function StreamProvider({ children, busId }) {
             off(streamRef);
             off(piRef);
             off(imuRef);
-            if (tokenRefreshTimer.current) clearTimeout(tokenRefreshTimer.current);
         };
     }, [busId]);
 
-    // ─── Stream Token Acquisition ───────────────────────────────────────
-    const getStreamToken = useCallback(async (targetBusId) => {
-        const busToRequest = targetBusId || busId;
-        if (!busToRequest) {
-            setTokenError('No bus ID specified');
-            return null;
-        }
-
-        setTokenLoading(true);
-        setTokenError(null);
-
+    // ─── Build Stream URL (Firebase idToken in query string) ───────────────────────────
+    // No extra API call needed — user’s Firebase idToken is appended directly.
+    // MediaMTX calls /stream-auth which verifies the token via Firebase Admin SDK.
+    const buildStreamUrl = useCallback(async (targetPathName) => {
         try {
             const user = auth.currentUser;
             if (!user) throw new Error('Not authenticated');
-
             const idToken = await user.getIdToken();
-
-            const response = await fetch(`${VPS_URL}/api/stream-token`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${idToken}`,
-                },
-                body: JSON.stringify({ busId: busToRequest }),
-            });
-
-            const data = await response.json();
-
-            if (!response.ok) {
-                throw new Error(data.error || `HTTP ${response.status}`);
-            }
-
-            setStreamToken(data.token);
-            setStreamUrl(data.streamUrl);
-
-            // Auto-refresh token before expiry (8 min for 10-min tokens)
-            if (tokenRefreshTimer.current) clearTimeout(tokenRefreshTimer.current);
-            tokenRefreshTimer.current = setTimeout(() => {
-                autoRequestedRef.current = false; // allow refresh
-                getStreamToken(busToRequest);
-            }, 8 * 60 * 1000);
-
-            return data;
-
+            const path = targetPathName || streamStatus.pathName || (busId ? `live_${busId}` : 'live');
+            return `https://${VPS_DOMAIN}/stream/${path}/?token=${idToken}`;
         } catch (error) {
-            console.error('[StreamContext] Token error:', error);
-            setTokenError(error.message);
-            setStreamToken(null);
-            setStreamUrl(null);
+            console.error('[StreamContext] buildStreamUrl error:', error);
             return null;
-
-        } finally {
-            setTokenLoading(false);
         }
-    }, [busId, VPS_URL]);
-
-    // ─── Auto-request token when stream goes live ───────────────────────
-    useEffect(() => {
-        if (streamStatus.isLive && !streamToken && !tokenLoading && !autoRequestedRef.current) {
-            const user = auth.currentUser;
-            if (user) {
-                autoRequestedRef.current = true;
-                getStreamToken(busId);
-            }
-        }
-    }, [streamStatus.isLive, streamToken, tokenLoading, busId, getStreamToken]);
-
-    // ─── Clear token on busId change ────────────────────────────────────
-    useEffect(() => {
-        setStreamToken(null);
-        setStreamUrl(null);
-        setTokenError(null);
-        autoRequestedRef.current = false;
-    }, [busId]);
+    }, [busId, streamStatus.pathName]);
 
     // ─── Direct URL (no JWT — for fallback when auth is excluded for reads) ─
     // Built from RTDB pathName; useful if MediaMTX read auth is bypassed.
@@ -194,14 +124,10 @@ export function StreamProvider({ children, busId }) {
         isMoving: imuData.is_moving,
         viewerCount: streamStatus.viewerCount,
 
-        // Token (JWT flow)
-        streamToken,
-        streamUrl,
-        tokenLoading,
-        tokenError,
-        getStreamToken,
+        // Stream URL builder (uses Firebase idToken, no extra API call)
+        buildStreamUrl,
 
-        // Direct URL (no-JWT fallback)
+        // Direct URL (no-auth fallback — for MediaMTX paths that don't require auth)
         directStreamUrl,
     };
 

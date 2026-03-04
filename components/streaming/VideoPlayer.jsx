@@ -9,7 +9,7 @@ import { useState } from 'react';
  * constructing one from hardcoded VPS IP + path.
  * 
  * Props:
- *   streamUrl  — Full authenticated URL (from StreamContext.getStreamToken)
+ *   streamUrl  — Full authenticated URL (from StreamContext.buildStreamUrl)
  *   streamPath — Fallback: used only if streamUrl not provided (legacy compat)
  *   vpsIp      — Fallback: used only if streamUrl not provided (legacy compat)
  *   className  — Optional CSS classes

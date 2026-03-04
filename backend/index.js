@@ -11,28 +11,15 @@
 const admin = require('firebase-admin');
 const express = require('express');
 const cors = require('cors');
-const jwt = require('jsonwebtoken');
 const serviceAccount = require('./service-account.json');
 
 // ─── Configuration ──────────────────────────────────────────────────────────
 const PORT = process.env.PORT || 3001;
-const JWT_SECRET = process.env.STREAM_JWT_SECRET;
-const JWT_EXPIRY = '10m'; // 10 minute stream tokens
-const VPS_IP = process.env.VPS_IP || '72.61.250.73';
 const MEDIAMTX_API = process.env.MEDIAMTX_API || 'http://127.0.0.1:9997';
-
-// Fail fast — never run with a missing JWT secret
-if (!JWT_SECRET) {
-    console.error('❌ FATAL: STREAM_JWT_SECRET environment variable is not set.');
-    console.error('   Set it in /etc/campus-compass.env and reload the service.');
-    process.exit(1);
-}
 
 console.log('🔐 Config loaded:');
 console.log(`   PORT        = ${PORT}`);
-console.log(`   VPS_IP      = ${VPS_IP}`);
 console.log(`   MEDIAMTX_API= ${MEDIAMTX_API}`);
-console.log(`   JWT_SECRET  = [SET, ${JWT_SECRET.length} chars]`);
 
 // ─── Firebase Init ──────────────────────────────────────────────────────────
 if (!admin.apps.length) {
@@ -212,151 +199,34 @@ app.get('/health', (req, res) => {
     res.json({ status: 'ok', service: 'campus-compass-backend', uptime: process.uptime() });
 });
 
-// ─── POST /api/stream-token ─────────────────────────────────────────────────
-// Frontend calls this to get a signed stream URL.
-// Requires Firebase ID token in Authorization header.
-
-// Simple rate limiter
-const tokenRateLimit = {};
-const RATE_LIMIT_MAX = 10;    // max requests
-const RATE_LIMIT_WINDOW = 60000; // per 1 minute
-
-app.post('/api/stream-token', async (req, res) => {
-    try {
-        // 1. Extract Firebase ID token
-        const authHeader = req.headers.authorization;
-        if (!authHeader || !authHeader.startsWith('Bearer ')) {
-            return res.status(401).json({ error: 'Missing Authorization header' });
-        }
-        const idToken = authHeader.split('Bearer ')[1];
-
-        // 2. Verify Firebase ID token
-        let decodedToken;
-        try {
-            decodedToken = await admin.auth().verifyIdToken(idToken);
-        } catch (err) {
-            return res.status(401).json({ error: 'Invalid or expired Firebase token' });
-        }
-
-        const uid = decodedToken.uid;
-
-        // 3. Rate limiting
-        const now = Date.now();
-        if (!tokenRateLimit[uid]) tokenRateLimit[uid] = [];
-        tokenRateLimit[uid] = tokenRateLimit[uid].filter(t => now - t < RATE_LIMIT_WINDOW);
-        if (tokenRateLimit[uid].length >= RATE_LIMIT_MAX) {
-            return res.status(429).json({ error: 'Too many stream token requests. Try again later.' });
-        }
-        tokenRateLimit[uid].push(now);
-
-        // 4. Fetch user from Firestore
-        const userDoc = await firestore.collection('users').doc(uid).get();
-        if (!userDoc.exists) {
-            return res.status(403).json({ error: 'User not found in system' });
-        }
-        const userData = userDoc.data();
-        const role = userData.role; // 'parent' | 'driver' | 'admin'
-
-        // 5. Determine which bus to access
-        const requestedBusId = req.body.busId;
-        if (!requestedBusId) {
-            return res.status(400).json({ error: 'busId is required' });
-        }
-
-        // 6. Role-based access control
-        let allowed = false;
-
-        // Normalize IDs: 'bus-1' and '1' are treated as the same.
-        const normalize = (id) => id ? String(id).replace(/^bus-/, '') : '';
-        const requestedNorm = normalize(requestedBusId);
-
-        if (role === 'admin') {
-            // Admin can access all buses
-            allowed = true;
-        } else if (role === 'driver') {
-            // Driver can only access their assigned bus.
-            const assignedNorm = normalize(userData.assignedBusId);
-            allowed = assignedNorm === requestedNorm && assignedNorm !== '';
-        } else if (role === 'parent') {
-            // Parent can access any of their linked children's buses
-            const studentsSnap = await firestore.collection('students')
-                .where('parentId', '==', uid)
-                .get(); // Removed .limit(1) to support multiple children
-
-            if (!studentsSnap.empty) {
-                const allowedBuses = studentsSnap.docs.map(doc => {
-                    const studentData = doc.data();
-                    return normalize(studentData.assignedBusId || studentData.busId);
-                });
-                allowed = allowedBuses.includes(requestedNorm);
-            }
-        }
-
-        if (!allowed) {
-            // Log denied attempt
-            await logStreamAccess(uid, role, requestedBusId, 'denied');
-            return res.status(403).json({ error: 'You do not have access to this bus stream' });
-        }
-
-        // 7. Generate short-lived JWT stream token
-        //    (No active-trip check — stream is available whenever the camera is live.
-        //     Role-based access is still enforced above.)
-        const streamToken = jwt.sign(
-            {
-                uid: uid,
-                role: role,
-                busId: requestedBusId,
-                type: 'stream_access'
-            },
-            JWT_SECRET,
-            { expiresIn: JWT_EXPIRY }
-        );
-
-        // 8. Build stream URL
-        const streamPath = `live_${requestedBusId}`;
-        const streamUrl = `http://${VPS_IP}:8889/${streamPath}/?token=${streamToken}`;
-
-        // 9. Log access
-        await logStreamAccess(uid, role, requestedBusId, 'granted');
-
-        res.json({
-            streamUrl,
-            streamPath,
-            token: streamToken,
-            expiresIn: JWT_EXPIRY
-        });
-
-    } catch (error) {
-        console.error('Stream token error:', error);
-        res.status(500).json({ error: 'Internal server error' });
-    }
-});
-
 // ─── POST /stream-auth ──────────────────────────────────────────────────────
 // MediaMTX calls this on every read/publish attempt.
+// Verifies the Firebase idToken passed in stream URL as ?token=<idToken>
+// Then applies Firestore RBAC to enforce role-based bus access.
 // See: https://github.com/bluenviron/mediamtx#authentication
+
+// Helper: normalize bus IDs ('bus-1' and '1' are treated as the same)
+const normalize = (id) => id ? String(id).replace(/^bus-/, '') : '';
 
 app.post('/stream-auth', async (req, res) => {
     try {
-        const { action, path, query, user, password, ip, protocol } = req.body;
+        const { action, path, query, ip, protocol } = req.body;
 
         console.log(`[stream-auth] action=${action} path=${path} ip=${ip} protocol=${protocol}`);
 
-        // Allow API actions (MediaMTX internal API queries)
+        // Allow MediaMTX internal API actions
         if (action === 'api') {
             return res.status(200).json({ ok: true });
         }
 
-        // Allow publish actions with static Pi credentials (checked by MediaMTX internally)
+        // Allow publish — Pi cameras are authenticated via MediaMTX internal users
         if (action === 'publish') {
-            // Publisher auth is handled by MediaMTX internal users for now
-            // We just allow it through the HTTP endpoint
             return res.status(200).json({ ok: true });
         }
 
-        // For read actions, verify our JWT
+        // For read actions: verify Firebase idToken + RBAC
         if (action === 'read') {
-            // Extract token from query string
+            // 1. Extract idToken from query string
             let token = null;
             if (query) {
                 const params = new URLSearchParams(query);
@@ -368,28 +238,65 @@ app.post('/stream-auth', async (req, res) => {
                 return res.status(401).json({ error: 'No stream token provided' });
             }
 
-            // Verify JWT
+            // 2. Verify Firebase idToken
+            let decoded;
             try {
-                const decoded = jwt.verify(token, JWT_SECRET);
-
-                // Verify the token is for the right stream path
-                const expectedPath = `live_${decoded.busId}`;
-                if (path !== expectedPath) {
-                    console.log(`[stream-auth] DENIED: Path mismatch. Expected ${expectedPath}, got ${path}`);
-                    return res.status(403).json({ error: 'Stream path mismatch' });
-                }
-
-                console.log(`[stream-auth] ALLOWED: uid=${decoded.uid} role=${decoded.role} bus=${decoded.busId}`);
-                return res.status(200).json({ ok: true });
-
-            } catch (jwtErr) {
-                if (jwtErr.name === 'TokenExpiredError') {
-                    console.log(`[stream-auth] DENIED: Token expired from ${ip}`);
-                    return res.status(401).json({ error: 'Stream token expired' });
-                }
-                console.log(`[stream-auth] DENIED: Invalid token from ${ip}: ${jwtErr.message}`);
-                return res.status(403).json({ error: 'Invalid stream token' });
+                decoded = await admin.auth().verifyIdToken(token);
+            } catch (authErr) {
+                console.log(`[stream-auth] DENIED: Invalid Firebase token from ${ip}: ${authErr.message}`);
+                return res.status(401).json({ error: 'Invalid or expired token' });
             }
+
+            const uid = decoded.uid;
+
+            // 3. Fetch user role from Firestore
+            const userDoc = await firestore.collection('users').doc(uid).get();
+            if (!userDoc.exists) {
+                console.log(`[stream-auth] DENIED: User ${uid} not found in Firestore`);
+                return res.status(403).json({ error: 'User not found in system' });
+            }
+            const userData = userDoc.data();
+            const role = userData.role;
+
+            // 4. Extract busId from stream path (e.g. 'live_bus-1' → 'bus-1')
+            const pathMatch = path.match(/^live[_-](.+)$/);
+            if (!pathMatch) {
+                console.log(`[stream-auth] DENIED: Unrecognised stream path '${path}'`);
+                return res.status(403).json({ error: 'Invalid stream path' });
+            }
+            const requestedBusId = pathMatch[1];
+            const requestedNorm = normalize(requestedBusId);
+
+            // 5. Role-based access control
+            let allowed = false;
+
+            if (role === 'admin') {
+                allowed = true;
+            } else if (role === 'driver') {
+                const assignedNorm = normalize(userData.assignedBusId);
+                allowed = assignedNorm === requestedNorm && assignedNorm !== '';
+            } else if (role === 'parent') {
+                const studentsSnap = await firestore.collection('students')
+                    .where('parentId', '==', uid)
+                    .get();
+                if (!studentsSnap.empty) {
+                    const allowedBuses = studentsSnap.docs.map(doc => {
+                        const d = doc.data();
+                        return normalize(d.assignedBusId || d.busId);
+                    });
+                    allowed = allowedBuses.includes(requestedNorm);
+                }
+            }
+
+            if (!allowed) {
+                console.log(`[stream-auth] DENIED: uid=${uid} role=${role} has no access to bus ${requestedBusId}`);
+                await logStreamAccess(uid, role, requestedBusId, 'denied');
+                return res.status(403).json({ error: 'Access denied' });
+            }
+
+            console.log(`[stream-auth] ALLOWED: uid=${uid} role=${role} bus=${requestedBusId}`);
+            await logStreamAccess(uid, role, requestedBusId, 'granted');
+            return res.status(200).json({ ok: true });
         }
 
         // Unknown action

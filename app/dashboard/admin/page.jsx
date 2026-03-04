@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import BusManagement from '@/components/admin/BusManagement';
 import StudentManagement from '@/components/admin/StudentManagement';
 import StreamPlayer from '@/components/ui/StreamPlayer';
@@ -305,14 +305,30 @@ export default function AdminDashboardPage() {
  */
 function AdminStreamWidget({ selectedCamera, onCameraSelect }) {
     const {
-        streamUrl, isLive, isPiOnline, isGpsFix, isImuOk, isMoving,
-        viewerCount, tokenLoading, tokenError, getStreamToken
+        isLive, isPiOnline, isGpsFix, isImuOk, isMoving,
+        viewerCount, buildStreamUrl
     } = useStream();
 
-    // Auto-request token on mount
-    useEffect(() => {
-        getStreamToken();
-    }, []); // eslint-disable-line react-hooks/exhaustive-deps
+    const [streamUrl, setStreamUrl] = useState(null);
+    const [urlLoading, setUrlLoading] = useState(false);
+    const [urlError, setUrlError] = useState(null);
+
+    const requestFeed = useCallback(async () => {
+        setUrlLoading(true);
+        setUrlError(null);
+        try {
+            const url = await buildStreamUrl();
+            if (!url) throw new Error('Could not retrieve stream URL');
+            setStreamUrl(url);
+        } catch (err) {
+            setUrlError(err.message);
+        } finally {
+            setUrlLoading(false);
+        }
+    }, [buildStreamUrl]);
+
+    // Auto-request URL on mount
+    useEffect(() => { requestFeed(); }, [requestFeed]);
 
     return (
         <StreamPlayer
@@ -323,9 +339,9 @@ function AdminStreamWidget({ selectedCamera, onCameraSelect }) {
             isImuOk={isImuOk}
             isMoving={isMoving}
             viewerCount={viewerCount}
-            onRequestFeed={getStreamToken}
-            loading={tokenLoading}
-            error={tokenError}
+            onRequestFeed={requestFeed}
+            loading={urlLoading}
+            error={urlError}
             cameraName={selectedCamera?.name ? `${selectedCamera.busNumber} - ${selectedCamera.name}` : 'Default Bus'}
             className="bg-slate-900 h-full"
         />
