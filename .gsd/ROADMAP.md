@@ -32,6 +32,6 @@
 **Requirements**: REQ-05
 
 ### Phase 5: CI/CD & Production Polish
-**Status**: ⬜ Not Started
+**Status**: ✅ Complete
 **Objective**: Setup automated deployment workflows (GitHub actions) to push backend updates to the VPS, and implement application-wide error boundaries in the Next.js app.
 **Requirements**: REQ-07
