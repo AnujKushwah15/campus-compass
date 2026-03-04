@@ -48,7 +48,7 @@ export default function StreamPlayer({
         <div className={`relative rounded-2xl overflow-hidden bg-gray-900 ${className}`}>
 
             {/* ─── Status Bar ──────────────────────────────────────────────── */}
-            <div className="absolute top-0 left-0 right-0 z-20 flex items-center justify-between px-3 py-2 bg-gradient-to-b from-black/60 to-transparent">
+            <div className="absolute top-0 left-0 right-0 z-20 flex flex-wrap items-center justify-between gap-2 px-3 py-2 bg-gradient-to-b from-black/60 to-transparent">
                 <div className="flex items-center gap-2">
                     {/* Live Badge */}
                     {isLive && isPlaying ? (
@@ -81,7 +81,7 @@ export default function StreamPlayer({
             </div>
 
             {/* ─── Device Health Indicators ─────────────────────────────── */}
-            <div className="absolute bottom-0 left-0 right-0 z-20 flex items-center gap-3 px-3 py-2 bg-gradient-to-t from-black/60 to-transparent">
+            <div className="absolute bottom-0 left-0 right-0 z-20 flex flex-wrap items-center gap-2 sm:gap-3 px-3 py-2 bg-gradient-to-t from-black/60 to-transparent">
                 {/* Pi Status */}
                 <span className={`flex items-center gap-1 text-[10px] font-medium ${isPiOnline ? 'text-green-400' : 'text-red-400'}`}>
                     <span className={`w-1.5 h-1.5 rounded-full ${isPiOnline ? 'bg-green-400' : 'bg-red-400'}`} />

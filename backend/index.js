@@ -163,8 +163,13 @@ async function evaluateSources(busId, busData) {
     }
 
     try {
+        let status = 'online';
+        if (bestSource === 'none') status = 'offline';
+        else if (bestSource === 'neo_m8n_degraded') status = 'degraded';
+
         const updatePayload = {
-            active_source: bestSource
+            active_source: bestSource,
+            status: status
         };
 
         if (finalLocation) {
@@ -185,6 +190,7 @@ async function evaluateSources(busId, busData) {
 
         if (knownBuses[busId]) {
             knownBuses[busId].active_source = bestSource;
+            knownBuses[busId].status = status;
             if (updatePayload.location) knownBuses[busId].location = updatePayload.location;
         }
 
@@ -260,28 +266,29 @@ app.post('/api/stream-token', async (req, res) => {
         // 6. Role-based access control
         let allowed = false;
 
+        // Normalize IDs: 'bus-1' and '1' are treated as the same.
+        const normalize = (id) => id ? String(id).replace(/^bus-/, '') : '';
+        const requestedNorm = normalize(requestedBusId);
+
         if (role === 'admin') {
             // Admin can access all buses
             allowed = true;
         } else if (role === 'driver') {
             // Driver can only access their assigned bus.
-            // Normalize IDs: 'bus-1' and '1' are treated as the same.
-            const normalize = (id) => id ? String(id).replace(/^bus-/, '') : '';
             const assignedNorm = normalize(userData.assignedBusId);
-            const requestedNorm = normalize(requestedBusId);
             allowed = assignedNorm === requestedNorm && assignedNorm !== '';
         } else if (role === 'parent') {
-            // Parent can only access their child's bus
-            // Find the student linked to this parent
+            // Parent can access any of their linked children's buses
             const studentsSnap = await firestore.collection('students')
                 .where('parentId', '==', uid)
-                .limit(1)
-                .get();
+                .get(); // Removed .limit(1) to support multiple children
 
             if (!studentsSnap.empty) {
-                const studentData = studentsSnap.docs[0].data();
-                const childBusId = studentData.assignedBusId || studentData.busId;
-                allowed = childBusId === requestedBusId;
+                const allowedBuses = studentsSnap.docs.map(doc => {
+                    const studentData = doc.data();
+                    return normalize(studentData.assignedBusId || studentData.busId);
+                });
+                allowed = allowedBuses.includes(requestedNorm);
             }
         }
 

@@ -10,3 +10,4 @@
 | REQ-05 | Role-based stream access must be enforced: Parents can only view assigned buses; Admins view all. | SPEC Goal 3 | Pending |
 | REQ-06 | Edge devices (Raspberry Pis) must not expose any public web servers or direct stream access ports. | SPEC Constraints & Out of Scope | Pending |
 | REQ-07 | System must recover gracefully from simulated MediaMTX or ffmpeg crashes without manual intervention. | SPEC Goal 4 | Pending |
+| REQ-08 | System must include a dedicated admin dashboard UI that visualizes device health, GPS, and IMU status in a GUI. | User Request (Phase 3) | Pending |

@@ -20,7 +20,7 @@ Profiles for all system users.
 - `uid` (string): Auth ID
 - `email` (string)
 - `role` (string): 'driver' | 'parent' | 'admin'
-- `assignedBusId` (string, optional): For drivers
+- `assignedBusId` (string): For drivers
 
 ### `buses`
 Fleet information.
