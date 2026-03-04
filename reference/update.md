@@ -124,3 +124,16 @@ Use this file to track major changes, architectural decisions, and daily progres
 - Deploy updated backend + MediaMTX config to VPS.
 - Test GPS outdoors on Pi.
 - End-to-end verification across all dashboards.
+
+## [2026-03-03] Security RBAC & CI/CD Pipeline
+
+### Phase 4: Security & Access Control
+- **Backend Auth Loop**: Refactored `backend/index.js` to correctly resolve multiple streams for parents with multiple children. Added strict bus ID string normalization across all role checks.
+- **Verification Script**: Engineered `backend/scripts/test_stream_auth.js` to rigorously verify backend stream authorization rules directly against the VPS container with comprehensive test cases.
+- **Frontend UI Adaptations**: Formatted `StreamPlayer.jsx` to gracefully adapt to smaller mobile viewpoints by using responsive row-wrapping flex properties. Confirmed WebRTC HTTP Auth endpoints and JWT secret fallbacks.
+
+### Phase 5: CI/CD & Production Polish
+- **GitHub Actions**: Established an automated CI/CD path to production by generating `.github/workflows/deploy-backend.yml`. The workflow triggers on pushes to the `backend/` directory or `docker-compose.yml` to automatically pull branch changes and rebuild the Docker container on the VPS via SSH secrets.
+- **Global Error Handling**: Added `app/not-found.jsx` for standardized, branded 404 views. Verified `app/error.jsx` and `app/global-error.jsx` to correctly function and trap boundary errors to prevent system panics. 
+- **Light/Dark Mode Polish**: Addressed UI washing out by adjusting components to consistent themes tailored for unified light and dark modes.
+- **Milestone Completion**: Successfully marked Milestone v1.0 (Infrastructure Stabilization & Reliability) as COMPLETE in `ROADMAP.md` and `STATE.md`.
