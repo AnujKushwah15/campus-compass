@@ -6,7 +6,7 @@ import Logo from '@/components/Logo';
 import Card from '@/components/ui/Card';
 import Input from '@/components/ui/Input';
 import Button from '@/components/ui/Button';
-import { User, Shield, ArrowRight, Mail, Phone, Hash, School, GraduationCap, Loader2 } from 'lucide-react';
+import { User, Shield, ArrowRight, Mail, Phone, Hash, School, GraduationCap, Loader2, Home } from 'lucide-react';
 import Link from 'next/link';
 import BackgroundAnimation from '@/components/ui/BackgroundAnimation';
 import { auth, db } from '@/lib/firebase';
@@ -214,11 +214,20 @@ export default function LoginPage() {
 
     return (
         <main className="min-h-screen w-full relative overflow-hidden bg-background flex flex-col items-center justify-center p-4">
+            {/* Home Button */}
+            <div className="absolute top-6 left-6 z-50 animate-fadeInDown">
+                <Link href="/">
+                    <Button variant="outline" className="bg-background/50 backdrop-blur-md text-foreground hover:bg-accent hover:text-accent-foreground transition-all text-sm shadow-sm flex items-center gap-2 border-border/50">
+                        <Home size={16} /> Home
+                    </Button>
+                </Link>
+            </div>
+
             {/* Staff Login Button */}
-            <div className="absolute top-6 right-6 z-50">
+            <div className="absolute top-6 right-6 z-50 animate-fadeInDown">
                 <Link href="/staff/login">
-                    <Button variant="outline" className="bg-card/50 backdrop-blur-sm border border-white text-white hover:bg-white hover:text-cc-purple-900 transition-all text-sm py-2 px-4 shadow-sm hover:shadow-[0_0_15px_rgba(255,255,255,0.6)]">
-                        Staff Login
+                    <Button variant="outline" className="bg-background/50 backdrop-blur-md text-foreground hover:bg-accent hover:text-accent-foreground transition-all text-sm shadow-sm flex items-center gap-2 border-border/50">
+                        <Shield size={16} /> Staff Login
                     </Button>
                 </Link>
             </div>

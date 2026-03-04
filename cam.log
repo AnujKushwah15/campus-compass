@@ -1,0 +1,50 @@
+Mar 04 14:43:52 pi systemd[1]: camstream.service: Scheduled restart job, restart counter is at 279.
+Mar 04 14:43:52 pi systemd[1]: Stopped camstream.service - Campus Compass Camera Stream (IP Camera → ffmpeg → MediaMTX VPS).
+Mar 04 14:43:52 pi systemd[1]: Started camstream.service - Campus Compass Camera Stream (IP Camera → ffmpeg → MediaMTX VPS).
+Mar 04 14:43:52 pi systemd[1]: camstream.service: Main process exited, code=exited, status=217/USER
+Mar 04 14:43:52 pi systemd[1]: camstream.service: Failed with result 'exit-code'.
+Mar 04 14:43:57 pi systemd[1]: camstream.service: Scheduled restart job, restart counter is at 280.
+Mar 04 14:43:57 pi systemd[1]: Stopped camstream.service - Campus Compass Camera Stream (IP Camera → ffmpeg → MediaMTX VPS).
+Mar 04 14:43:57 pi systemd[1]: Started camstream.service - Campus Compass Camera Stream (IP Camera → ffmpeg → MediaMTX VPS).
+Mar 04 14:43:58 pi systemd[1]: camstream.service: Main process exited, code=exited, status=217/USER
+Mar 04 14:43:58 pi systemd[1]: camstream.service: Failed with result 'exit-code'.
+Mar 04 14:44:03 pi systemd[1]: camstream.service: Scheduled restart job, restart counter is at 281.
+Mar 04 14:44:03 pi systemd[1]: Stopped camstream.service - Campus Compass Camera Stream (IP Camera → ffmpeg → MediaMTX VPS).
+Mar 04 14:44:03 pi systemd[1]: Started camstream.service - Campus Compass Camera Stream (IP Camera → ffmpeg → MediaMTX VPS).
+Mar 04 14:44:03 pi systemd[1]: camstream.service: Main process exited, code=exited, status=217/USER
+Mar 04 14:44:03 pi systemd[1]: camstream.service: Failed with result 'exit-code'.
+Mar 04 14:44:08 pi systemd[1]: camstream.service: Scheduled restart job, restart counter is at 282.
+Mar 04 14:44:08 pi systemd[1]: Stopped camstream.service - Campus Compass Camera Stream (IP Camera → ffmpeg → MediaMTX VPS).
+Mar 04 14:44:08 pi systemd[1]: Started camstream.service - Campus Compass Camera Stream (IP Camera → ffmpeg → MediaMTX VPS).
+Mar 04 14:44:08 pi systemd[1]: camstream.service: Main process exited, code=exited, status=217/USER
+Mar 04 14:44:08 pi systemd[1]: camstream.service: Failed with result 'exit-code'.
+Mar 04 14:44:13 pi systemd[1]: camstream.service: Scheduled restart job, restart counter is at 283.
+Mar 04 14:44:13 pi systemd[1]: Stopped camstream.service - Campus Compass Camera Stream (IP Camera → ffmpeg → MediaMTX VPS).
+Mar 04 14:44:13 pi systemd[1]: Started camstream.service - Campus Compass Camera Stream (IP Camera → ffmpeg → MediaMTX VPS).
+Mar 04 14:44:13 pi systemd[1]: camstream.service: Main process exited, code=exited, status=217/USER
+Mar 04 14:44:13 pi systemd[1]: camstream.service: Failed with result 'exit-code'.
+Mar 04 14:44:18 pi systemd[1]: camstream.service: Scheduled restart job, restart counter is at 284.
+Mar 04 14:44:18 pi systemd[1]: Stopped camstream.service - Campus Compass Camera Stream (IP Camera → ffmpeg → MediaMTX VPS).
+Mar 04 14:44:18 pi systemd[1]: Started camstream.service - Campus Compass Camera Stream (IP Camera → ffmpeg → MediaMTX VPS).
+Mar 04 14:44:18 pi systemd[1]: camstream.service: Main process exited, code=exited, status=217/USER
+Mar 04 14:44:18 pi systemd[1]: camstream.service: Failed with result 'exit-code'.
+Mar 04 14:44:24 pi systemd[1]: camstream.service: Scheduled restart job, restart counter is at 285.
+Mar 04 14:44:24 pi systemd[1]: Stopped camstream.service - Campus Compass Camera Stream (IP Camera → ffmpeg → MediaMTX VPS).
+Mar 04 14:44:24 pi systemd[1]: Started camstream.service - Campus Compass Camera Stream (IP Camera → ffmpeg → MediaMTX VPS).
+Mar 04 14:44:24 pi systemd[1]: camstream.service: Main process exited, code=exited, status=217/USER
+Mar 04 14:44:24 pi systemd[1]: camstream.service: Failed with result 'exit-code'.
+Mar 04 14:44:29 pi systemd[1]: camstream.service: Scheduled restart job, restart counter is at 286.
+Mar 04 14:44:29 pi systemd[1]: Stopped camstream.service - Campus Compass Camera Stream (IP Camera → ffmpeg → MediaMTX VPS).
+Mar 04 14:44:29 pi systemd[1]: Started camstream.service - Campus Compass Camera Stream (IP Camera → ffmpeg → MediaMTX VPS).
+Mar 04 14:44:29 pi systemd[1]: camstream.service: Main process exited, code=exited, status=217/USER
+Mar 04 14:44:29 pi systemd[1]: camstream.service: Failed with result 'exit-code'.
+Mar 04 14:44:34 pi systemd[1]: camstream.service: Scheduled restart job, restart counter is at 287.
+Mar 04 14:44:34 pi systemd[1]: Stopped camstream.service - Campus Compass Camera Stream (IP Camera → ffmpeg → MediaMTX VPS).
+Mar 04 14:44:34 pi systemd[1]: Started camstream.service - Campus Compass Camera Stream (IP Camera → ffmpeg → MediaMTX VPS).
+Mar 04 14:44:34 pi systemd[1]: camstream.service: Main process exited, code=exited, status=217/USER
+Mar 04 14:44:34 pi systemd[1]: camstream.service: Failed with result 'exit-code'.
+Mar 04 14:44:39 pi systemd[1]: camstream.service: Scheduled restart job, restart counter is at 288.
+Mar 04 14:44:39 pi systemd[1]: Stopped camstream.service - Campus Compass Camera Stream (IP Camera → ffmpeg → MediaMTX VPS).
+Mar 04 14:44:40 pi systemd[1]: Started camstream.service - Campus Compass Camera Stream (IP Camera → ffmpeg → MediaMTX VPS).
+Mar 04 14:44:40 pi systemd[1]: camstream.service: Main process exited, code=exited, status=217/USER
+Mar 04 14:44:40 pi systemd[1]: camstream.service: Failed with result 'exit-code'.
