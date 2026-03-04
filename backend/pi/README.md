@@ -81,19 +81,24 @@ Check Firebase RTDB console → `buses/bus-1/sources/imu` for live data.
 
 ---
 
-## 5. Install as System Service
+## 5. Install as System Service (Auto-Recovery)
+
+We provide a provisioning script that installs dependencies, sets up the virtual environment, configures environment variables, and enables **auto-recovery** via systemd (so services restart on crash or reboot).
 
 ```bash
-# Copy service file
-sudo cp sensor_service.service /etc/systemd/system/
+# Run the automated setup script
+sudo ./init_pi.sh
+```
 
-# Reload, enable, start
-sudo systemctl daemon-reload
-sudo systemctl enable sensor_service
-sudo systemctl start sensor_service
+The script will ask for standard parameters (`BUS_ID`, `VPS_IP`, `CAMERA_IP`, etc.) and generate `/etc/campus-compass.env`.
 
+Both `sensor_service` and `camstream` will be enabled to start automatically. 
+
+**Manual Commands (if needed):**
+```bash
 # Check status
 sudo systemctl status sensor_service
+sudo systemctl status camstream
 
 # Watch live logs
 journalctl -u sensor_service -f
