@@ -46,12 +46,13 @@
 > Deploy Raspberry Pi telemetry (camstream & sensor), ensure auto-recovery, and visualize metrics on Admin Health Dashboard. 
 
 ### Phase 4: Edge Integration & Dashboard UI
-**Status**: ⬜ Not Started
+**Status**: ✅ Complete
 **Objective**: Setup Raspberry Pi with `camstream.service` and `sensor_service.service` using systemd to push to VPS. Build Admin UI dashboard to visualize device health, GPS, and IMU status securely. 
 **Depends on**: Phase 3
 
 **Tasks**:
-- [ ] TBD (run `/plan 4` to create)
+- [x] 4.1 — Admin Health Dashboard UI ✅
+- [x] 4.2 — Edge Integration & Auto-Recovery Verification ✅
 
 **Verification**:
-- TBD
+- See `.gsd/phases/4/VERIFICATION.md`
