@@ -6,7 +6,7 @@ import StudentManagement from '@/components/admin/StudentManagement';
 import StreamPlayer from '@/components/ui/StreamPlayer';
 import SettingsModal from '@/components/admin/SettingsModal';
 import CameraSelector from '@/components/admin/CameraSelector';
-import { LogOut, ShieldCheck, Settings, Search, Bell } from 'lucide-react';
+import { LogOut, ShieldCheck, Settings, Search, Bell, Activity } from 'lucide-react';
 import { signOut } from 'firebase/auth';
 import { auth, db, rtdb } from '@/lib/firebase';
 import { useRouter } from 'next/navigation';
@@ -204,6 +204,14 @@ export default function AdminDashboardPage() {
                         <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse"></div>
                         <span className="text-sm font-semibold">System Online</span>
                     </div>
+
+                    <Link
+                        href="/dashboard/admin/devices"
+                        className="bg-card hover:bg-muted px-4 py-2 rounded-lg border border-border flex items-center gap-2 transition-colors group"
+                    >
+                        <Activity size={16} className="text-muted-foreground group-hover:text-foreground transition-colors" />
+                        <span className="text-sm font-semibold text-muted-foreground group-hover:text-foreground transition-colors">Edge Health</span>
+                    </Link>
 
                     <Link
                         href="/dashboard/admin/data"
