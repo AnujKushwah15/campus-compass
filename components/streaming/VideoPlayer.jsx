@@ -17,14 +17,14 @@ import { useState } from 'react';
 export default function VideoPlayer({
     streamUrl: propStreamUrl,
     streamPath = 'live',
-    vpsIp = '72.61.250.73',
+    domain = 'thanganat25.com',
     className = ""
 }) {
     const [isLoading, setIsLoading] = useState(true);
     const [hasError, setHasError] = useState(false);
 
-    // Use provided URL or fall back to legacy construction
-    const streamUrl = propStreamUrl || `http://${vpsIp}:8889/${streamPath}/`;
+    // Use provided URL or fall back to reverse-proxied HTTPS stream
+    const streamUrl = propStreamUrl || `https://${domain}/stream/${streamPath}/`;
 
     const handleLoad = () => {
         setIsLoading(false);

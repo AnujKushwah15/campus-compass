@@ -6,9 +6,8 @@ import { rtdb, auth } from '@/lib/firebase';
 
 const StreamContext = createContext(null);
 
-const VPS_IP = process.env.NEXT_PUBLIC_VPS_IP || '72.61.250.73';
-const VPS_URL = process.env.NEXT_PUBLIC_VPS_URL || `http://${VPS_IP}:3001`;
-const WEBRTC_PORT = process.env.NEXT_PUBLIC_WEBRTC_PORT || '8889';
+const VPS_DOMAIN = process.env.NEXT_PUBLIC_VPS_DOMAIN || process.env.NEXT_PUBLIC_VPS_IP || 'thanganat25.com';
+const VPS_URL = process.env.NEXT_PUBLIC_VPS_URL || `https://${VPS_DOMAIN}`;
 
 /**
  * StreamProvider — Manages stream status, Pi health, and stream token acquisition.
@@ -179,7 +178,7 @@ export function StreamProvider({ children, busId }) {
     // ─── Direct URL (no JWT — for fallback when auth is excluded for reads) ─
     // Built from RTDB pathName; useful if MediaMTX read auth is bypassed.
     const pathName = streamStatus.pathName || (busId ? `live_${busId}` : 'live');
-    const directStreamUrl = `http://${VPS_IP}:${WEBRTC_PORT}/${pathName}/`;
+    const directStreamUrl = `https://${VPS_DOMAIN}/stream/${pathName}/`;
 
     const value = {
         // Status
