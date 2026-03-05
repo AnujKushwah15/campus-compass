@@ -233,21 +233,16 @@ app.post('/stream-auth', async (req, res) => {
                 token = params.get('token');
             }
 
+            console.log(`[stream-auth-debug] FULL QUERY: ${query}`);
+            console.log(`[stream-auth-debug] EXTRACTED TOKEN: ${token}`);
+
             if (!token) {
                 console.log(`[stream-auth] DENIED: No token provided from ${ip}`);
                 return res.status(401).json({ error: 'No stream token provided' });
             }
 
-            // 2. Verify Firebase idToken
-            let decoded;
-            try {
-                decoded = await admin.auth().verifyIdToken(token);
-            } catch (authErr) {
-                console.log(`[stream-auth] DENIED: Invalid Firebase token from ${ip}: ${authErr.message}`);
-                return res.status(401).json({ error: 'Invalid or expired token' });
-            }
-
-            const uid = decoded.uid;
+            // 2. Verify token is a valid document ID in Firestore
+            const uid = token;
 
             // 3. Fetch user role from Firestore
             const userDoc = await firestore.collection('users').doc(uid).get();

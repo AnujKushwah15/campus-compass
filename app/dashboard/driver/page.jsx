@@ -284,28 +284,16 @@ export default function DriverDashboard() {
 function DriverCameraFeed({ busId }) {
     const {
         isLive, isPiOnline, isGpsFix, isImuOk,
-        isMoving, viewerCount, buildStreamUrl
+        isMoving, viewerCount, streamPath
     } = useStream();
 
-    const [streamUrl, setStreamUrl] = useState(null);
-    const [urlLoading, setUrlLoading] = useState(false);
-    const [urlError, setUrlError] = useState(null);
+    const [shouldPlay, setShouldPlay] = useState(false);
 
-    const requestFeed = useCallback(async () => {
-        setUrlLoading(true);
-        setUrlError(null);
-        try {
-            const url = await buildStreamUrl();
-            if (!url) throw new Error('Could not retrieve stream URL');
-            setStreamUrl(url);
-        } catch (err) {
-            setUrlError(err.message);
-        } finally {
-            setUrlLoading(false);
-        }
-    }, [buildStreamUrl]);
+    const requestFeed = useCallback(() => {
+        setShouldPlay(true);
+    }, []);
 
-    // Auto-request URL on mount
+    // Auto-request playback on mount
     useEffect(() => { requestFeed(); }, [requestFeed]);
 
     return (
@@ -330,7 +318,7 @@ function DriverCameraFeed({ busId }) {
             </div>
             <div className="px-4 pb-4">
                 <StreamPlayer
-                    streamUrl={streamUrl}
+                    streamPath={shouldPlay ? streamPath : null}
                     isLive={isLive}
                     isPiOnline={isPiOnline}
                     isGpsFix={isGpsFix}
@@ -338,8 +326,6 @@ function DriverCameraFeed({ busId }) {
                     isMoving={isMoving}
                     viewerCount={viewerCount}
                     onRequestFeed={requestFeed}
-                    loading={urlLoading}
-                    error={urlError}
                     busId={busId}
                     cameraName={`Camera — ${busId}`}
                     className="rounded-xl"

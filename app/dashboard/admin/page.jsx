@@ -314,33 +314,21 @@ export default function AdminDashboardPage() {
 function AdminStreamWidget({ selectedCamera, onCameraSelect }) {
     const {
         isLive, isPiOnline, isGpsFix, isImuOk, isMoving,
-        viewerCount, buildStreamUrl
+        viewerCount, streamPath
     } = useStream();
 
-    const [streamUrl, setStreamUrl] = useState(null);
-    const [urlLoading, setUrlLoading] = useState(false);
-    const [urlError, setUrlError] = useState(null);
+    const [shouldPlay, setShouldPlay] = useState(false);
 
-    const requestFeed = useCallback(async () => {
-        setUrlLoading(true);
-        setUrlError(null);
-        try {
-            const url = await buildStreamUrl();
-            if (!url) throw new Error('Could not retrieve stream URL');
-            setStreamUrl(url);
-        } catch (err) {
-            setUrlError(err.message);
-        } finally {
-            setUrlLoading(false);
-        }
-    }, [buildStreamUrl]);
+    const requestFeed = useCallback(() => {
+        setShouldPlay(true);
+    }, []);
 
     // Auto-request URL on mount
     useEffect(() => { requestFeed(); }, [requestFeed]);
 
     return (
         <StreamPlayer
-            streamUrl={streamUrl}
+            streamPath={shouldPlay ? streamPath : null}
             isLive={isLive}
             isPiOnline={isPiOnline}
             isGpsFix={isGpsFix}
@@ -348,8 +336,6 @@ function AdminStreamWidget({ selectedCamera, onCameraSelect }) {
             isMoving={isMoving}
             viewerCount={viewerCount}
             onRequestFeed={requestFeed}
-            loading={urlLoading}
-            error={urlError}
             cameraName={selectedCamera?.name ? `${selectedCamera.busNumber} - ${selectedCamera.name}` : 'Default Bus'}
             className="bg-slate-900 h-full"
         />

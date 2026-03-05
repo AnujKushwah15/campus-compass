@@ -1,0 +1,30 @@
+Mar 05 10:29:04 srv1307712 node[140173]: [stream-auth] action=api path= ip=127.0.0.1 protocol=
+Mar 05 10:29:09 srv1307712 node[140173]: [stream-auth] action=api path= ip=127.0.0.1 protocol=
+Mar 05 10:29:14 srv1307712 node[140173]: [stream-auth] action=api path= ip=127.0.0.1 protocol=
+Mar 05 10:29:19 srv1307712 node[140173]: [stream-auth] action=api path= ip=127.0.0.1 protocol=
+Mar 05 10:29:24 srv1307712 node[140173]: [stream-auth] action=api path= ip=127.0.0.1 protocol=
+Mar 05 10:29:29 srv1307712 node[140173]: [stream-auth] action=api path= ip=127.0.0.1 protocol=
+Mar 05 10:29:34 srv1307712 node[140173]: [stream-auth] action=api path= ip=127.0.0.1 protocol=
+Mar 05 10:29:39 srv1307712 node[140173]: [stream-auth] action=api path= ip=127.0.0.1 protocol=
+Mar 05 10:29:39 srv1307712 node[140173]: [stream-auth] action=read path=live_bus-1 ip=127.0.0.1 protocol=webrtc
+Mar 05 10:29:39 srv1307712 node[140173]: [stream-auth-debug] FULL QUERY: token=YGCIWvb2PuaJ6Tb1tqSD8ylQOi23
+Mar 05 10:29:39 srv1307712 node[140173]: [stream-auth-debug] EXTRACTED TOKEN: YGCIWvb2PuaJ6Tb1tqSD8ylQOi23
+Mar 05 10:29:41 srv1307712 node[140173]: [stream-auth] ALLOWED: uid=YGCIWvb2PuaJ6Tb1tqSD8ylQOi23 role=admin bus=bus-1
+Mar 05 10:29:44 srv1307712 node[140173]: [stream-auth] action=api path= ip=127.0.0.1 protocol=
+Mar 05 10:29:49 srv1307712 node[140173]: [stream-auth] action=api path= ip=127.0.0.1 protocol=
+Mar 05 10:29:54 srv1307712 node[140173]: [stream-auth] action=api path= ip=127.0.0.1 protocol=
+Mar 05 10:29:59 srv1307712 node[140173]: [stream-auth] action=api path= ip=127.0.0.1 protocol=
+Mar 05 10:30:04 srv1307712 node[140173]: [stream-auth] action=api path= ip=127.0.0.1 protocol=
+Mar 05 10:30:09 srv1307712 node[140173]: [stream-auth] action=api path= ip=127.0.0.1 protocol=
+Mar 05 10:30:14 srv1307712 node[140173]: [stream-auth] action=api path= ip=127.0.0.1 protocol=
+Mar 05 10:30:19 srv1307712 node[140173]: [stream-auth] action=api path= ip=127.0.0.1 protocol=
+Mar 05 10:30:24 srv1307712 node[140173]: [stream-auth] action=api path= ip=127.0.0.1 protocol=
+Mar 05 10:30:29 srv1307712 node[140173]: [stream-auth] action=api path= ip=127.0.0.1 protocol=
+Mar 05 10:30:34 srv1307712 node[140173]: [stream-auth] action=api path= ip=127.0.0.1 protocol=
+Mar 05 10:30:39 srv1307712 node[140173]: [stream-auth] action=api path= ip=127.0.0.1 protocol=
+Mar 05 10:30:44 srv1307712 node[140173]: [stream-auth] action=api path= ip=127.0.0.1 protocol=
+Mar 05 10:30:49 srv1307712 node[140173]: [stream-auth] action=api path= ip=127.0.0.1 protocol=
+Mar 05 10:30:54 srv1307712 node[140173]: [stream-auth] action=api path= ip=127.0.0.1 protocol=
+Mar 05 10:30:59 srv1307712 node[140173]: [stream-auth] action=api path= ip=127.0.0.1 protocol=
+Mar 05 10:31:04 srv1307712 node[140173]: [stream-auth] action=api path= ip=127.0.0.1 protocol=
+Mar 05 10:31:09 srv1307712 node[140173]: [stream-auth] action=api path= ip=127.0.0.1 protocol=

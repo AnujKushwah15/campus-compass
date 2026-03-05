@@ -284,26 +284,14 @@ export default function ParentDashboard() {
 function BusCameraFeed({ busId, busNumber }) {
     const {
         isLive, isPiOnline, isGpsFix, isImuOk,
-        isMoving, viewerCount, buildStreamUrl
+        isMoving, viewerCount, streamPath
     } = useStream();
 
-    const [streamUrl, setStreamUrl] = useState(null);
-    const [urlLoading, setUrlLoading] = useState(false);
-    const [urlError, setUrlError] = useState(null);
+    const [shouldPlay, setShouldPlay] = useState(false);
 
-    const requestFeed = useCallback(async () => {
-        setUrlLoading(true);
-        setUrlError(null);
-        try {
-            const url = await buildStreamUrl();
-            if (!url) throw new Error('Could not retrieve stream URL');
-            setStreamUrl(url);
-        } catch (err) {
-            setUrlError(err.message);
-        } finally {
-            setUrlLoading(false);
-        }
-    }, [buildStreamUrl]);
+    const requestFeed = useCallback(() => {
+        setShouldPlay(true);
+    }, []);
 
     return (
         <div className="bg-card rounded-2xl border border-border shadow-sm overflow-hidden">
@@ -326,7 +314,7 @@ function BusCameraFeed({ busId, busNumber }) {
             </div>
             <div className="px-4 pb-4">
                 <StreamPlayer
-                    streamUrl={streamUrl}
+                    streamPath={shouldPlay ? streamPath : null}
                     isLive={isLive}
                     isPiOnline={isPiOnline}
                     isGpsFix={isGpsFix}
@@ -334,8 +322,6 @@ function BusCameraFeed({ busId, busNumber }) {
                     isMoving={isMoving}
                     viewerCount={viewerCount}
                     onRequestFeed={requestFeed}
-                    loading={urlLoading}
-                    error={urlError}
                     cameraName={`Camera — ${busNumber || busId}`}
                     className="rounded-xl"
                 />

@@ -1,23 +1,23 @@
 "use client";
 
-import { createContext, useContext, useState, useEffect, useCallback, useRef } from 'react';
+import { createContext, useContext, useState, useEffect, useRef } from 'react';
 import { ref, onValue, off } from 'firebase/database';
-import { rtdb, auth } from '@/lib/firebase';
+import { rtdb } from '@/lib/firebase';
+
 
 const StreamContext = createContext(null);
 
-const VPS_DOMAIN = process.env.NEXT_PUBLIC_VPS_DOMAIN || 'thanganat25.com';
 
 /**
- * StreamProvider — Manages stream status, Pi health, and stream token acquisition.
+ * StreamProvider — Manages stream status, Pi health, and stream path for WHEP.
  *
  * Subscribes to RTDB for:
  *   - /buses/{busId}/streamStatus  → isLive, viewerCount, pathName
  *   - /buses/{busId}/piStatus      → alive, gps_fix, imu_ok
  *   - /buses/{busId}/sources/imu   → IMU telemetry
  *
- * Auto-requests a JWT stream token when the stream goes live.
- * Exposes `directStreamUrl` as a direct WebRTC URL (no JWT, for fallback).
+ * Exposes `streamPath` which VideoPlayer uses to build its WHEP URL.
+ * Auth is handled inside VideoPlayer via Firebase idToken in Authorization header.
  */
 export function StreamProvider({ children, busId }) {
     const [streamStatus, setStreamStatus] = useState({
@@ -89,26 +89,8 @@ export function StreamProvider({ children, busId }) {
         };
     }, [busId]);
 
-    // ─── Build Stream URL (Firebase idToken in query string) ───────────────────────────
-    // No extra API call needed — user’s Firebase idToken is appended directly.
-    // MediaMTX calls /stream-auth which verifies the token via Firebase Admin SDK.
-    const buildStreamUrl = useCallback(async (targetPathName) => {
-        try {
-            const user = auth.currentUser;
-            if (!user) throw new Error('Not authenticated');
-            const idToken = await user.getIdToken();
-            const path = targetPathName || streamStatus.pathName || (busId ? `live_${busId}` : 'live');
-            return `https://${VPS_DOMAIN}/stream/${path}/?token=${idToken}`;
-        } catch (error) {
-            console.error('[StreamContext] buildStreamUrl error:', error);
-            return null;
-        }
-    }, [busId, streamStatus.pathName]);
-
-    // ─── Direct URL (no JWT — for fallback when auth is excluded for reads) ─
-    // Built from RTDB pathName; useful if MediaMTX read auth is bypassed.
-    const pathName = streamStatus.pathName || (busId ? `live_${busId}` : 'live');
-    const directStreamUrl = `https://${VPS_DOMAIN}/stream/${pathName}/`;
+    // ─── Stream path — VideoPlayer handles auth internally via WHEP ──────────
+    const streamPath = streamStatus.pathName || (busId ? `live_${busId}` : 'live');
 
     const value = {
         // Status
@@ -124,11 +106,8 @@ export function StreamProvider({ children, busId }) {
         isMoving: imuData.is_moving,
         viewerCount: streamStatus.viewerCount,
 
-        // Stream URL builder (uses Firebase idToken, no extra API call)
-        buildStreamUrl,
-
-        // Direct URL (no-auth fallback — for MediaMTX paths that don't require auth)
-        directStreamUrl,
+        // Stream path for VideoPlayer WHEP client
+        streamPath,
     };
 
     return (

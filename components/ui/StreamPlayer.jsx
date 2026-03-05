@@ -23,7 +23,7 @@ import VideoPlayer from '@/components/streaming/VideoPlayer';
  *   className    — Optional CSS classes
  */
 export default function StreamPlayer({
-    streamUrl,
+    streamPath,
     isLive = false,
     isPiOnline = false,
     isGpsFix = false,
@@ -39,10 +39,10 @@ export default function StreamPlayer({
 }) {
     const [isPlaying, setIsPlaying] = useState(false);
 
-    // Auto-play when streamUrl becomes available
+    // Auto-play when streamPath becomes available
     useEffect(() => {
-        if (streamUrl) setIsPlaying(true);
-    }, [streamUrl]);
+        if (streamPath) setIsPlaying(true);
+    }, [streamPath]);
 
     return (
         <div className={`relative rounded-2xl overflow-hidden bg-gray-900 ${className}`}>
@@ -102,8 +102,8 @@ export default function StreamPlayer({
             </div>
 
             {/* ─── Video or Placeholder ────────────────────────────────── */}
-            {isPlaying && streamUrl ? (
-                <VideoPlayer streamUrl={streamUrl} className="w-full h-full aspect-video" />
+            {isPlaying && streamPath ? (
+                <VideoPlayer streamPath={streamPath} className="w-full h-full aspect-video" />
             ) : (
                 <div className="flex flex-col items-center justify-center gap-4 bg-gray-900 aspect-video">
                     {/* Offline placeholder */}
