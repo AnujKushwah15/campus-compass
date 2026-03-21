@@ -2,17 +2,19 @@
 Description=Campus Compass Pi Sensor Service
 After=network-online.target
 Wants=network-online.target
+# Allow unlimited restarts — Pi may lose connectivity on a bus
+StartLimitIntervalSec=0
 
 [Service]
 Type=simple
-User=pi1
-WorkingDirectory=/home/pi1/campus-compass/backend/pi
-ExecStart=/home/pi1/campus-compass/backend/pi/venv/bin/python3 sensor_service.py
+# ── User and paths are set by setup_pi.sh when installing ─────────────────────
+User=${PI_USER}
+WorkingDirectory=${PI_WORKDIR}
+ExecStart=${PI_VENV}/bin/python3 sensor_service.py
 Restart=always
 RestartSec=5
-StartLimitIntervalSec=0
 
-# Environment Configuration
+# Environment Configuration — all sensor settings come from this file
 EnvironmentFile=/etc/campus-compass.env
 
 [Install]

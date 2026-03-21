@@ -3,9 +3,10 @@ import Badge from '../ui/Badge';
 import { db } from '@/lib/firebase';
 import { doc, onSnapshot } from 'firebase/firestore';
 
-export default function BusManagement({ buses, selectedBus, onSelectBus, onUpdateBus, onUnassignStudent }) {
+export default function BusManagement({ buses, students = [], selectedBus, onSelectBus, onUpdateBus, onUnassignStudent, onAssignStudent }) {
     const [searchTerm, setSearchTerm] = useState('');
     const [attendanceData, setAttendanceData] = useState({});
+    const [isAssigning, setIsAssigning] = useState(false);
 
     // Listen to live attendance updates for the demo trip
     useEffect(() => {
@@ -154,10 +155,39 @@ export default function BusManagement({ buses, selectedBus, onSelectBus, onUpdat
 
                             {/* Member Management */}
                             <div className="bg-card/40 rounded-xl p-4 border border-border/50">
-                                <h4 className="font-semibold text-foreground mb-3 flex items-center gap-2">
-                                    Assigned Students
-                                    <Badge variant="outline" size="sm">{selectedBus.currentMembers.length}</Badge>
-                                </h4>
+                                <div className="flex justify-between items-center mb-3">
+                                    <h4 className="font-semibold text-foreground flex items-center gap-2">
+                                        Assigned Students
+                                        <Badge variant="outline" size="sm">{selectedBus.currentMembers.length}</Badge>
+                                    </h4>
+                                    
+                                    {isAssigning ? (
+                                        <select
+                                            autoFocus
+                                            className="text-xs px-2 py-1.5 bg-background border border-border rounded-lg focus:outline-none focus:ring-1 focus:ring-cc-purple-500 max-w-[200px] text-foreground"
+                                            onChange={(e) => {
+                                                if (e.target.value) {
+                                                    onAssignStudent(e.target.value, selectedBus.id);
+                                                    setIsAssigning(false);
+                                                }
+                                            }}
+                                            onBlur={() => setIsAssigning(false)}
+                                            defaultValue=""
+                                        >
+                                            <option value="" disabled>Select student...</option>
+                                            {students.filter(s => s.busId !== selectedBus.id && s.busId !== selectedBus.number).map(s => (
+                                                <option key={s.id} value={s.id}>{s.name} ({s.prn})</option>
+                                            ))}
+                                        </select>
+                                    ) : (
+                                        <button
+                                            onClick={() => setIsAssigning(true)}
+                                            className="text-xs px-3 py-1.5 bg-cc-purple-500/10 text-cc-purple-600 border border-cc-purple-500/20 rounded-lg hover:bg-cc-purple-500/20 transition font-medium flex items-center gap-1"
+                                        >
+                                            <span>+ Assign</span>
+                                        </button>
+                                    )}
+                                </div>
                                 <div className="space-y-2">
                                     {selectedBus.currentMembers.length > 0 ? (
                                         selectedBus.currentMembers.map(student => {

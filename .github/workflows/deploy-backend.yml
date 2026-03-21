@@ -1,4 +1,4 @@
-name: Deploy Backend
+name: Deploy Backend to VPS
 
 on:
   push:
@@ -7,7 +7,6 @@ on:
       - anuj
     paths:
       - 'backend/**'
-      - 'docker-compose.yml'
 
 jobs:
   deploy:
@@ -15,16 +14,43 @@ jobs:
 
     steps:
       - name: Checkout Repository
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
-      - name: Deploy to VPS
+      - name: Copy backend files to VPS
+        uses: appleboy/scp-action@v0.1.7
+        with:
+          host: ${{ secrets.VPS_IP }}
+          username: root
+          key: ${{ secrets.VPS_SSH_KEY }}
+          source: "backend/index.js,backend/package.json,backend/package-lock.json,backend/mediamtx.yml"
+          target: "/root/campus-compass-backend"
+          strip_components: 1
+
+      - name: Install dependencies & restart service
         uses: appleboy/ssh-action@v1.0.3
         with:
           host: ${{ secrets.VPS_IP }}
           username: root
           key: ${{ secrets.VPS_SSH_KEY }}
           script: |
-            cd /opt/campus-compass-docker
-            git pull origin main
-            docker compose build backend
-            docker compose up -d backend
+            set -e
+            cd /root/campus-compass-backend
+
+            # Install/update Node dependencies
+            npm install --production
+
+            # Update Nginx CORS allowlist with real Vercel URL
+            sed -i 's|"https://campus-compass-vercel.app"|"https://campus-compass-iota-rosy.vercel.app"|g' /etc/nginx/nginx.conf
+            # Add vercel URL entry if not already present
+            if ! grep -q "campus-compass-iota-rosy.vercel.app" /etc/nginx/nginx.conf; then
+              sed -i '/map \$http_origin \$cors_origin/,/}/ s|default "";|default "";\n        "https://campus-compass-iota-rosy.vercel.app" $http_origin;|' /etc/nginx/nginx.conf
+            fi
+            nginx -t && systemctl reload nginx
+
+            # Restart the campus-compass backend service
+            systemctl restart campus-compass
+
+            # Verify it came back up
+            sleep 3
+            systemctl is-active campus-compass
+            echo "✅ Backend deployed successfully"
