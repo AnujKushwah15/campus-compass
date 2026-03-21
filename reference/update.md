@@ -166,3 +166,23 @@ Use this file to track major changes, architectural decisions, and daily progres
   - Optimized the proxy block for `/stream/` (WebRTC on port 8189).
   - Implemented a robust `map`-based CORS policy for safer cross-origin access if ever needed.
 - **MediaMTX**: Enforced mandatory JWT authentication for all viewers by removing `read` from `authHTTPExclude`.
+
+## [2026-03-22] Admin Dashboard Enhancements & Pi Provisioning Portability
+
+### Admin Dashboard (Multi-Bus Stream)
+- **Feature**: Replaced hardcoded single-bus stream view with a dynamic, multi-bus pill-tab selector in `app/dashboard/admin/page.jsx`.
+- **Detail**: The UI now derives available streams from the `buses` collection and RTDB `busLocations`. Admins can seamlessly switch between live video feeds and map locations for different buses.
+- **Component**: `AdminStreamWidget` now dynamically remounts the `StreamProvider` when a new bus is selected to ensure clean WebRTC SDP negotiation.
+
+### Admin Dashboard (Student Management Refactor)
+- **Feature**: Removed the standalone `StudentManagement` card to streamline the UI.
+- **Detail**: Shifted student assignment responsibilities entirely into the `BusManagement` details panel. Admins can now view assigned students and instantly add an unassigned student to the selected bus via an inline dropdown.
+
+### Portable Pi Provisioning System
+- **Feature**: Rewrote `backend/pi/init_pi.sh` into a new, highly portable `setup_pi.sh`.
+- **Detail**: The script safely detects the current user, automatically clones the repository via Git deploy keys, walks the user through interactive environment variable configuration (`/etc/campus-compass.env`), provisions Python dependencies, and starts both systemd services (`camstream` and `sensor_service`).
+- **Feature**: Configured `setup_pi.sh` to install a cron job running `update_campus_compass.sh` every 5 minutes to create a pull-based CI/CD pipeline for edge nodes.
+
+### Frontend Security & Stability
+- **Feature**: Configured Next.js headers (`next.config.mjs`) for basic security (X-Frame-Options, X-Content-Type-Options, Strict-Transport-Security, Permissions-Policy) and whitelisted Firebase Storage image domains.
+- **Feature**: Fixed `react-leaflet` SSR crashes using Next.js `dynamic()` imports for `LiveMap`.
