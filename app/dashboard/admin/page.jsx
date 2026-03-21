@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import BusManagement from '@/components/admin/BusManagement';
 import StudentManagement from '@/components/admin/StudentManagement';
 import StreamPlayer from '@/components/ui/StreamPlayer';
@@ -257,10 +257,10 @@ export default function AdminDashboardPage() {
                 <div className="col-span-12 lg:col-span-6 flex flex-col gap-6 h-full">
                     {/* Live Stream Widget */}
                     <div className="h-52 rounded-2xl overflow-hidden shadow-lg border border-cc-purple-500/20 relative group">
-                        <StreamProvider busId={selectedBus?.id || 'bus-1'}>
+                        <StreamProvider busId={useMemo(() => selectedBus?.id || 'bus-1', [selectedBus?.id])}>
                             <AdminStreamWidget
                                 selectedCamera={selectedCamera}
-                                onCameraSelect={() => setIsCameraSelectorOpen(true)}
+                                onCameraSelect={useMemo(() => () => setIsCameraSelectorOpen(true), [])}
                             />
                         </StreamProvider>
                     </div>

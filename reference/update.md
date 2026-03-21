@@ -137,3 +137,32 @@ Use this file to track major changes, architectural decisions, and daily progres
 - **Global Error Handling**: Added `app/not-found.jsx` for standardized, branded 404 views. Verified `app/error.jsx` and `app/global-error.jsx` to correctly function and trap boundary errors to prevent system panics. 
 - **Light/Dark Mode Polish**: Addressed UI washing out by adjusting components to consistent themes tailored for unified light and dark modes.
 - **Milestone Completion**: Successfully marked Milestone v1.0 (Infrastructure Stabilization & Reliability) as COMPLETE in `ROADMAP.md` and `STATE.md`.
+
+## [2026-03-21] Secure Streaming Stability & CORS Resolution
+
+### Authentication Optimization
+- **Goal**: Reduce authentication overhead and improve stream stability.
+- **Action**: Increased JWT token TTL from 60s to **300s (5 minutes)**.
+- **Frontend**: Updated `VideoPlayer.jsx` to refresh tokens only once every 290 seconds (4m 50s).
+- **Backend**: Updated `STREAM_TOKEN_TTL_SECONDS` in `backend/index.js` and successfully deployed to VPS.
+
+### CORS & Proxy Architecture
+- **Problem**: Persistent browser CORS blocks when fetching WHEP SDP from MediaMTX.
+- **Solution**: Implemented a "Same-Origin Proxy" layer in Next.js.
+- **New Routes**:
+  - `app/api/stream-token/route.js`: Proxies token requests to the VPS backend.
+  - `app/api/whep/route.js`: Proxies WHEP SDP negotiation to MediaMTX on port 8189.
+- **Result**: All browser-side streaming traffic now stays on the same domain (localhost or vercel.app), completely eliminating CORS issues.
+
+### Dashboard & Loop Stability
+- **Problem**: 5-second reconnect loop observed on the dashboard.
+- **Fix 1 (Backend)**: Increased MediaMTX polling interval from 5s to **30s** to reduce RTDB churn.
+- **Fix 2 (Context)**: Memoized `StreamContext` value using `useMemo` to prevent re-render cascades on every heartbeat.
+- **Fix 3 (Component)**: Added a "Same-Path Reconnect Guard" in `VideoPlayer.jsx` to skip redundant connections if the `streamPath` hasn't changed.
+- **Fix 4 (Dashboard)**: Stabilized `AdminDashboardPage` props using `useMemo` and fixed a `ReferenceError` related to missing React hooks imports.
+
+### Infrastructure (VPS)
+- **Nginx**: Completely rewrote `/etc/nginx/nginx.conf` on the VPS. 
+  - Optimized the proxy block for `/stream/` (WebRTC on port 8189).
+  - Implemented a robust `map`-based CORS policy for safer cross-origin access if ever needed.
+- **MediaMTX**: Enforced mandatory JWT authentication for all viewers by removing `read` from `authHTTPExclude`.

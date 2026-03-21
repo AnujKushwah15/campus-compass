@@ -11,15 +11,28 @@
 const admin = require('firebase-admin');
 const express = require('express');
 const cors = require('cors');
+const jwt = require('jsonwebtoken');
 const serviceAccount = require('./service-account.json');
 
 // ─── Configuration ──────────────────────────────────────────────────────────
 const PORT = process.env.PORT || 3001;
 const MEDIAMTX_API = process.env.MEDIAMTX_API || 'http://127.0.0.1:9997';
+const VPS_DOMAIN = process.env.VPS_DOMAIN || 'thanganat25.com';
+
+// JWT secret for signing stream access tokens — MUST be set in /etc/campus-compass.env
+const STREAM_JWT_SECRET = process.env.STREAM_JWT_SECRET;
+if (!STREAM_JWT_SECRET) {
+    console.error('❌ FATAL: STREAM_JWT_SECRET is not set in environment. Exiting.');
+    process.exit(1);
+}
+
+const STREAM_TOKEN_TTL_SECONDS = 300; // Token valid for 5 minutes (300s)
 
 console.log('🔐 Config loaded:');
 console.log(`   PORT        = ${PORT}`);
 console.log(`   MEDIAMTX_API= ${MEDIAMTX_API}`);
+console.log(`   VPS_DOMAIN  = ${VPS_DOMAIN}`);
+console.log(`   JWT TTL     = ${STREAM_TOKEN_TTL_SECONDS}s`);
 
 // ─── Firebase Init ──────────────────────────────────────────────────────────
 if (!admin.apps.length) {
@@ -191,12 +204,82 @@ async function evaluateSources(busId, busData) {
 // ═══════════════════════════════════════════════════════════════════════════
 
 const app = express();
-app.use(cors());
+
+// ─── CORS — explicit config required because requests carry Authorization header
+// The Authorization header triggers a preflight (OPTIONS) request; browsers will
+// reject a wildcard origin unless allowedHeaders is explicitly set.
+// CORS_ORIGINS env var: comma-separated list of allowed origins.
+// Defaults to localhost:3000 for local development.
+const CORS_ORIGINS = (process.env.CORS_ORIGINS || 'http://localhost:3000')
+    .split(',')
+    .map(o => o.trim());
+
+// [2026-03-21] CORS is now handled by Nginx on the VPS. 
+// Removing redundant express cors middleware to avoid duplicate headers.
+// app.use(cors(...));
+
 app.use(express.json());
 
 // Health check
 app.get('/health', (req, res) => {
     res.json({ status: 'ok', service: 'campus-compass-backend', uptime: process.uptime() });
+});
+
+// ─── GET /api/stream-token ──────────────────────────────────────────────────
+// Frontend calls this with a valid Firebase ID token to receive a short-lived
+// signed JWT that can be appended to the WHEP stream URL as ?token=<JWT>.
+//
+// Request:
+//   GET /api/stream-token?stream=live_bus-1
+//   Authorization: Bearer <firebase-id-token>
+//
+// Response:
+//   { url: "https://thanganat25.com/stream/live_bus-1/whep?token=<JWT>" }
+
+app.get('/api/stream-token', async (req, res) => {
+    try {
+        // 1. Extract Firebase ID token from Authorization header
+        const authHeader = req.headers.authorization || '';
+        if (!authHeader.startsWith('Bearer ')) {
+            return res.status(401).json({ error: 'Missing Authorization: Bearer <token>' });
+        }
+        const idToken = authHeader.slice(7);
+
+        // 2. Verify Firebase ID token using Admin SDK
+        let decoded;
+        try {
+            decoded = await admin.auth().verifyIdToken(idToken);
+        } catch (err) {
+            console.log(`[stream-token] DENIED: Invalid Firebase ID token — ${err.message}`);
+            return res.status(401).json({ error: 'Invalid Firebase token' });
+        }
+        const uid = decoded.uid;
+
+        // 3. Determine the requested stream path
+        //    Defaults to 'live_bus-1' if not specified — frontend should always pass this.
+        const stream = req.query.stream || 'live_bus-1';
+
+        // Validate stream path format (only allow known path patterns)
+        if (!/^live(_bus-\d+)?$/.test(stream)) {
+            return res.status(400).json({ error: 'Invalid stream path format' });
+        }
+
+        // 4. Issue a short-lived JWT
+        const payload = { uid, stream };
+        const token = jwt.sign(payload, STREAM_JWT_SECRET, {
+            expiresIn: STREAM_TOKEN_TTL_SECONDS,
+            algorithm: 'HS256',
+        });
+
+        // 5. Return the full signed WHEP URL
+        const url = `https://${VPS_DOMAIN}/stream/${stream}/whep?token=${token}`;
+        console.log(`[stream-token] ISSUED: uid=${uid} stream=${stream} ttl=${STREAM_TOKEN_TTL_SECONDS}s`);
+        return res.status(200).json({ url, token, ttl: STREAM_TOKEN_TTL_SECONDS });
+
+    } catch (error) {
+        console.error('[stream-token] Error:', error);
+        return res.status(500).json({ error: 'Internal server error' });
+    }
 });
 
 // ─── POST /stream-auth ──────────────────────────────────────────────────────
@@ -224,9 +307,9 @@ app.post('/stream-auth', async (req, res) => {
             return res.status(200).json({ ok: true });
         }
 
-        // For read actions: verify Firebase idToken + RBAC
+        // For read actions: verify JWT + RBAC
         if (action === 'read') {
-            // 1. Extract idToken from query string
+            // 1. Extract token from query string
             let token = null;
             if (query) {
                 const params = new URLSearchParams(query);
@@ -234,17 +317,33 @@ app.post('/stream-auth', async (req, res) => {
             }
 
             console.log(`[stream-auth-debug] FULL QUERY: ${query}`);
-            console.log(`[stream-auth-debug] EXTRACTED TOKEN: ${token}`);
+            console.log(`[stream-auth-debug] TOKEN PRESENT: ${!!token}`);
 
             if (!token) {
                 console.log(`[stream-auth] DENIED: No token provided from ${ip}`);
                 return res.status(401).json({ error: 'No stream token provided' });
             }
 
-            // 2. Verify token is a valid document ID in Firestore
-            const uid = token;
+            // 2. Verify JWT signature and expiry
+            let claims;
+            try {
+                claims = jwt.verify(token, STREAM_JWT_SECRET, { algorithms: ['HS256'] });
+            } catch (err) {
+                const reason = err.name === 'TokenExpiredError' ? 'Token expired' : 'Invalid token';
+                console.log(`[stream-auth] DENIED: ${reason} from ${ip} — ${err.message}`);
+                return res.status(401).json({ error: reason });
+            }
 
-            // 3. Fetch user role from Firestore
+            const uid = claims.uid;
+            const claimedStream = claims.stream;
+
+            // 3. Verify the JWT's stream claim matches the path being accessed
+            if (claimedStream !== path) {
+                console.log(`[stream-auth] DENIED: JWT stream '${claimedStream}' does not match requested path '${path}'`);
+                return res.status(403).json({ error: 'Token stream mismatch' });
+            }
+
+            // 4. Fetch user role from Firestore (RBAC)
             const userDoc = await firestore.collection('users').doc(uid).get();
             if (!userDoc.exists) {
                 console.log(`[stream-auth] DENIED: User ${uid} not found in Firestore`);
@@ -253,7 +352,7 @@ app.post('/stream-auth', async (req, res) => {
             const userData = userDoc.data();
             const role = userData.role;
 
-            // 4. Extract busId from stream path (e.g. 'live_bus-1' → 'bus-1')
+            // 5. Extract busId from stream path (e.g. 'live_bus-1' → 'bus-1')
             const pathMatch = path.match(/^live[_-](.+)$/);
             if (!pathMatch) {
                 console.log(`[stream-auth] DENIED: Unrecognised stream path '${path}'`);
@@ -285,12 +384,12 @@ app.post('/stream-auth', async (req, res) => {
 
             if (!allowed) {
                 console.log(`[stream-auth] DENIED: uid=${uid} role=${role} has no access to bus ${requestedBusId}`);
-                await logStreamAccess(uid, role, requestedBusId, 'denied');
+                await logStreamAccess(uid, role, requestedBusId, 'denied', 'jwt');
                 return res.status(403).json({ error: 'Access denied' });
             }
 
             console.log(`[stream-auth] ALLOWED: uid=${uid} role=${role} bus=${requestedBusId}`);
-            await logStreamAccess(uid, role, requestedBusId, 'granted');
+            await logStreamAccess(uid, role, requestedBusId, 'granted', 'jwt');
             return res.status(200).json({ ok: true });
         }
 
@@ -304,13 +403,14 @@ app.post('/stream-auth', async (req, res) => {
 });
 
 // ─── Stream Access Logging ──────────────────────────────────────────────────
-async function logStreamAccess(uid, role, busId, result) {
+async function logStreamAccess(uid, role, busId, result, method = 'unknown') {
     try {
         await firestore.collection('streamLogs').add({
             uid,
             role,
             busId,
-            result, // 'granted' | 'denied'
+            result,      // 'granted' | 'denied'
+            method,      // 'jwt'
             timestamp: admin.firestore.FieldValue.serverTimestamp()
         });
     } catch (e) {
@@ -396,8 +496,8 @@ async function updateStreamStatus(busId, pathInfo, now) {
     }
 }
 
-// Poll every 5 seconds
-setInterval(pollStreamStatus, 5000);
+// Poll every 30 seconds to reduce UI churn, while still keeping status fresh enough
+setInterval(pollStreamStatus, 30000);
 // Initial poll
 setTimeout(pollStreamStatus, 2000);
 
@@ -443,7 +543,7 @@ setInterval(checkPiHeartbeats, 10000);
 
 app.listen(PORT, () => {
     console.log(`🌐 Stream Auth Server running on port ${PORT}`);
-    console.log(`   POST /api/stream-token  — Get signed stream URL`);
-    console.log(`   POST /stream-auth       — MediaMTX auth callback`);
+    console.log(`   GET  /api/stream-token  — Firebase ID token → short-lived JWT WHEP URL (${STREAM_TOKEN_TTL_SECONDS}s)`);
+    console.log(`   POST /stream-auth       — MediaMTX auth callback (JWT verification)`);
     console.log(`   GET  /health            — Health check`);
 });

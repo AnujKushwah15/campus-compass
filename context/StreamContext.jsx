@@ -1,6 +1,6 @@
 "use client";
 
-import { createContext, useContext, useState, useEffect, useRef } from 'react';
+import { createContext, useContext, useState, useEffect, useRef, useMemo } from 'react';
 import { ref, onValue, off } from 'firebase/database';
 import { rtdb } from '@/lib/firebase';
 
@@ -92,7 +92,7 @@ export function StreamProvider({ children, busId }) {
     // ─── Stream path — VideoPlayer handles auth internally via WHEP ──────────
     const streamPath = streamStatus.pathName || (busId ? `live_${busId}` : 'live');
 
-    const value = {
+    const value = useMemo(() => ({
         // Status
         streamStatus,
         piStatus,
@@ -108,7 +108,7 @@ export function StreamProvider({ children, busId }) {
 
         // Stream path for VideoPlayer WHEP client
         streamPath,
-    };
+    }), [streamStatus, piStatus, imuData, streamPath]);
 
     return (
         <StreamContext.Provider value={value}>

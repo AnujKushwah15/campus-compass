@@ -130,6 +130,7 @@ journalctl -u mediamtx -f
     authHTTPAddress: http://localhost:3001/stream-auth
     authHTTPExclude:
       - action: publish    # Pi uses internal static auth
+      # [2026-03-21] 'read' bypass removed. All viewers must use JWT.
 
     authInternalUsers:
       - user: pi
@@ -186,11 +187,12 @@ Allowed ports:
 
 ## How It Works Now
 
-1. **Frontend** calls `POST /api/stream-token` with Firebase ID token
-2. **Backend** verifies identity + role → issues short-lived JWT (10 min)
-3. **Frontend** opens `http://VPS_IP:8889/live_bus-1/?token=<JWT>`
-4. **MediaMTX** calls `POST /stream-auth` on backend to verify JWT
-5. Stream plays if valid, denied if not
+1. **Frontend** calls `GET /api/stream-token` (Next.js Proxy)
+2. **Next.js Proxy** forwards to **Backend** (port 3001) → issues 300s (5 min) JWT
+3. **Frontend** initiates WHEP via `POST /api/whep` (Next.js Proxy)
+4. **Next.js Proxy** forwards SDP to **MediaMTX** (port 8189)
+5. **MediaMTX** calls `POST /stream-auth` on backend to verify JWT
+6. Stream plays if valid, denied if not
 
 ## Publish Credentials (Pi → VPS — unchanged)
 

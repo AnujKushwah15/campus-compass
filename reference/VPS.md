@@ -126,8 +126,7 @@ systemctl stop campus-compass
 
 ## 6. Changelog & Updates
 
-### [2026-02-02] Initial Deployment Setup
-- Created `backend` structure.
-- Implemented `arbitrator.js` (Heartbeat Logic).
-- configured `campus-compass.service`.
-- Verified logic locally using `mock_pi.js`.
+### [2026-03-21] Streaming Security & Nginx Refactor
+- **Nginx**: Rewrote `/etc/nginx/nginx.conf` with a robust CORS map and optimized proxying for `/stream/` (RTDB-backed WebRTC on port 8189).
+- **Security**: Switched from 60s to 300s JWT tokens and enforced mandatory auth for all read actions in MediaMTX.
+- **Backend**: Reduced MediaMTX polling interval to 30s to improve server and UI stability.

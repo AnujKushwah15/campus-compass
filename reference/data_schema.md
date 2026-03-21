@@ -99,5 +99,16 @@ Data written by the Driver App (Phone GPS).
 }
 ```
 
-### `/buses/{busId}/location` (Planned)
-The "Arbitrated" authoritative location, updated by Cloud Functions after comparing multiple sources (Phone vs Hardware). Clients (Parents) will subscribe to this node.
+### `/buses/{busId}/streamStatus`
+Real-time stream metadata updated by the Backend Monitor every 30s.
+```json
+{
+  "isLive": true,
+  "viewerCount": 2,
+  "pathName": "live_bus-1",
+  "lastChecked": 1700000000000
+}
+```
+
+### `/buses/{busId}/location` (Active)
+The "Arbitrated" authoritative location, updated by the Backend Arbitrator.

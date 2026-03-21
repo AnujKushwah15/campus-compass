@@ -8,7 +8,7 @@ logLevel: info
 
 # Protocol Addresses
 rtspAddress: ":8554"
-webrtcAddress: ":8889"
+webrtcAddress: ":8189"
 
 # Disabled protocols
 rtmpAddress: ""
