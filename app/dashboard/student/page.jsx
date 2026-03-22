@@ -48,7 +48,7 @@ export default function StudentDashboard() {
                 {/* Info Sidebar */}
                 <div className="space-y-4">
                     {/* ETA Card */}
-                    <Card className="bg-gradient-to-br from-card to-muted border-cc-purple-500 opacity-0 animate-pop-in delay-100">
+                    <Card className="!bg-slate-50 dark:!bg-transparent dark:bg-gradient-to-br dark:from-card dark:to-muted border-cc-purple-500 opacity-0 animate-pop-in delay-100">
                         <div className="flex items-start justify-between mb-2">
                             <span className="text-xs font-bold text-cc-purple-500 uppercase tracking-wider">Estimated Arrival</span>
                             <div className="p-2 bg-cc-purple-500/10 text-cc-purple-500 rounded-full border border-cc-purple-500/50 shadow-[0_0_10px_rgba(139,92,246,0.3)]">
@@ -82,7 +82,7 @@ export default function StudentDashboard() {
                     </Card>
 
                     {/* Driver Info Card */}
-                    <Card className="border-cc-purple-500 shadow-[0_0_20px_rgba(139,92,246,0.15)] opacity-0 animate-pop-in delay-200">
+                    <Card className="!bg-slate-50 dark:!bg-card border-cc-purple-500 shadow-[0_0_20px_rgba(139,92,246,0.15)] opacity-0 animate-pop-in delay-200">
                         <div className="flex items-center gap-4 mb-4">
                             <div className="w-12 h-12 rounded-full bg-muted flex items-center justify-center text-xl ring-2 ring-cc-purple-500 ring-offset-2 ring-offset-background shadow-md">👨‍✈️</div>
                             <div>
@@ -105,7 +105,7 @@ export default function StudentDashboard() {
                     </Card>
 
                     {/* Route Summary */}
-                    <Card padding="sm" className="bg-secondary/5 border-cc-purple-500 opacity-0 animate-pop-in delay-300">
+                    <Card padding="sm" className="!bg-slate-50 dark:!bg-secondary/5 border-cc-purple-500 opacity-0 animate-pop-in delay-300">
                         <div className="flex items-center gap-2 mb-2">
                             <div className="p-1.5 bg-cc-purple-500/10 text-cc-purple-500 rounded-full border border-cc-purple-500/50 shadow-[0_0_10px_rgba(139,92,246,0.3)]">
                                 <MapPin size={14} />

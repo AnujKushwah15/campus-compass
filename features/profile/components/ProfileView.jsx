@@ -291,7 +291,7 @@ export default function ProfileView({ role = "Student" }) {
                 </div>
 
                 {/* Profile Card */}
-                <div className="bg-card/70 backdrop-blur-xl border border-border rounded-3xl p-6 sm:p-8 shadow-xl animate-pop-in">
+                <div className="!bg-slate-50 dark:!bg-card/70 backdrop-blur-xl border border-border rounded-3xl p-6 sm:p-8 shadow-xl animate-pop-in">
                     <div className="flex flex-col items-center sm:flex-row sm:items-start gap-6 mb-8">
                         {/* Avatar */}
                         <div className="relative group cursor-pointer" onClick={() => fileInputRef.current?.click()}>
@@ -361,7 +361,7 @@ export default function ProfileView({ role = "Student" }) {
             {/* Change Password Modal */}
             {isPasswordModalOpen && (
                 <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-background/20 backdrop-blur-sm animate-in fade-in duration-200">
-                    <div className="bg-card rounded-3xl shadow-2xl max-w-sm w-full overflow-hidden p-6 relative border border-border">
+                    <div className="!bg-slate-50 dark:!bg-card rounded-3xl shadow-2xl max-w-sm w-full overflow-hidden p-6 relative border border-border">
                         <button
                             onClick={() => setPasswordModalOpen(false)}
                             className="absolute top-4 right-4 text-muted-foreground hover:text-foreground"
@@ -448,9 +448,9 @@ export default function ProfileView({ role = "Student" }) {
             {/* Image Crop Modal */}
             {isCropModalOpen && (
                 <div className="fixed inset-0 z-[200] flex items-center justify-center p-4 bg-background/80 backdrop-blur-sm animate-in fade-in duration-200">
-                    <div className="bg-card rounded-3xl shadow-2xl w-full max-w-lg overflow-hidden flex flex-col h-[600px] border border-border">
+                    <div className="!bg-slate-50 dark:!bg-card rounded-3xl shadow-2xl w-full max-w-lg overflow-hidden flex flex-col h-[600px] border border-border">
                         {/* Header */}
-                        <div className="p-4 border-b border-border flex justify-between items-center bg-card z-10">
+                        <div className="p-4 border-b border-border flex justify-between items-center bg-transparent z-10">
                             <h3 className="text-lg font-bold text-foreground">Edit Profile Picture</h3>
                             <button onClick={() => setIsCropModalOpen(false)} className="text-muted-foreground hover:text-foreground p-1">
                                 <X size={24} />
@@ -474,7 +474,7 @@ export default function ProfileView({ role = "Student" }) {
                         </div>
 
                         {/* Controls */}
-                        <div className="p-6 space-y-6 bg-card border-t border-border z-10">
+                        <div className="p-6 space-y-6 bg-transparent border-t border-border z-10">
                             {/* Zoom Control */}
                             <div className="space-y-2">
                                 <div className="flex justify-between text-xs text-muted-foreground uppercase font-semibold tracking-wider">
@@ -547,7 +547,7 @@ export default function ProfileView({ role = "Student" }) {
             {/* Logout Confirmation Modal */}
             {isLogoutModalOpen && (
                 <div className="fixed inset-0 z-[200] flex items-center justify-center p-4 bg-background/80 backdrop-blur-sm animate-in fade-in duration-200">
-                    <div className="bg-card rounded-3xl shadow-2xl w-full max-w-sm overflow-hidden p-6 border border-border text-center space-y-6">
+                    <div className="!bg-slate-50 dark:!bg-card rounded-3xl shadow-2xl w-full max-w-sm overflow-hidden p-6 border border-border text-center space-y-6">
                         <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto text-red-600">
                             <LogOut size={32} />
                         </div>

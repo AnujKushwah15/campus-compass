@@ -26,7 +26,7 @@ export default function AttendanceView({ data, title, studentName, titleClassNam
                     <p className="text-cc-purple-500 text-sm">Attendance for <span className="font-semibold">{studentName}</span> • {currentMonth} {currentYear}</p>
                 </div>
                 <div className="flex items-center gap-3">
-                    <Card className="flex items-center gap-3 !py-2 !px-4 bg-white/60" padding="none">
+                    <Card className="flex items-center gap-3 !py-2 !px-4 !bg-slate-50 dark:!bg-card" padding="none">
                         <div className={`w-2.5 h-2.5 rounded-full ${data.percentage >= 75 ? 'bg-green-500' : 'bg-red-500'} animate-pulse`}></div>
                         <span className="text-sm font-semibold text-cc-purple-800">Overall: <AnimatedCounter end={data.percentage} suffix="%" duration={2000} decimals={1} /></span>
                     </Card>
@@ -66,7 +66,7 @@ export default function AttendanceView({ data, title, studentName, titleClassNam
             </div>
 
             {/* Calendar View */}
-            <Card className="relative overflow-hidden bg-[radial-gradient(#e5e7eb_1px,transparent_1px)] [background-size:16px_16px] dark:bg-[radial-gradient(rgba(255,255,255,0.05)_1px,transparent_1px)] opacity-0 animate-pop-in delay-500">
+            <Card className="relative overflow-hidden !bg-slate-50 dark:!bg-card bg-[radial-gradient(#e5e7eb_1px,transparent_1px)] [background-size:16px_16px] dark:bg-[radial-gradient(rgba(255,255,255,0.05)_1px,transparent_1px)] opacity-0 animate-pop-in delay-500">
                 <div className="flex items-center justify-between mb-4">
                     <h3 className="font-bold text-cc-purple-800 text-lg">Monthly Overview</h3>
                     <div className="flex gap-4 text-sm">
@@ -134,11 +134,11 @@ export default function AttendanceView({ data, title, studentName, titleClassNam
                         let borderClass = "border-gray-100 dark:border-slate-700"
 
                         if (isPresent) {
-                            bgClass = "bg-green-50 text-green-700 hover:bg-green-100 dark:bg-green-900/20 dark:text-white dark:hover:bg-green-900/30";
-                            borderClass = "border-green-200 dark:border-green-900/50";
+                            bgClass = "bg-green-100 text-green-800 hover:bg-green-200 dark:bg-green-900/20 dark:text-white dark:hover:bg-green-900/30";
+                            borderClass = "border-green-300 dark:border-green-900/50";
                         } else if (isAbsent) {
-                            bgClass = "bg-red-50 text-red-700 hover:bg-red-100 dark:bg-red-900/20 dark:text-white dark:hover:bg-red-900/30";
-                            borderClass = "border-red-200 dark:border-red-900/50";
+                            bgClass = "bg-red-100 text-red-800 hover:bg-red-200 dark:bg-red-900/20 dark:text-white dark:hover:bg-red-900/30";
+                            borderClass = "border-red-300 dark:border-red-900/50";
                         }
 
                         return (
@@ -168,7 +168,7 @@ function StatCard({ label, value, icon, color, className }) {
     const baseColorClass = color.replace('/10', '');
 
     return (
-        <Card className={`flex items-center gap-4 relative overflow-hidden bg-[radial-gradient(#e5e7eb_1px,transparent_1px)] [background-size:16px_16px] dark:bg-[radial-gradient(rgba(255,255,255,0.05)_1px,transparent_1px)] ${className || ''}`} padding="md">
+        <Card className={`flex items-center gap-4 relative overflow-hidden !bg-slate-50 dark:!bg-card bg-[radial-gradient(#e5e7eb_1px,transparent_1px)] [background-size:16px_16px] dark:bg-[radial-gradient(rgba(255,255,255,0.05)_1px,transparent_1px)] ${className || ''}`} padding="md">
             <div className={`w-12 h-12 rounded-full flex items-center justify-center relative z-10 ${color}`}>{icon}</div>
             <div className="relative z-10">
                 <p className="text-cc-purple-500 text-xs font-medium uppercase tracking-wider">{label}</p>

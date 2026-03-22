@@ -243,8 +243,7 @@ export default function LoginPage() {
                 </div>
             </div>
 
-            {/* Auth Card */}
-            <Card className="z-10 w-full max-w-md md:max-w-lg mt-4 backdrop-blur-xl border-border shadow-glow animate-pop-in" padding="none">
+            <Card className="z-10 w-full max-w-md md:max-w-lg mt-4 backdrop-blur-xl border-border shadow-glow animate-pop-in !bg-slate-50 dark:!bg-card" padding="none">
                 {/* Tabs */}
                 <div className="flex border-b border-border">
                     <button
