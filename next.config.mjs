@@ -11,6 +11,21 @@ const nextConfig = {
         ],
     },
 
+    // ── Rewrites ─────────────────────────────────────────────────────────────
+    // Proxy /api and /stream requests to the VPS in local development
+    async rewrites() {
+        return [
+            {
+                source: '/api/:path*',
+                destination: 'https://thanganat25.com/api/:path*',
+            },
+            {
+                source: '/stream/:path*',
+                destination: 'https://thanganat25.com/stream/:path*',
+            },
+        ];
+    },
+
     // ── Security Headers ──────────────────────────────────────────────────────
     async headers() {
         return [

@@ -1,0 +1,4 @@
+# Ignore all debug log files — these are local only
+*.log
+*.txt
+!.gitignore

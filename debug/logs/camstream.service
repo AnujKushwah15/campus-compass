@@ -1,0 +1,19 @@
+[Unit]
+Description=Campus Compass Camera Stream (Hardened)
+After=network.target
+
+[Service]
+Type=simple
+EnvironmentFile=/etc/campus-compass.env
+ExecStart=/usr/bin/ffmpeg -hide_banner -loglevel warning \
+    -rtsp_transport tcp -stimeout 20000000 \
+    -i rtsp://${CAMERA_USER}:${CAMERA_PASS}@${CAMERA_IP}:554/${CAMERA_RTSP_PATH} \
+    -c:v copy -c:a copy \
+    -f rtsp -rtsp_transport tcp \
+    rtsp://pi:${RTMP_PASS}@${VPS_IP}:8554/${STREAM_PATH}
+Restart=always
+RestartSec=5
+StartLimitIntervalSec=0
+
+[Install]
+WantedBy=multi-user.target
