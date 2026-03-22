@@ -20,12 +20,13 @@ export default function StudentDashboard() {
                 </div>
 
                 <div className="flex items-center gap-3">
-                    <Card className="flex items-center gap-3 !py-2 !px-4 bg-card/60 border border-cc-purple-500 shadow-[0_0_10px_rgba(139,92,246,0.2)] opacity-0 animate-pop-in delay-75" padding="none">
-                        <div className="w-2.5 h-2.5 rounded-full bg-primary animate-pulse"></div>
-                        <span className="text-sm font-semibold text-cc-purple-500">Status: On Time</span>
+                    <Card className="flex items-center gap-2 !py-2 !px-4 bg-card/60 border border-cc-purple-500 shadow-[0_0_10px_rgba(139,92,246,0.2)] opacity-0 animate-pop-in delay-75" padding="none">
+                        <div className="w-2.5 h-2.5 rounded-full bg-primary animate-pulse mr-1"></div>
+                        <Clock size={16} className="text-black dark:text-white" />
+                        <span className="text-sm font-semibold text-black dark:text-white">Status: On Time</span>
                     </Card>
-                    <Button variant="ghost" size="sm" className="hidden md:flex items-center gap-2 border border-cc-purple-500 hover:shadow-[0_0_15px_rgba(139,92,246,0.5)] transition-all duration-300 text-cc-purple-500 hover:bg-cc-purple-500/10 opacity-0 animate-pop-in delay-150">
-                        <span className="w-2 h-2 rounded-full border border-cc-purple-500 bg-cc-purple-500/30 shadow-[0_0_5px_rgba(139,92,246,0.5)]"></span> Refresh
+                    <Button variant="ghost" size="sm" className="hidden md:flex items-center gap-2 border border-cc-purple-500 hover:shadow-[0_0_15px_rgba(139,92,246,0.5)] transition-all duration-300 text-black dark:text-white hover:bg-black/10 dark:hover:bg-white/10 opacity-0 animate-pop-in delay-150">
+                        <span className="w-2 h-2 rounded-full border border-black bg-black/30 dark:border-white dark:bg-white/30 shadow-sm dark:shadow-[0_0_5px_rgba(255,255,255,0.5)]"></span> Refresh
                     </Button>
                 </div>
             </div>
@@ -83,7 +84,7 @@ export default function StudentDashboard() {
                     {/* Driver Info Card */}
                     <Card className="border-cc-purple-500 shadow-[0_0_20px_rgba(139,92,246,0.15)] opacity-0 animate-pop-in delay-200">
                         <div className="flex items-center gap-4 mb-4">
-                            <div className="w-12 h-12 rounded-full bg-muted flex items-center justify-center text-xl">👨‍✈️</div>
+                            <div className="w-12 h-12 rounded-full bg-muted flex items-center justify-center text-xl ring-2 ring-cc-purple-500 ring-offset-2 ring-offset-background shadow-md">👨‍✈️</div>
                             <div>
                                 <p className="font-bold text-cc-purple-500">Rajesh Kumar</p>
                                 <Badge variant="neutral">Driver</Badge>

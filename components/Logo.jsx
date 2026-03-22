@@ -11,7 +11,7 @@ export default function Logo() {
                 <Bus className="w-7 h-7 relative z-10 drop-shadow-md" strokeWidth={1.5} />
             </div>
             <div className="flex flex-col">
-                <span className="font-bold text-xl text-cc-purple-950 leading-none tracking-tight group-hover:text-cc-purple-700 transition-colors">Campus</span>
+                <span className="font-bold text-xl text-black dark:text-white leading-none tracking-tight group-hover:text-black/80 dark:group-hover:text-white/80 transition-colors">Campus</span>
                 <span className="font-bold text-sm text-cc-purple-500 leading-none tracking-widest uppercase">Compass</span>
             </div>
         </div>

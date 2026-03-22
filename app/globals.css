@@ -1,6 +1,23 @@
 @import "tailwindcss";
 
+@variant dark (&:is(.dark *));
+
 @theme {
+  /* Context-Dependent Theme Variables mapped to Root */
+  --color-background: var(--color-background);
+  --color-foreground: var(--color-foreground);
+  --color-card: var(--color-card);
+  --color-card-foreground: var(--color-card-foreground);
+  --color-border: var(--color-card-border);
+  --color-primary: var(--color-primary);
+  --color-primary-foreground: var(--color-primary-foreground);
+  --color-secondary: var(--color-secondary);
+  --color-secondary-foreground: var(--color-secondary-foreground);
+  --color-accent: var(--color-accent);
+  --color-accent-foreground: var(--color-accent-foreground);
+  --color-muted: var(--color-muted);
+  --color-muted-foreground: var(--color-muted-foreground);
+
   /* Campus Compass Custom Colors */
 
   /* Purple - Primary Brand Color */
@@ -87,27 +104,27 @@
 }
 
 :root {
-  /* Default Light Mode */
-  --color-background: var(--color-cc-beige-100);
-  --color-foreground: var(--color-cc-purple-950);
+  /* High-Contrast Light Mode */
+  --color-background: #F5F6F8;
+  --color-foreground: #111827;
 
   --color-card: #ffffff;
-  --color-card-foreground: var(--color-cc-purple-900);
-  --color-card-border: var(--color-cc-purple-100);
+  --color-card-foreground: #111827;
+  --color-card-border: #e2e8f0;
 
   --color-primary: var(--color-cc-purple-600);
   --color-primary-foreground: #ffffff;
 
-  --color-secondary: var(--color-cc-sky-500);
+  --color-secondary: var(--color-cc-sky-600);
   --color-secondary-foreground: #ffffff;
 
-  --color-accent: var(--color-cc-brown-500);
+  --color-accent: var(--color-cc-brown-600);
   --color-accent-foreground: #ffffff;
 
-  --color-muted: var(--color-cc-purple-100);
-  --color-muted-foreground: var(--color-cc-purple-700);
+  --color-muted: #f1f5f9;
+  --color-muted-foreground: #64748b;
 
-  --shadow-glow: 0 4px 14px 0 rgba(139, 92, 246, 0.39);
+  --shadow-glow: 0 4px 14px 0 rgba(139, 92, 246, 0.25);
 }
 
 .dark {

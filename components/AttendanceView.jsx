@@ -72,15 +72,15 @@ export default function AttendanceView({ data, title, studentName, titleClassNam
                     <div className="flex gap-4 text-sm">
                         <div className="flex items-center gap-1.5">
                             <div className="w-3 h-3 rounded-sm bg-green-100 border border-green-300 dark:bg-green-900 dark:border-green-700"></div>
-                            <span className="text-cc-purple-500 dark:text-white">Present</span>
+                            <span className="text-black dark:text-white">Present</span>
                         </div>
                         <div className="flex items-center gap-1.5">
                             <div className="w-3 h-3 rounded-sm bg-red-100 border border-red-300 dark:bg-red-900 dark:border-red-700"></div>
-                            <span className="text-cc-purple-500 dark:text-white">Absent</span>
+                            <span className="text-black dark:text-white">Absent</span>
                         </div>
                         <div className="flex items-center gap-1.5">
                             <div className="w-3 h-3 rounded-sm bg-gray-100 border border-gray-300 dark:bg-slate-800 dark:border-slate-600"></div>
-                            <span className="text-cc-purple-500 dark:text-white">Holiday/Weekend</span>
+                            <span className="text-black dark:text-white">Holiday/Weekend</span>
                         </div>
                     </div>
                 </div>
@@ -172,7 +172,7 @@ function StatCard({ label, value, icon, color, className }) {
             <div className={`w-12 h-12 rounded-full flex items-center justify-center relative z-10 ${color}`}>{icon}</div>
             <div className="relative z-10">
                 <p className="text-cc-purple-500 text-xs font-medium uppercase tracking-wider">{label}</p>
-                <p className="text-2xl font-bold text-white">{value}</p>
+                <p className="text-2xl font-bold text-black dark:text-white">{value}</p>
             </div>
             {/* Decorative background elements */}
             <div className={`absolute right-0 top-0 w-32 h-32 opacity-[0.08] rounded-full translate-x-10 -translate-y-10 blur-xl ${baseColorClass}`}></div>

@@ -4,6 +4,7 @@ import { usePathname } from 'next/navigation';
 import Logo from './Logo';
 import { Home, Calendar, User, ChevronDown, Bell } from 'lucide-react';
 import { useState } from 'react';
+import ThemeToggle from './ThemeToggle';
 
 export default function Navbar() {
     const pathname = usePathname();
@@ -55,23 +56,27 @@ export default function Navbar() {
     ];
 
     return (
-        <nav className="sticky top-0 z-50 w-full glass-panel border-b border-white/20 px-4 sm:px-6 py-3">
-            <div className="max-w-7xl mx-auto flex items-center justify-between">
+        <nav className="sticky top-0 z-50 w-full bg-background/80 backdrop-blur-md border-b border-border shadow-sm px-4 sm:px-8 lg:px-12 xl:px-16 py-3">
+            <div className="w-full flex items-center justify-between relative">
                 {/* Left: Logo */}
-                <Link href={basePath} className="hover:opacity-80 transition-opacity">
-                    <Logo />
-                </Link>
+                <div className="flex-shrink-0 z-10">
+                    <Link href={basePath} className="hover:opacity-80 transition-opacity flex items-center">
+                        <Logo />
+                    </Link>
+                </div>
 
                 {/* Center: Navigation (Hidden on mobile for simplicity in this demo, but could be hamburger) */}
-                <div className="hidden md:flex items-center gap-1 bg-white/40 p-1 rounded-full border border-white/50 backdrop-blur-md">
-                    <NavItem href={basePath} icon={<Home size={18} />} label="Home" active={pathname === basePath} />
-                    <NavItem href={`${basePath}/attendance`} icon={<Calendar size={18} />} label="Attendance" active={pathname.startsWith(`${basePath}/attendance`)} />
-                    <NavItem href={`${basePath}/profile`} icon={<User size={18} />} label="Profile" active={isActive(`${basePath}/profile`)} />
+                <div className="hidden md:flex absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 z-0">
+                    <div className="flex items-center gap-1 bg-slate-200/50 dark:bg-white/10 p-1 rounded-full border border-slate-300/50 dark:border-white/20 backdrop-blur-md">
+                        <NavItem href={basePath} icon={<Home size={18} />} label="Home" active={pathname === basePath} />
+                        <NavItem href={`${basePath}/attendance`} icon={<Calendar size={18} />} label="Attendance" active={pathname.startsWith(`${basePath}/attendance`)} />
+                        <NavItem href={`${basePath}/profile`} icon={<User size={18} />} label="Profile" active={isActive(`${basePath}/profile`)} />
+                    </div>
                 </div>
 
                 {/* Right: User Profile */}
-                <div className="flex items-center gap-4">
-
+                <div className="flex items-center gap-4 flex-shrink-0 z-10">
+                    <ThemeToggle className="scale-90" />
                     {/* Notification Bell */}
                     <div className="relative">
                         <button
@@ -136,17 +141,17 @@ export default function Navbar() {
                     </div>
 
                     {/* User Dropdown Trigger */}
-                    <div className="flex items-center gap-3 pl-3 border-l border-cc-pista-800/10 cursor-pointer group">
-                        <div className="w-9 h-9 rounded-full bg-gradient-to-br from-cc-sky-300 to-cc-brown-400 p-0.5 shadow-sm group-hover:shadow-glow transition-all">
-                            <div className="w-full h-full bg-white rounded-full flex items-center justify-center text-cc-purple-800 font-bold text-sm">
+                    <div className="flex items-center gap-3 pl-3 border-l border-border cursor-pointer group">
+                        <div className="w-9 h-9 rounded-full bg-gradient-to-br from-cc-sky-400 to-cc-brown-500 p-0.5 shadow-sm group-hover:shadow-glow transition-all">
+                            <div className="w-full h-full bg-card rounded-full flex items-center justify-center text-foreground font-bold text-sm">
                                 {user.name.charAt(0)}
                             </div>
                         </div>
                         <div className="hidden sm:block text-sm">
-                            <p className="font-semibold text-cc-purple-800 leading-none">{user.name}</p>
-                            <p className="text-cc-purple-500 text-xs mt-0.5">{user.role}</p>
+                            <p className="font-semibold text-foreground leading-none">{user.name}</p>
+                            <p className="text-muted-foreground font-medium text-xs mt-0.5">{user.role}</p>
                         </div>
-                        <ChevronDown size={16} className="text-cc-purple-500 group-hover:translate-y-0.5 transition-transform" />
+                        <ChevronDown size={16} className="text-muted-foreground group-hover:translate-y-0.5 transition-transform" />
                     </div>
                 </div>
             </div>
@@ -162,7 +167,7 @@ function NavItem({ href, icon, label, active }) {
         flex items-center gap-2 px-4 py-1.5 rounded-full text-sm font-medium transition-all duration-200
         ${active
                     ? 'bg-cc-purple-500 text-white shadow-md'
-                    : 'text-cc-purple-800 hover:bg-white/60 hover:text-cc-purple-900'}
+                    : 'text-slate-700 dark:text-cc-purple-100 hover:bg-slate-300/50 dark:hover:bg-white/20 hover:text-slate-900 dark:hover:text-white'}
       `}
         >
             {icon}

@@ -27,41 +27,48 @@ export default function LandingPage() {
 
       {/* Navigation */}
       <nav className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${isScrolled ? 'bg-background/80 backdrop-blur-md shadow-sm py-3' : 'bg-transparent py-5'}`}>
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex items-center justify-between">
-          <div className="flex-shrink-0">
-            <Link href="/">
+        <div className="w-full px-4 sm:px-8 lg:px-12 xl:px-16 flex items-center justify-between relative">
+          {/* Left */}
+          <div className="flex-shrink-0 z-10">
+            <Link href="/" className="flex items-center">
               <Logo />
             </Link>
           </div>
 
-          {/* Desktop Nav */}
-          <div className="hidden md:flex items-center space-x-8">
-            <NavLink href="#home" label="Home" />
-            <NavLink href="#features" label="Features" />
-            <NavLink href="#benefits" label="Why Us" />
-            <NavLink href="#contact" label="Contact" />
+          {/* Center: Desktop Nav */}
+          <div className="hidden md:flex absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 z-0">
+            <div className="flex items-center space-x-8">
+              <NavLink href="#home" label="Home" />
+              <NavLink href="#features" label="Features" />
+              <NavLink href="#benefits" label="Why Us" />
+              <NavLink href="#contact" label="Contact" />
+            </div>
           </div>
 
-          <div className="hidden md:flex items-center space-x-4">
-            <Link href="/auth">
-              <Button variant="secondary" size="sm" className="hidden lg:inline-flex border-primary text-primary hover:bg-muted hover:shadow-[0_0_20px_rgba(139,92,246,0.6)] transition-all duration-300">
-                Log In
-              </Button>
-            </Link>
-            <Link href="/auth">
-              <Button variant="primary" size="sm" className="shadow-lg shadow-cc-purple-500/20 ring-2 ring-cc-purple-500 hover:ring-cc-purple-400 transition-all">
-                Get Started
-              </Button>
-            </Link>
-            <ThemeToggle />
-          </div>
+          {/* Right */}
+          <div className="flex items-center gap-4 flex-shrink-0 z-10">
+            {/* Desktop Auth */}
+            <div className="hidden md:flex items-center space-x-4">
+              <Link href="/auth">
+                <Button variant="secondary" size="sm" className="hidden lg:inline-flex border-primary text-primary hover:bg-muted hover:shadow-[0_0_20px_rgba(139,92,246,0.6)] transition-all duration-300">
+                  Log In
+                </Button>
+              </Link>
+              <Link href="/auth">
+                <Button variant="primary" size="sm" className="shadow-lg shadow-cc-purple-500/20 ring-2 ring-cc-purple-500 hover:ring-cc-purple-400 transition-all">
+                  Get Started
+                </Button>
+              </Link>
+              <ThemeToggle />
+            </div>
 
-          {/* Mobile Menu Button */}
-          <div className="md:hidden flex items-center gap-4">
-            <ThemeToggle />
-            <button onClick={() => setMobileMenuOpen(!mobileMenuOpen)} className="text-foreground p-2">
-              {mobileMenuOpen ? <X size={24} /> : <Menu size={24} />}
-            </button>
+            {/* Mobile Menu Button and Theme Toggle */}
+            <div className="md:hidden flex items-center gap-4">
+              <ThemeToggle />
+              <button onClick={() => setMobileMenuOpen(!mobileMenuOpen)} className="text-foreground p-2">
+                {mobileMenuOpen ? <X size={24} /> : <Menu size={24} />}
+              </button>
+            </div>
           </div>
         </div>
 
