@@ -175,9 +175,9 @@ export default function AdminDashboardPage() {
     return (
         <div className="font-sans text-foreground min-h-screen bg-background px-4 sm:px-8 lg:px-12 xl:px-16 py-6">
             {/* Header */}
-            <header className="flex items-center justify-between mb-8 pb-6 border-b border-border w-full relative">
+            <header className="flex flex-col md:flex-row items-center justify-between gap-6 md:gap-0 mb-8 pb-6 border-b border-border w-full relative">
                 {/* Left */}
-                <div className="flex-shrink-0 z-10">
+                <div className="flex-shrink-0 z-10 w-full md:w-auto">
                     <div className="flex items-center gap-4">
                         <div className="w-12 h-12 bg-gradient-to-br from-cc-purple-600 to-cc-red-600 rounded-xl flex items-center justify-center text-white shadow-lg">
                             <ShieldCheck size={28} />
@@ -195,7 +195,7 @@ export default function AdminDashboardPage() {
                 <div className="hidden lg:flex absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 z-0"></div>
 
                 {/* Right */}
-                <div className="flex items-center gap-4 flex-shrink-0 z-10">
+                <div className="flex flex-wrap justify-center items-center gap-2 md:gap-4 flex-shrink-0 z-10 w-full md:w-auto">
                     <div className="bg-card px-4 py-2 rounded-lg border border-border flex items-center gap-2">
                         <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse"></div>
                         <span className="text-sm font-semibold">System Online</span>
@@ -226,7 +226,7 @@ export default function AdminDashboardPage() {
             </header>
 
             {/* Main Content Grid */}
-            <div className="grid grid-cols-12 gap-6 h-[calc(100vh-10rem)]">
+            <div className="grid grid-cols-12 gap-6 h-auto lg:h-[calc(100vh-10rem)] min-h-[calc(100vh-10rem)]">
 
                 {/* Column 1: Fleet List & Details */}
                 <div className="col-span-12 lg:col-span-6 flex flex-col gap-6 h-full">

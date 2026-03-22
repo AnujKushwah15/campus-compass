@@ -40,7 +40,7 @@ export default function DashboardLayout({
     return (
         <div className="flex min-h-screen flex-col">
             {!isStandalonePage && <Navbar />}
-            <main className="flex-1 w-full px-4 sm:px-8 lg:px-12 xl:px-16 py-6">
+            <main className="flex-1 w-full px-4 sm:px-8 lg:px-12 xl:px-16 pt-6 pb-24 md:py-6">
                 {children}
             </main>
         </div>

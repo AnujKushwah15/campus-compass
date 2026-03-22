@@ -222,7 +222,7 @@ export default function DriverDashboard() {
                                         <p className="text-sm text-muted-foreground">{currentTrip ? 'Trip Active' : 'Idle'} • {busId}</p>
                                     </div>
                                 </div>
-                                <div className="flex gap-3 w-full sm:w-auto">
+                                <div className="flex flex-col sm:flex-row gap-3 w-full sm:w-auto">
                                     <Button
                                         onClick={handleEndTrip}
                                         variant="warning"

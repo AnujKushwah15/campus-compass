@@ -215,7 +215,7 @@ export default function LoginPage() {
     return (
         <main className="min-h-screen w-full relative overflow-hidden bg-background flex flex-col items-center justify-center p-4">
             {/* Home Button */}
-            <div className="absolute top-6 left-6 z-50 animate-fadeInDown">
+            <div className="absolute top-4 left-4 md:top-6 md:left-6 z-50 animate-fadeInDown">
                 <Link href="/">
                     <Button variant="outline" className="bg-background/50 backdrop-blur-md text-foreground hover:bg-accent hover:text-accent-foreground transition-all text-sm shadow-sm flex items-center gap-2 border-border/50">
                         <Home size={16} /> Home
@@ -224,7 +224,7 @@ export default function LoginPage() {
             </div>
 
             {/* Staff Login Button */}
-            <div className="absolute top-6 right-6 z-50 animate-fadeInDown">
+            <div className="absolute top-4 right-4 md:top-6 md:right-6 z-50 animate-fadeInDown">
                 <Link href="/staff/login">
                     <Button variant="outline" className="bg-background/50 backdrop-blur-md text-foreground hover:bg-accent hover:text-accent-foreground transition-all text-sm shadow-sm flex items-center gap-2 border-border/50">
                         <Shield size={16} /> Staff Login

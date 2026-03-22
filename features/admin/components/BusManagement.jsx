@@ -84,9 +84,9 @@ export default function BusManagement({ buses, students = [], selectedBus, onSel
                 />
             </div>
 
-            <div className="flex flex-1 overflow-hidden">
+            <div className="flex flex-col md:flex-row flex-1 overflow-hidden">
                 {/* List of Buses */}
-                <div className="w-1/3 border-r border-cc-purple-500/10 overflow-y-auto p-3 space-y-2 custom-scrollbar">
+                <div className="w-full md:w-1/3 shrink-0 h-1/3 md:h-auto border-b md:border-b-0 md:border-r border-cc-purple-500/10 overflow-y-auto p-3 space-y-2 custom-scrollbar">
                     {filteredBuses.map(bus => (
                         <div
                             key={bus.id}
@@ -108,7 +108,7 @@ export default function BusManagement({ buses, students = [], selectedBus, onSel
                 </div>
 
                 {/* Bus Details */}
-                <div className="w-2/3 p-5 overflow-y-auto custom-scrollbar bg-background/30">
+                <div className="w-full md:w-2/3 flex-1 p-5 overflow-y-auto custom-scrollbar bg-background/30">
                     {selectedBus ? (
                         <div className="space-y-6 animate-in fade-in zoom-in-95 duration-200">
                             <div>
