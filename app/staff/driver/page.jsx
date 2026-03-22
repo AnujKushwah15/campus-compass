@@ -1,9 +1,9 @@
 "use client";
 
 import { useState } from 'react';
-import { useTrip } from '@/context/TripContext';
-import RouteMap from '@/components/driver/RouteMap';
-import StudentList from '@/components/driver/StudentList';
+import { useTrip } from '@/features/tracking/context/TripContext';
+import RouteMap from '@/features/driver/components/RouteMap';
+import StudentList from '@/features/driver/components/StudentList';
 import Button from '@/components/ui/Button';
 import { TriangleAlert, Phone, LogOut, Radio } from 'lucide-react';
 import Link from 'next/link';

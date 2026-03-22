@@ -1,10 +1,10 @@
 'use client';
 
 import { useState, useEffect, useCallback, useMemo } from 'react';
-import BusManagement from '@/components/admin/BusManagement';
-import StreamPlayer from '@/components/ui/StreamPlayer';
-import SettingsModal from '@/components/admin/SettingsModal';
-import CameraSelector from '@/components/admin/CameraSelector';
+import BusManagement from '@/features/admin/components/BusManagement';
+import StreamPlayer from '@/features/streaming/components/StreamPlayer';
+import SettingsModal from '@/features/admin/components/SettingsModal';
+import CameraSelector from '@/features/admin/components/CameraSelector';
 import { LogOut, ShieldCheck, Settings, Search, Bell, Activity, ChevronDown, Bus, MapPin } from 'lucide-react';
 import { signOut } from 'firebase/auth';
 import { auth, db, rtdb } from '@/lib/firebase';
@@ -12,10 +12,10 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { collection, onSnapshot, addDoc, deleteDoc, doc, updateDoc, query, where } from 'firebase/firestore';
 import { ref, onValue } from 'firebase/database';
-import { StreamProvider, useStream } from '@/context/StreamContext';
+import { StreamProvider, useStream } from '@/features/streaming/context/StreamContext';
 import dynamic from 'next/dynamic';
 
-const LiveMap = dynamic(() => import('@/components/ui/LiveMap'), { ssr: false });
+const LiveMap = dynamic(() => import('@/features/tracking/components/LiveMap'), { ssr: false });
 
 // ─── Bus monitor array ────────────────────────────────────────────────────────
 // Derives bus-monitor entries from Firestore buses + RTDB locations.

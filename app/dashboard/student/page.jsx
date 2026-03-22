@@ -4,7 +4,7 @@ import dynamic from 'next/dynamic';
 import Card from '@/components/ui/Card';
 import Badge from '@/components/ui/Badge';
 
-const LiveMap = dynamic(() => import('@/components/ui/LiveMap'), { ssr: false });
+const LiveMap = dynamic(() => import('@/features/tracking/components/LiveMap'), { ssr: false });
 import AnimatedCounter from '@/components/ui/AnimatedCounter';
 import { Phone, Clock, MapPin } from 'lucide-react';
 import Button from '@/components/ui/Button';

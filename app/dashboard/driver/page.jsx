@@ -2,16 +2,16 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
-import RouteMap from '@/components/driver/RouteMap';
-import StudentList from '@/components/driver/StudentList';
+import RouteMap from '@/features/driver/components/RouteMap';
+import StudentList from '@/features/driver/components/StudentList';
 import Button from '@/components/ui/Button';
-import StreamPlayer from '@/components/ui/StreamPlayer';
+import StreamPlayer from '@/features/streaming/components/StreamPlayer';
 import { TriangleAlert, Phone, Radio, LogOut, Video } from 'lucide-react';
 import { db, auth } from '@/lib/firebase';
 import { collection, addDoc, serverTimestamp, doc, getDoc } from 'firebase/firestore';
 import { signOut, onAuthStateChanged } from 'firebase/auth';
-import { useTrip } from '@/context/TripContext';
-import { StreamProvider, useStream } from '@/context/StreamContext';
+import { useTrip } from '@/features/tracking/context/TripContext';
+import { StreamProvider, useStream } from '@/features/streaming/context/StreamContext';
 import Link from 'next/link';
 
 export default function DriverDashboard() {

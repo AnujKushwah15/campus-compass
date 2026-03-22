@@ -1,6 +1,6 @@
 "use client";
 
-import AttendanceView from '@/components/AttendanceView';
+import AttendanceView from '@/features/attendance/components/AttendanceView';
 
 export default function StudentAttendancePage() {
     // Mock data for student

@@ -2,7 +2,7 @@
 
 import Navbar from '@/components/Navbar';
 import { usePathname, useRouter } from 'next/navigation';
-import { useAuth } from '@/components/AuthProvider';
+import { useAuth } from '@/features/auth/components/AuthProvider';
 import { useEffect } from 'react';
 import { Loader2 } from 'lucide-react';
 
