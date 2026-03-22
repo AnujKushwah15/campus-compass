@@ -236,7 +236,7 @@ export default function DriverDashboard() {
                                     <Button
                                         onClick={handleSOS}
                                         disabled={sendingSOS || sosActive}
-                                        className={`flex-1 sm:flex-none font-bold transition-all text-white border-0 ${sosActive
+                                        className={`flex-1 sm:flex-none font-bold transition-all text-white ${sosActive
                                             ? 'bg-red-600 animate-pulse shadow-lg shadow-red-500/50 cursor-not-allowed'
                                             : sendingSOS
                                                 ? 'bg-red-400 cursor-wait'
