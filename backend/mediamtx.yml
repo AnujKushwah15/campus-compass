@@ -32,7 +32,7 @@ authHTTPExclude:
 authInternalUsers:
   # Pi publisher credentials (one per bus — add more as needed)
   - user: pi
-    pass: StrongPublishPass123
+    pass: $MEDIAMTX_PUBLISH_PASS
     permissions:
       - action: publish
         path: live

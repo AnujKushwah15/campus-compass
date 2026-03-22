@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import { auth, db } from '@/lib/firebase';
 import { collection, query, where, getDocs, orderBy, limit } from 'firebase/firestore';
 import { onAuthStateChanged } from 'firebase/auth';
-import AttendanceView from '@/components/AttendanceView';
+import AttendanceView from '@/features/attendance/components/AttendanceView';
 
 export default function ParentAttendancePage() {
     const [attendanceData, setAttendanceData] = useState(null);

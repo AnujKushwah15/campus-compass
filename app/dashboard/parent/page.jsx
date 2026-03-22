@@ -12,10 +12,10 @@ import { auth, db, rtdb } from '@/lib/firebase';
 import { doc, onSnapshot, collection, query, where, getDocs, limit } from 'firebase/firestore';
 import { onAuthStateChanged, signOut } from 'firebase/auth';
 import { ref, onValue } from 'firebase/database';
-import { StreamProvider, useStream } from '@/context/StreamContext';
-import StreamPlayer from '@/components/ui/StreamPlayer';
+import { StreamProvider, useStream } from '@/features/streaming/context/StreamContext';
+import StreamPlayer from '@/features/streaming/components/StreamPlayer';
 
-const LiveMap = dynamic(() => import('@/components/ui/LiveMap'), { ssr: false });
+const LiveMap = dynamic(() => import('@/features/tracking/components/LiveMap'), { ssr: false });
 
 export default function ParentDashboard() {
     const router = useRouter();

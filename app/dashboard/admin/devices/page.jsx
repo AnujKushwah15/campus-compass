@@ -2,7 +2,7 @@
 
 import { ArrowLeft, Activity } from 'lucide-react';
 import Link from 'next/link';
-import AdminDashboard from '@/components/admin/AdminDashboard';
+import AdminDashboard from '@/features/admin/components/AdminDashboard';
 
 export default function AdminDevicesPage() {
     return (
