@@ -221,7 +221,7 @@ const CORS_ORIGINS = (process.env.CORS_ORIGINS || 'http://localhost:3000')
 app.use(express.json());
 
 // Health check
-app.get('/health', (req, res) => {
+app.get('/api/health', (req, res) => {
     res.json({ status: 'ok', service: 'campus-compass-backend', uptime: process.uptime() });
 });
 
