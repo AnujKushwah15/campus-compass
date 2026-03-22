@@ -26,7 +26,7 @@ export default function LandingPage() {
     <div className="min-h-screen bg-background font-sans text-foreground selection:bg-primary/30">
 
       {/* Navigation */}
-      <nav className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${isScrolled ? 'bg-background/80 backdrop-blur-md shadow-sm py-3' : 'bg-transparent py-5'}`}>
+      <nav className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 isolate ${isScrolled ? 'bg-background/80 backdrop-blur-md shadow-sm py-3' : 'bg-transparent py-5'}`}>
         <div className="w-full px-4 sm:px-8 lg:px-12 xl:px-16 flex items-center justify-between relative">
           {/* Left */}
           <div className="flex-shrink-0 z-10">
@@ -92,7 +92,7 @@ export default function LandingPage() {
       </nav>
 
       {/* Hero Section */}
-      <section id="home" className="relative pt-32 pb-20 lg:pt-48 lg:pb-32 overflow-hidden">
+      <section id="home" className="relative pt-32 pb-20 lg:pt-48 lg:pb-32">
         {/* Background Pattern */}
         <div className="absolute inset-0 z-0 opacity-40 pointer-events-none">
           <BackgroundAnimation />

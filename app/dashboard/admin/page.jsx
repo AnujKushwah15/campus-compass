@@ -5,12 +5,13 @@ import BusManagement from '@/features/admin/components/BusManagement';
 import StreamPlayer from '@/features/streaming/components/StreamPlayer';
 import SettingsModal from '@/features/admin/components/SettingsModal';
 import CameraSelector from '@/features/admin/components/CameraSelector';
-import { LogOut, ShieldCheck, Settings, Search, Bell, Activity, ChevronDown, Bus, MapPin } from 'lucide-react';
+import { ShieldCheck, Settings, Search, Bell, Activity, ChevronDown, Bus, MapPin, User } from 'lucide-react';
 import { signOut } from 'firebase/auth';
 import { auth, db, rtdb } from '@/lib/firebase';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { collection, onSnapshot, addDoc, deleteDoc, doc, updateDoc, query, where } from 'firebase/firestore';
+import Logo from '@/components/Logo';
 import { ref, onValue } from 'firebase/database';
 import { StreamProvider, useStream } from '@/features/streaming/context/StreamContext';
 import dynamic from 'next/dynamic';
@@ -167,35 +168,52 @@ export default function AdminDashboardPage() {
         catch (e) { console.error(e); }
     };
 
-    const handleLogout = async () => {
-        await signOut(auth);
-        router.push('/auth');
-    };
+    // Logout relies on ProfileView now
+
 
     return (
         <div className="font-sans text-foreground min-h-screen bg-background px-4 sm:px-8 lg:px-12 xl:px-16 py-6">
+            {/* Top Bar: Branding + Standalone Actions */}
+            <div className="flex items-center justify-between gap-8 mb-6">
+                <Link href="/dashboard/admin" className="hover:opacity-80 transition-opacity flex-shrink-0">
+                    <Logo />
+                </Link>
+                <div className="flex items-center gap-2 flex-shrink-0">
+                    <button
+                        onClick={() => setIsSettingsOpen(true)}
+                        className="flex items-center gap-2 px-4 py-2 bg-cc-purple-500/10 text-cc-purple-600 hover:bg-cc-purple-500 hover:text-white rounded-lg transition-all font-semibold border border-cc-purple-500/20 hover:border-cc-purple-500 whitespace-nowrap"
+                        title="Configure Cameras"
+                    >
+                        <Settings size={18} />
+                        Settings
+                    </button>
+                    <button
+                        onClick={() => router.push('/dashboard/admin/profile')}
+                        className="flex items-center gap-2 px-4 py-2 bg-cc-purple-500/10 text-cc-purple-600 hover:bg-cc-purple-500 hover:text-white rounded-lg transition-all font-semibold border border-cc-purple-500/20 hover:border-cc-purple-500 whitespace-nowrap"
+                    >
+                        <User size={18} />
+                        Profile
+                    </button>
+                </div>
+            </div>
+
             {/* Header */}
-            <header className="flex flex-col md:flex-row items-center justify-between gap-6 md:gap-0 mb-8 pb-6 border-b border-border w-full relative">
-                {/* Left */}
-                <div className="flex-shrink-0 z-10 w-full md:w-auto">
-                    <div className="flex items-center gap-4">
-                        <div className="w-12 h-12 bg-gradient-to-br from-cc-purple-600 to-cc-red-600 rounded-xl flex items-center justify-center text-white shadow-lg">
-                            <ShieldCheck size={28} />
-                        </div>
-                        <div>
-                            <h1 className="text-3xl font-bold text-foreground tracking-tight">
-                                Admin Control <span className="text-cc-purple-500">Center</span>
-                            </h1>
-                            <p className="text-muted-foreground font-medium">System Overview &amp; Fleet Management</p>
-                        </div>
+            <header className="flex flex-col md:flex-row items-center justify-between gap-4 md:gap-0 mb-8 pb-6 border-b border-border w-full">
+                {/* Left: Admin Title */}
+                <div className="flex items-center gap-4 w-full md:w-auto">
+                    <div className="w-12 h-12 bg-gradient-to-br from-cc-purple-600 to-cc-red-600 rounded-xl flex items-center justify-center text-white shadow-lg">
+                        <ShieldCheck size={28} />
+                    </div>
+                    <div>
+                        <h1 className="text-3xl font-bold text-foreground tracking-tight">
+                            Admin Control <span className="text-cc-purple-500">Center</span>
+                        </h1>
+                        <p className="text-muted-foreground font-medium">System Overview &amp; Fleet Management</p>
                     </div>
                 </div>
 
-                {/* Center */}
-                <div className="hidden lg:flex absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 z-0"></div>
-
-                {/* Right */}
-                <div className="flex flex-wrap justify-center items-center gap-2 md:gap-4 flex-shrink-0 z-10 w-full md:w-auto">
+                {/* Right: Utility Badges */}
+                <div className="flex flex-wrap justify-center md:justify-end items-center gap-2">
                     <div className="bg-card px-4 py-2 rounded-lg border border-border flex items-center gap-2">
                         <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse"></div>
                         <span className="text-sm font-semibold">System Online</span>
@@ -208,20 +226,6 @@ export default function AdminDashboardPage() {
                         <Search size={16} className="text-muted-foreground group-hover:text-foreground transition-colors" />
                         <span className="text-sm font-semibold text-muted-foreground group-hover:text-foreground transition-colors">Query Data</span>
                     </Link>
-                    <button
-                        onClick={() => setIsSettingsOpen(true)}
-                        className="p-3 bg-secondary hover:bg-secondary/80 text-foreground rounded-lg transition-all border border-border"
-                        title="Configure Cameras"
-                    >
-                        <Settings size={20} />
-                    </button>
-                    <button
-                        onClick={handleLogout}
-                        className="flex items-center gap-2 px-4 py-2 bg-red-500/10 text-red-500 hover:bg-red-500 hover:text-white rounded-lg transition-all font-semibold"
-                    >
-                        <LogOut size={18} />
-                        Logout
-                    </button>
                 </div>
             </header>
 

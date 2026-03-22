@@ -6,13 +6,14 @@ import RouteMap from '@/features/driver/components/RouteMap';
 import StudentList from '@/features/driver/components/StudentList';
 import Button from '@/components/ui/Button';
 import StreamPlayer from '@/features/streaming/components/StreamPlayer';
-import { TriangleAlert, Phone, Radio, LogOut, Video } from 'lucide-react';
+import { TriangleAlert, Phone, Radio, LogOut, Video, User } from 'lucide-react';
 import { db, auth } from '@/lib/firebase';
 import { collection, addDoc, serverTimestamp, doc, getDoc } from 'firebase/firestore';
 import { signOut, onAuthStateChanged } from 'firebase/auth';
 import { useTrip } from '@/features/tracking/context/TripContext';
 import { StreamProvider, useStream } from '@/features/streaming/context/StreamContext';
 import Link from 'next/link';
+import Logo from '@/components/Logo';
 
 export default function DriverDashboard() {
     const router = useRouter();
@@ -165,16 +166,9 @@ export default function DriverDashboard() {
         }
     };
 
-    const handleLogout = async () => {
-        if (window.confirm("Are you sure you want to log out?")) {
-            try {
-                await signOut(auth);
-                router.push('/auth');
-            } catch (error) {
-                console.error("Logout Error:", error);
-                alert("Failed to log out. Please try again.");
-            }
-        }
+    // Profile button handler takes them to their standalone profile page
+    const handleProfile = () => {
+        router.push('/dashboard/driver/profile');
     };
 
     if (!currentTrip && !isTripping) {
@@ -182,7 +176,7 @@ export default function DriverDashboard() {
             <StreamProvider busId={driverProfile.assignedBusId}>
                 <DriverSplashScreen
                     onStartTrip={handleStartTrip}
-                    onLogout={handleLogout}
+                    onProfile={handleProfile}
                     driverName={driverProfile.displayName}
                     busNumber={driverProfile.busNumber}
                 />
@@ -197,6 +191,20 @@ export default function DriverDashboard() {
             <div className="pb-20 md:pb-0 min-h-screen bg-background pt-6">
 
                 <main className="space-y-6 px-4 md:px-6">
+                    {/* Standalone Header / Profile */}
+                    <div className="flex items-center justify-between">
+                        <Link href="/dashboard/driver" className="hover:opacity-80 transition-opacity">
+                            <Logo />
+                        </Link>
+                        <button
+                            onClick={handleProfile}
+                            className="flex items-center gap-2 px-4 py-2 bg-cc-purple-500/10 text-cc-purple-600 hover:bg-cc-purple-500 hover:text-white rounded-xl transition-all font-semibold shadow-sm"
+                        >
+                            <User size={18} />
+                            Profile
+                        </button>
+                    </div>
+
                     {/* Quick Actions / Status */}
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                         {/* Next Stop Card */}
@@ -338,7 +346,7 @@ function DriverCameraFeed({ busId }) {
 /**
  * DriverSplashScreen — Shows Pi/camera health before trip start.
  */
-function DriverSplashScreen({ onStartTrip, onLogout }) {
+function DriverSplashScreen({ onStartTrip, onProfile }) {
     const { isPiOnline, isGpsFix, isImuOk, isLive } = useStream();
 
     return (
@@ -391,11 +399,11 @@ function DriverSplashScreen({ onStartTrip, onLogout }) {
 
                     <div className="flex justify-center mt-4">
                         <Button
-                            onClick={onLogout}
+                            onClick={onProfile}
                             variant="outline"
                             className="w-full border-2 border-slate-700 hover:bg-slate-800 text-slate-300 hover:text-white flex items-center justify-center gap-2 font-semibold"
                         >
-                            <LogOut size={16} /> Logout
+                            <User size={16} /> User Profile
                         </Button>
                     </div>
 

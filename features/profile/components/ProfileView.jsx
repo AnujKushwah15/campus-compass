@@ -2,7 +2,7 @@
 
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
-import { User, Phone, Bus, CreditCard, Lock, ShieldCheck, X, LogOut, AlertTriangle, Camera, Loader2, Save, RotateCw, ZoomIn, ZoomOut } from 'lucide-react';
+import { User, Phone, Bus, CreditCard, Lock, ShieldCheck, X, LogOut, AlertTriangle, Camera, Loader2, Save, RotateCw, ZoomIn, ZoomOut, ArrowLeft } from 'lucide-react';
 import { auth, storage, db } from '@/lib/firebase';
 import { updateProfile, signOut } from 'firebase/auth';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
@@ -285,9 +285,21 @@ export default function ProfileView({ role = "Student" }) {
             <div className="max-w-2xl mx-auto space-y-6">
 
                 {/* Header */}
-                <div className="text-center sm:text-left space-y-1">
-                    <h1 className="text-3xl font-bold text-cc-purple-500">My Account</h1>
-                    <p className="text-muted-foreground">Manage your personal details</p>
+                <div className="flex flex-col sm:flex-row items-center sm:items-start sm:gap-4 text-center sm:text-left space-y-2 sm:space-y-0 relative">
+                    {(role === 'Admin' || role === 'Driver') && (
+                        <button
+                            onClick={() => router.push(`/dashboard/${role.toLowerCase()}`)}
+                            className="absolute left-0 top-1 p-2 -ml-3 sm:-ml-12 text-muted-foreground hover:text-foreground hover:bg-slate-200 dark:hover:bg-slate-800 rounded-full transition-colors"
+                            aria-label="Back to dashboard"
+                            title="Back to Dashboard"
+                        >
+                            <ArrowLeft size={24} />
+                        </button>
+                    )}
+                    <div className="space-y-1 w-full">
+                        <h1 className="text-3xl font-bold text-cc-purple-500">My Account</h1>
+                        <p className="text-muted-foreground">Manage your personal details</p>
+                    </div>
                 </div>
 
                 {/* Profile Card */}
@@ -349,7 +361,7 @@ export default function ProfileView({ role = "Student" }) {
                         </button>
                         <button
                             onClick={() => setLogoutModalOpen(true)}
-                            className="flex items-center gap-2 px-6 py-2.5 bg-red-100 hover:bg-red-200 text-red-600 rounded-xl font-medium shadow-sm hover:shadow-[0_0_20px_rgba(239,68,68,0.4)] transition-all active:scale-95"
+                            className="flex items-center gap-2 px-6 py-2.5 bg-red-100 hover:bg-red-200 text-red-600 rounded-xl font-medium shadow-sm hover:shadow-[0_0_20px_rgba(239,68,68,0.4)] transition-all active:scale-95 whitespace-nowrap"
                         >
                             <LogOut size={18} />
                             Log Out

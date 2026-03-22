@@ -67,9 +67,9 @@ export default function AttendanceView({ data, title, studentName, titleClassNam
 
             {/* Calendar View */}
             <Card className="relative overflow-hidden !bg-slate-50 dark:!bg-card bg-[radial-gradient(#e5e7eb_1px,transparent_1px)] [background-size:16px_16px] dark:bg-[radial-gradient(rgba(255,255,255,0.05)_1px,transparent_1px)] opacity-0 animate-pop-in delay-500">
-                <div className="flex items-center justify-between mb-4">
+                <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 mb-4">
                     <h3 className="font-bold text-cc-purple-800 text-lg">Monthly Overview</h3>
-                    <div className="flex gap-4 text-sm">
+                    <div className="flex flex-wrap gap-x-4 gap-y-2 text-sm">
                         <div className="flex items-center gap-1.5">
                             <div className="w-3 h-3 rounded-sm bg-green-100 border border-green-300 dark:bg-green-900 dark:border-green-700"></div>
                             <span className="text-black dark:text-white">Present</span>
