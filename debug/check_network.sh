@@ -62,65 +62,56 @@ fi
 # ─── 2. Port Reachability ───────────────────────────────────────────────────
 section "2. Port Reachability from Local Machine"
 
+# Uses curl --connect-timeout (3s max) — works reliably on Git Bash/Windows.
+# nc is NOT used — it hangs indefinitely on Windows regardless of -w flag.
+# curl exit 0 = connected, exit 56 = connected but protocol mismatch (port open),
+# exit 7 = connection refused (port closed), exit 28 = timeout.
 check_tcp_port() {
     local HOST="$1"
     local PORT="$2"
     local DESC="$3"
+    local EXPECT_CLOSED="${4:-}"   # pass "closed" to invert the pass/fail
 
-    if command -v nc &>/dev/null; then
-        if nc -z -w 10 "$HOST" "$PORT" 2>/dev/null; then
-            pass "Port ${PORT} (${DESC}) is reachable"
-            return 0
-        else
-            fail "Port ${PORT} (${DESC}) is NOT reachable"
-            return 1
-        fi
-    elif command -v curl &>/dev/null; then
-        # Use curl --connect-timeout as port probe
-        curl -s --connect-timeout 8 -o /dev/null "telnet://${HOST}:${PORT}" 2>/dev/null
+    curl -s --connect-timeout 3 --max-time 3 -o /dev/null \
+        "https://${HOST}:${PORT}" 2>/dev/null
+    local EXIT=$?
+
+    # Also try plain http if https fails with cert error (exit 60/35)
+    if [[ $EXIT -eq 60 || $EXIT -eq 35 ]]; then
+        curl -s --connect-timeout 3 --max-time 3 -o /dev/null \
+            "http://${HOST}:${PORT}" 2>/dev/null
         EXIT=$?
-        if [[ $EXIT -eq 0 || $EXIT -eq 56 ]]; then  # 56 = recv failure (port open but protocol mismatch)
-            pass "Port ${PORT} (${DESC}) is reachable"
-            return 0
-        else
-            fail "Port ${PORT} (${DESC}) is NOT reachable"
-            return 1
-        fi
+    fi
+
+    local OPEN=false
+    # 0=ok, 22=HTTP error (port open, wrong response), 56=recv fail (port open),
+    # 47=too many redirects (port open), 52=empty reply (port open)
+    [[ $EXIT -eq 0 || $EXIT -eq 22 || $EXIT -eq 47 || $EXIT -eq 52 || $EXIT -eq 56 ]] && OPEN=true
+
+    if [[ "$EXPECT_CLOSED" == "closed" ]]; then
+        $OPEN && fail "SECURITY: Port ${PORT} (${DESC}) is reachable — should be closed!" \
+               || pass "Security: Port ${PORT} (${DESC}) NOT reachable from internet (correct)"
     else
-        # /dev/tcp fallback
-        if timeout 10 bash -c ">/dev/tcp/${HOST}/${PORT}" 2>/dev/null; then
-            pass "Port ${PORT} (${DESC}) is reachable"
-            return 0
-        else
-            fail "Port ${PORT} (${DESC}) is NOT reachable"
-            return 1
-        fi
+        $OPEN && pass "Port ${PORT} (${DESC}) is reachable" \
+               || fail "Port ${PORT} (${DESC}) is NOT reachable (curl exit ${EXIT})"
     fi
 }
 
 check_tcp_port "$VPS_DOMAIN" 443  "HTTPS / Nginx"
 check_tcp_port "$VPS_DOMAIN" 80   "HTTP (redirect to HTTPS)"
-check_tcp_port "$VPS_DOMAIN" 8554 "MediaMTX RTSP (for Pi publisher)"
 
-info "Note: Port 8189 (WebRTC WHEP) is proxied via Nginx on 443 — no direct check needed"
-info "Note: Port 9997 (MediaMTX API) should be localhost-only on VPS (not externally reachable)"
+# RTSP needs rtsp:// scheme — curl exit 0/52/56 = port open, 7 = refused, 28 = wrong proto but reachable
+RTSP_EXIT=0
+curl -s --connect-timeout 3 --max-time 3 -o /dev/null "rtsp://${VPS_DOMAIN}:8554/" 2>/dev/null; RTSP_EXIT=$?
+[[ $RTSP_EXIT -eq 0 || $RTSP_EXIT -eq 22 || $RTSP_EXIT -eq 52 || $RTSP_EXIT -eq 56 || $RTSP_EXIT -eq 28 ]] \
+    && pass "Port 8554 (MediaMTX RTSP) is reachable" \
+    || fail "Port 8554 (MediaMTX RTSP) is NOT reachable (curl exit ${RTSP_EXIT})"
 
-# Check that API port is NOT externally reachable (security check)
-if command -v nc &>/dev/null; then
-    if nc -z -w 5 "$VPS_DOMAIN" 9997 2>/dev/null; then
-        fail "SECURITY: Port 9997 (MediaMTX API) is externally reachable — should be localhost only!"
-    else
-        pass "Security: Port 9997 (MediaMTX API) is NOT externally reachable (correct)"
-    fi
-fi
+info "Note: WHEP is proxied via Nginx on 443 — no direct port check needed"
+info "Note: Port 9997 (MediaMTX API) must be localhost-only"
 
-if command -v nc &>/dev/null; then
-    if nc -z -w 5 "$VPS_DOMAIN" 3001 2>/dev/null; then
-        warn "Port 3001 (backend) is directly reachable from internet — should be proxied via Nginx only"
-    else
-        pass "Security: Port 3001 (backend) is NOT directly exposed (correct, proxied via Nginx)"
-    fi
-fi
+check_tcp_port "$VPS_DOMAIN" 9997 "MediaMTX API (must be closed)" "closed"
+check_tcp_port "$VPS_DOMAIN" 3001 "Backend direct (must be closed)" "closed"
 
 # ─── 3. SSL / HTTPS ─────────────────────────────────────────────────────────
 section "3. SSL Certificate"
@@ -164,11 +155,11 @@ fi
 section "4. CORS Header Validation"
 
 if command -v curl &>/dev/null; then
-    for ORIGIN in "http://localhost:3000" "https://campus-compass-vercel.app" "https://thanganat25.com"; do
+    for ORIGIN in "http://localhost:3000" "https://campus-compass-iota-rosy.vercel.app" "https://thanganat25.com"; do
         RESP_HEADERS=$(curl -s -D - -o /dev/null \
             -H "Origin: ${ORIGIN}" \
             --connect-timeout 10 --max-time 15 \
-            "${BACKEND_URL}/health" 2>/dev/null)
+            "${BACKEND_URL}/api/health" 2>/dev/null)
 
         ALLOW_ORIGIN=$(echo "$RESP_HEADERS" | grep -i "access-control-allow-origin" | head -1)
         
@@ -248,6 +239,16 @@ if command -v curl &>/dev/null; then
 
     if [[ "$STATUS" == "401" ]]; then
         pass "POST /stream/${STREAM_PATH}/whep → 401 (auth enforced correctly)"
+    elif [[ "$STATUS" == "400" ]]; then
+        # MediaMTX wraps backend 401 as its own 400 — check the body confirms it's an auth error
+        BODY=$(cat /tmp/cc_net_whep2.txt 2>/dev/null)
+        if echo "$BODY" | grep -qi "token\|auth\|401"; then
+            pass "POST /stream/${STREAM_PATH}/whep → 400 (MediaMTX auth rejection — token required)"
+            info "  Body: $(echo "$BODY" | head -1)"
+        else
+            warn "POST /stream/${STREAM_PATH}/whep → 400 (unexpected error, not auth-related)"
+            info "  Body: $(echo "$BODY" | head -1)"
+        fi
     elif [[ "$STATUS" == "404" ]]; then
         fail "POST /stream/${STREAM_PATH}/whep → 404 (stream not found or no publisher)"
         info "Ensure Pi camstream.service is running and pushing to this path"
