@@ -222,6 +222,7 @@ app.use(express.json());
 
 // Health check
 app.get('/api/health', (req, res) => {
+    res.set('Connection', 'keep-alive');
     res.json({ status: 'ok', service: 'campus-compass-backend', uptime: process.uptime() });
 });
 

@@ -1,0 +1,38 @@
+============================================================
+ PHASE 9 — SECURITY TESTS  2026-03-22T15:15:08.144Z
+============================================================
+
+── 1. Unauthenticated Stream Access
+  ✓ [SECURE]   Direct stream access gated → 405 (POST-only endpoint, not open)
+
+── 2. Path Traversal Attacks
+  ✓ [SECURE]   Path traversal "../../etc/passwd" → 401
+  ✓ [SECURE]   Path traversal "../admin" → 401
+  ✓ [SECURE]   Path traversal "live_bus-1/../../../etc" → 401
+  ✓ [SECURE]   Path traversal "%2e%2e%2fetc" → 401
+
+── 3. JWT "alg:none" Attack + /stream-auth Exposure Check
+  ✓ [SECURE]   /stream-auth not publicly exposed via nginx (404 — internal-only, secure)
+
+── 4. Expired Token Replay + /stream-auth Internal Verification
+  ✓ [SECURE]   /stream-auth not publicly exposed (404 — internal only, correct)
+
+── 5. MediaMTX API Port 9997 — Must NOT Be Internet-Exposed
+  ✓ [SECURE]   Port 9997 unreachable from internet (TIMEOUT — correct)
+
+── 6. Backend Port 3001 — Direct Access (should be proxied via Nginx)
+  ✓ [SECURE]   Port 3001 not directly reachable from internet (Nginx proxying correctly)
+
+── 7. Injection Attempts in Query Params
+  ✓ [SECURE]   Injection "' OR '1'='1" → 401 (rejected)
+  ✓ [SECURE]   Injection "{"$gt":""}" → 401 (rejected)
+  ✓ [SECURE]   Injection "<script>alert(1)</sc" → 401 (rejected)
+
+── 8. HTTP Security Headers
+  ✓ [SECURE]   X-Frame-Options or CSP (clickjacking)
+  ✓ [SECURE]   X-Content-Type-Options
+
+============================================================
+ SECURITY TEST SUMMARY
+   SECURE: 14   VULNERABILITIES: 0
+============================================================

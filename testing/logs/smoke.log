@@ -1,0 +1,29 @@
+============================================================
+ PHASE 3 — SMOKE TEST  2026-03-22T15:10:47.062Z
+============================================================
+
+── 1. Frontend (Vercel)
+  ✓ Frontend loads (200)
+  ✓ HTML body returned
+
+── 2. VPS Backend (/api/health)
+  ✓ /api/health → HTTP 200
+  ✓ health body: status=ok
+
+── 3. Stream Token Endpoint — Unauthenticated (expect 401)
+  ✓ Unauthenticated request → 401 (correct)
+
+── 4. MediaMTX WHEP — No Token (expect 401/403)
+  ✗ Stream should be gated  →  Got HTTP 405 — stream may be OPEN
+
+── 5. SSL / HTTPS
+  ✓ HTTPS handshake succeeded (SSL valid)
+
+── 6. Next.js /api/stream-token proxy (Vercel)
+  ✓ Next.js proxy /api/stream-token → 401 (auth required — correct)
+
+============================================================
+ SMOKE TEST SUMMARY
+   PASS : 7
+   FAIL : 1
+============================================================

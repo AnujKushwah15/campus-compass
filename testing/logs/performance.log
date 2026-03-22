@@ -1,0 +1,42 @@
+============================================================
+ PHASE 7 — PERFORMANCE / LOAD TEST  2026-03-22T15:15:25.340Z
+============================================================
+
+── Endpoint: /api/health
+  Testing 5 concurrent requests...
+  [c=5] avg=800ms  min=659ms  max=895ms  failures=0 (0.0%)
+  Testing 10 concurrent requests...
+  [c=10] avg=504ms  min=263ms  max=828ms  failures=0 (0.0%)
+  Testing 20 concurrent requests...
+  [c=20] avg=449ms  min=263ms  max=766ms  failures=0 (0.0%)
+
+── Endpoint: /api/stream-token (no auth)
+  Testing 5 concurrent requests...
+  [c=5] avg=159ms  min=157ms  max=163ms  failures=0 (0.0%)
+  Testing 10 concurrent requests...
+  [c=10] avg=197ms  min=189ms  max=210ms  failures=0 (0.0%)
+  Testing 20 concurrent requests...
+  [c=20] avg=212ms  min=158ms  max=456ms  failures=0 (0.0%)
+
+── Endpoint: Vercel frontend
+  Testing 5 concurrent requests...
+  [c=5] avg=439ms  min=397ms  max=470ms  failures=0 (0.0%)
+  Testing 10 concurrent requests...
+  [c=10] avg=299ms  min=82ms  max=514ms  failures=0 (0.0%)
+  Testing 20 concurrent requests...
+  [c=20] avg=379ms  min=88ms  max=659ms  failures=0 (0.0%)
+
+============================================================
+ PERFORMANCE SUMMARY
+============================================================
+ Endpoint                               c     avg     max   fail%
+ ----------------------------------------------------------
+ ✓ /api/health                          5   800ms   895ms    0.0%
+ ✓ /api/health                         10   504ms   828ms    0.0%
+ ✓ /api/health                         20   449ms   766ms    0.0%
+ ✓ /api/stream-token (no auth)          5   159ms   163ms    0.0%
+ ✓ /api/stream-token (no auth)         10   197ms   210ms    0.0%
+ ✓ /api/stream-token (no auth)         20   212ms   456ms    0.0%
+ ✓ Vercel frontend                      5   439ms   470ms    0.0%
+ ✓ Vercel frontend                     10   299ms   514ms    0.0%
+ ✓ Vercel frontend                     20   379ms   659ms    0.0%
