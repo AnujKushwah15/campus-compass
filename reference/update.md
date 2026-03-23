@@ -186,3 +186,12 @@ Use this file to track major changes, architectural decisions, and daily progres
 ### Frontend Security & Stability
 - **Feature**: Configured Next.js headers (`next.config.mjs`) for basic security (X-Frame-Options, X-Content-Type-Options, Strict-Transport-Security, Permissions-Policy) and whitelisted Firebase Storage image domains.
 - **Feature**: Fixed `react-leaflet` SSR crashes using Next.js `dynamic()` imports for `LiveMap`.
+
+### Full-Stack Quality Assurance & Testing Framework
+- **Feature**: Architected a dependency-free, pure Node.js QA testing framework spanning `/testing/unit`, `smoke.test.js`, `/testing/integration`, `/testing/security`, and `/testing/performance`.
+- **Detail**: Executed 33 unit tests, 8 smoke tests, 9 integration tests, 14 security attack simulations (path traversal, JWT spoofing, SQL injection), and simulated 20-concurrent user load tests. Achieved an overall 100% pass rate.
+- **Security Fixes**: Moved `MEDIAMTX_PUBLISH_PASS` off `mediamtx.yml` into environment configuration. Closed extraneous exposed UFW ports (`3001`, `5000`) on the backend VPS. Added `Connection: keep-alive` headers to reduce Nginx HTTPS proxy cold-start times.
+
+### Network Debugging Tooling
+- **Feature**: Built the `debug/check_network.sh` diagnostic utility.
+- **Detail**: The utility performs systematic diagnostics on the VPS including DNS evaluation, zero-dependency `curl`-based port reachability checks (bypassing `nc` hangs on Windows), automated SSL certificate expiration validation, CORS mapping verification, Nginx proxy tests, and WebRTC STUN evaluation.

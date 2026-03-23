@@ -101,7 +101,7 @@ export default function ParentDashboard() {
     useEffect(() => {
         if (!studentLink?.busId) return;
 
-        const busLocRef = ref(rtdb, `buses/${studentLink.busId}/location`);
+        const busLocRef = ref(rtdb, `buses/${studentLink.busId}/sources/phone`);
         const unsubscribe = onValue(busLocRef, (snapshot) => {
             const data = snapshot.val();
             if (data) setLiveLocation(data);
@@ -208,19 +208,7 @@ export default function ParentDashboard() {
                         <LiveMap busLocation={liveLocation || tripData?.location} />
                     </div>
 
-                    {/* Friendly Status Message */}
-                    <div className={`p-4 border rounded-xl ${status === 'present' ? 'bg-green-500/10 border-green-500/30' : 'bg-secondary/10 border-secondary/30'}`}>
-                        <p className="text-foreground font-medium text-center">
-                            {status === 'present'
-                                ? `"${studentLink?.name} is safely onboard."`
-                                : status === 'absent'
-                                    ? `"${studentLink?.name} has been marked ABSENT."`
-                                    : tripData
-                                        ? `"Bus is moving. Waiting for ${studentLink?.name} to board."`
-                                        : `"No active trip at the moment."`
-                            }
-                        </p>
-                    </div>
+
                 </div>
 
                 {/* Info Panel */}

@@ -21,6 +21,7 @@ export default function DriverDashboard() {
     const [sosActive, setSosActive] = useState(false);
     const [sendingSOS, setSendingSOS] = useState(false);
     const [isTripping, setIsTripping] = useState(false);
+    const [locationError, setLocationError] = useState('');
 
     // ── Driver profile from Firestore ──────────────────────────────────────────
     const [driverProfile, setDriverProfile] = useState({
@@ -75,6 +76,7 @@ export default function DriverDashboard() {
                 if (currentTrip?.status === 'active' || isTripping) {
                     updateLocation(latitude, longitude, speed);
                 }
+                setLocationError(''); // clear any previous errors on success
             },
             (error) => {
                 console.error("Location Error Details:", {
@@ -100,26 +102,46 @@ export default function DriverDashboard() {
                     errorMsg += " (WARNING: Geolocation requires HTTPS or localhost)";
                 }
 
-                alert(errorMsg);
+                console.warn(errorMsg);
+                setLocationError(errorMsg);
+                // Instead of blocking alert, just output to console so app doesn't hang.
             },
             {
                 enableHighAccuracy: true,
-                timeout: 5000,
-                maximumAge: 0
+                timeout: 10000,
+                maximumAge: 5000
             }
         );
 
         return () => {
             navigator.geolocation.clearWatch(watchId);
         };
-    }, [currentTrip, isTripping, updateLocation]);
+    }, [currentTrip?.status, isTripping, updateLocation]);
 
 
     const handleStartTrip = async () => {
         if (!navigator.geolocation) {
-            alert('Geolocation is not supported by your browser');
-            return;
+            setLocationError("Geolocation is not supported by your browser");
+        } else {
+            // Before starting the trip, explicitly request position to trigger prompt if needed
+            navigator.geolocation.getCurrentPosition(
+                () => setLocationError(''),
+                (error) => {
+                    let errorMsg = "Phone GPS Blocked: " + error.message;
+                    if (error.code === 1) { // PERMISSION_DENIED
+                        if (!window.isSecureContext) {
+                            errorMsg = "Phone GPS Blocked: You are using HTTP. Geolocation requires HTTPS or localhost.";
+                        } else {
+                            errorMsg = "Phone GPS Blocked: Denied by browser or OS. (If on Windows, check Settings -> Privacy -> Location and enable 'Allow apps to access your location').";
+                        }
+                    }
+                    setLocationError(errorMsg);
+                },
+                { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
+            );
         }
+
+        // Start the trip anyway! (The bus might have an Edge Pi device providing GPS)
         try {
             await startTrip(driverProfile.assignedBusId, 'route-1');
             setIsTripping(true);
@@ -179,6 +201,7 @@ export default function DriverDashboard() {
                     onProfile={handleProfile}
                     driverName={driverProfile.displayName}
                     busNumber={driverProfile.busNumber}
+                    locationError={locationError}
                 />
             </StreamProvider>
         );
@@ -192,28 +215,48 @@ export default function DriverDashboard() {
 
                 <main className="space-y-6 px-4 md:px-6">
                     {/* Standalone Header / Profile */}
-                    <div className="flex items-center justify-between">
-                        <Link href="/dashboard/driver" className="hover:opacity-80 transition-opacity">
-                            <Logo />
-                        </Link>
-                        <button
-                            onClick={handleProfile}
-                            className="flex items-center gap-2 px-4 py-2 bg-cc-purple-500/10 text-cc-purple-600 hover:bg-cc-purple-500 hover:text-white rounded-xl transition-all font-semibold shadow-sm"
-                        >
-                            <User size={18} />
-                            Profile
-                        </button>
+                    <div className="flex flex-col gap-4">
+                        {locationError && (
+                            <div className="bg-red-500/10 border border-red-500/30 text-red-600 p-3 rounded-xl text-sm font-semibold flex items-start gap-2 animate-in slide-in-from-top mt-4">
+                                <TriangleAlert size={18} className="shrink-0 mt-0.5" />
+                                <div>{locationError}</div>
+                            </div>
+                        )}
+                        <div className="flex items-center justify-between">
+                            <Link href="/dashboard/driver" className="hover:opacity-80 transition-opacity">
+                                <Logo />
+                            </Link>
+                            <div className="flex items-center gap-2">
+                                <button
+                                    onClick={handleProfile}
+                                    className="flex items-center gap-2 px-4 py-2 bg-cc-purple-500/10 text-cc-purple-600 hover:bg-cc-purple-500 hover:text-white rounded-xl transition-all font-semibold shadow-sm"
+                                >
+                                    <User size={18} />
+                                    Profile
+                                </button>
+                                <button
+                                    onClick={async () => {
+                                        await signOut(auth);
+                                        window.location.href = '/auth';
+                                    }}
+                                    className="flex items-center gap-2 px-4 py-2 bg-red-500/10 text-red-600 hover:bg-red-500 hover:text-white rounded-xl transition-all font-semibold shadow-sm"
+                                >
+                                    <LogOut size={18} />
+                                    Logout
+                                </button>
+                            </div>
+                        </div>
                     </div>
 
                     {/* Quick Actions / Status */}
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                        {/* Next Stop Card */}
+                        {/* Driver Profile Card */}
                         <div className="bg-gradient-to-br from-cc-purple-900 to-cc-purple-800 rounded-2xl p-6 text-white shadow-lg shadow-cc-purple-900/20 relative overflow-hidden group">
                             <div className="absolute top-0 right-0 w-32 h-32 bg-white/5 rounded-full -mr-16 -mt-16 blur-2xl group-hover:bg-white/10 transition-colors"></div>
-                            <h2 className="text-sm font-medium text-purple-200 uppercase tracking-widest mb-1">Next Stop</h2>
-                            <p className="text-3xl font-bold mb-4">City Center</p>
+                            <h2 className="text-xs font-bold text-purple-200 uppercase tracking-widest mb-1 opacity-80">Driver Profile</h2>
+                            <p className="text-2xl font-bold mb-4 truncate">{driverProfile.displayName}</p>
                             <div className="flex items-center text-sm font-bold bg-white/10 w-fit px-3 py-1.5 rounded-lg border border-white/10 backdrop-blur-sm">
-                                ETA: 5 Mins
+                                🚐 Assigned Bus: {driverProfile.busNumber}
                             </div>
                         </div>
 
@@ -346,7 +389,7 @@ function DriverCameraFeed({ busId }) {
 /**
  * DriverSplashScreen — Shows Pi/camera health before trip start.
  */
-function DriverSplashScreen({ onStartTrip, onProfile }) {
+function DriverSplashScreen({ onStartTrip, onProfile, locationError }) {
     const { isPiOnline, isGpsFix, isImuOk, isLive } = useStream();
 
     return (
@@ -360,6 +403,13 @@ function DriverSplashScreen({ onStartTrip, onProfile }) {
                         <h1 className="text-2xl font-bold text-card-foreground">Ready to Start?</h1>
                         <p className="text-muted-foreground mt-2">Start the trip to begin sharing your live location with parents and students.</p>
                     </div>
+
+                    {locationError && (
+                        <div className="bg-red-500/10 border border-red-500/30 text-red-600 p-3 rounded-lg text-sm text-left font-semibold flex items-start gap-2">
+                            <TriangleAlert size={16} className="shrink-0 mt-0.5" />
+                            <span>{locationError}</span>
+                        </div>
+                    )}
 
                     {/* Device Health Panel */}
                     <div className="bg-muted/50 rounded-xl p-4 space-y-3">
@@ -397,13 +447,23 @@ function DriverSplashScreen({ onStartTrip, onProfile }) {
                         </p>
                     )}
 
-                    <div className="flex justify-center mt-4">
+                    <div className="flex flex-col sm:flex-row justify-center mt-6 gap-3">
                         <Button
                             onClick={onProfile}
                             variant="outline"
-                            className="w-full border-2 border-slate-700 hover:bg-slate-800 text-slate-300 hover:text-white flex items-center justify-center gap-2 font-semibold"
+                            className="w-full sm:flex-1 border-2 border-slate-700 hover:bg-slate-800 text-slate-300 hover:text-white flex items-center justify-center gap-2 font-semibold"
                         >
                             <User size={16} /> User Profile
+                        </Button>
+                        <Button
+                            onClick={async () => {
+                                await signOut(auth);
+                                window.location.href = '/auth';
+                            }}
+                            variant="outline"
+                            className="w-full sm:flex-1 border-2 border-red-900/50 hover:bg-red-900/30 text-red-500 flex items-center justify-center gap-2 font-semibold"
+                        >
+                            <LogOut size={16} /> Logout
                         </Button>
                     </div>
 

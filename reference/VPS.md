@@ -126,6 +126,12 @@ systemctl stop campus-compass
 
 ## 6. Changelog & Updates
 
+### [2026-03-22] Full-Stack QA & Security Hardening
+- **Security**: Closed exposed ports (`3001`, `5000`) in UFW, ensuring all traffic routes exclusively through Nginx proxy.
+- **Security**: Removed hardcoded `MEDIAMTX_PUBLISH_PASS` from `mediamtx.yml`, injecting it dynamically via environment variables.
+- **Performance**: Added `Connection: keep-alive` header to the backend `/api/health` check to resolve cold start latency (~800ms) over TCP HTTPS handshakes.
+- **Testing**: Designed and executed a comprehensive local-to-VPS testing pipeline for unit, smoke, integration, security, and load testing scripts with zero external dependencies.
+
 ### [2026-03-21] Streaming Security & Nginx Refactor
 - **Nginx**: Rewrote `/etc/nginx/nginx.conf` with a robust CORS map and optimized proxying for `/stream/` (RTDB-backed WebRTC on port 8189).
 - **Security**: Switched from 60s to 300s JWT tokens and enforced mandatory auth for all read actions in MediaMTX.

@@ -4,7 +4,7 @@ import { useState, useRef, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { User, Phone, Bus, CreditCard, Lock, ShieldCheck, X, LogOut, AlertTriangle, Camera, Loader2, Save, RotateCw, ZoomIn, ZoomOut, ArrowLeft } from 'lucide-react';
 import { auth, storage, db } from '@/lib/firebase';
-import { updateProfile, signOut } from 'firebase/auth';
+import { updateProfile, signOut, EmailAuthProvider, reauthenticateWithCredential, updatePassword } from 'firebase/auth';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { doc, updateDoc } from 'firebase/firestore';
 import Cropper from 'react-easy-crop';
@@ -213,61 +213,64 @@ export default function ProfileView({ role = "Student" }) {
     }
 
 
-    // OTP Flow States
-    const [step, setStep] = useState('INIT'); // INIT, OTP_SENT, COMPLETED
-    const [otpInput, setOtpInput] = useState('');
+    // Authentic Password Change Flow
+    const [currentPassword, setCurrentPassword] = useState('');
     const [newPassword, setNewPassword] = useState('');
     const [isLoading, setIsLoading] = useState(false);
     const [error, setError] = useState('');
     const [success, setSuccess] = useState('');
+    const [isPasswordChanged, setIsPasswordChanged] = useState(false);
 
     const handleOpenModal = () => {
         setPasswordModalOpen(true);
-        setStep('INIT');
-        setOtpInput('');
+        setCurrentPassword('');
         setNewPassword('');
         setError('');
         setSuccess('');
+        setIsPasswordChanged(false);
     };
 
-    const handleSendOtp = () => {
-        setIsLoading(true);
-        setError('');
-
-        // Simulate API call
-        setTimeout(() => {
-            setIsLoading(false);
-            setStep('OTP_SENT');
-            // In a real app, this would be sent to the phone. 
-            // For demo, we just show the state change.
-        }, 1500);
-    };
-
-    const handleVerifyAndChange = () => {
-        if (otpInput === '' || newPassword === '') {
+    const handleChangePassword = async () => {
+        if (!currentPassword || !newPassword) {
             setError('Please fill in all fields');
             return;
         }
 
-        if (otpInput !== '1234') { // Mock OTP check
-            setError('Invalid OTP. Use 1234');
+        if (!auth.currentUser) {
+            setError('User not authenticated');
             return;
         }
 
         setIsLoading(true);
         setError('');
 
-        // Simulate Password Update
-        setTimeout(() => {
-            setIsLoading(false);
-            setStep('COMPLETED');
+        try {
+            // Re-authenticate user first
+            const credential = EmailAuthProvider.credential(auth.currentUser.email, currentPassword);
+            await reauthenticateWithCredential(auth.currentUser, credential);
+
+            // Update password
+            await updatePassword(auth.currentUser, newPassword);
+
+            setIsPasswordChanged(true);
             setSuccess('Password changed successfully!');
 
             // Close modal after delay
             setTimeout(() => {
                 setPasswordModalOpen(false);
             }, 2000);
-        }, 1500);
+        } catch (err) {
+            console.error("Password change error:", err);
+            if (err.code === 'auth/invalid-credential') {
+                setError('Incorrect current password.');
+            } else if (err.code === 'auth/weak-password') {
+                setError('New password should be at least 6 characters.');
+            } else {
+                setError(err.message.replace('Firebase:', '').trim());
+            }
+        } finally {
+            setIsLoading(false);
+        }
     };
 
     const handleLogout = async () => {
@@ -389,37 +392,22 @@ export default function ProfileView({ role = "Student" }) {
                             <p className="text-sm text-muted-foreground">Secure your account</p>
                         </div>
 
-                        {step === 'INIT' && (
-                            <div className="space-y-4">
-                                <p className="text-sm text-muted-foreground text-center">
-                                    We will send a One Time Password (OTP) to <span className="font-semibold text-foreground">{user.mobile}</span>
-                                </p>
-                                <button
-                                    onClick={handleSendOtp}
-                                    disabled={isLoading}
-                                    className="w-full py-3 bg-primary hover:bg-primary/90 text-primary-foreground rounded-xl font-semibold shadow-md transition-all flex justify-center items-center"
-                                >
-                                    {isLoading ? 'Sending...' : 'Send OTP'}
-                                </button>
+                        {isPasswordChanged ? (
+                            <div className="text-center py-4 space-y-2">
+                                <div className="text-green-500 font-bold text-lg">Success!</div>
+                                <p className="text-gray-600 text-sm">{success}</p>
                             </div>
-                        )}
-
-                        {step === 'OTP_SENT' && (
+                        ) : (
                             <div className="space-y-4">
-                                <div className="bg-yellow-50 border border-yellow-100 rounded-lg p-3 text-xs text-yellow-800 text-center">
-                                    OTP sent! (Use <b>1234</b> for demo)
-                                </div>
-
                                 <div className="space-y-3">
                                     <div>
-                                        <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1">Enter OTP</label>
+                                        <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1">Current Password</label>
                                         <input
-                                            type="text"
-                                            value={otpInput}
-                                            onChange={(e) => setOtpInput(e.target.value)}
-                                            placeholder="XXXX"
-                                            className="w-full p-3 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-cc-pista-500 transition-all font-mono text-center text-lg tracking-widest"
-                                            maxLength={4}
+                                            type="password"
+                                            value={currentPassword}
+                                            onChange={(e) => setCurrentPassword(e.target.value)}
+                                            placeholder="••••••••"
+                                            className="w-full p-3 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-cc-pista-500 transition-all font-mono"
                                         />
                                     </div>
                                     <div>
@@ -429,7 +417,7 @@ export default function ProfileView({ role = "Student" }) {
                                             value={newPassword}
                                             onChange={(e) => setNewPassword(e.target.value)}
                                             placeholder="••••••••"
-                                            className="w-full p-3 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-cc-pista-500 transition-all"
+                                            className="w-full p-3 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-cc-pista-500 transition-all font-mono"
                                         />
                                     </div>
                                 </div>
@@ -437,19 +425,12 @@ export default function ProfileView({ role = "Student" }) {
                                 {error && <p className="text-xs text-red-500 text-center font-medium">{error}</p>}
 
                                 <button
-                                    onClick={handleVerifyAndChange}
+                                    onClick={handleChangePassword}
                                     disabled={isLoading}
                                     className="w-full py-3 bg-cc-purple-600 hover:bg-cc-purple-700 text-white rounded-xl font-semibold shadow-md transition-all flex justify-center items-center"
                                 >
-                                    {isLoading ? 'Verifying...' : 'Update Password'}
+                                    {isLoading ? 'Updating...' : 'Update Password'}
                                 </button>
-                            </div>
-                        )}
-
-                        {step === 'COMPLETED' && (
-                            <div className="text-center py-4 space-y-2">
-                                <div className="text-green-500 font-bold text-lg">Success!</div>
-                                <p className="text-gray-600 text-sm">{success}</p>
                             </div>
                         )}
 

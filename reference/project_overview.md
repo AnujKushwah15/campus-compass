@@ -60,6 +60,7 @@ Running on VPS (Node.js/Express Service — port 3001).
 - **Image Processing**: Basic cropping for profile pictures.
 
 ## Recent Updates
+- **[2026-03-22 - Later]**: Architected and executed a comprehensive dependency-free Node.js QA testing framework (Unit, Integration, Security, Performance). Built standalone network diagnostic scripts. Hardened backend VPS security rules (UFW closed).
 - **[2026-03-22]**: Deployed dynamic multi-bus streaming selector to Admin Dashboard, shifted Student Management into inline Bus Details, and released the portable Pi provisioning (`setup_pi.sh`) tool for scaling out edge nodes.
 - **[2026-03-03]**: Completed Milestone v1.0. Implemented secure Role-Based Access Control loops, automated CI/CD deployment pathways via GitHub Actions, structured system-wide Error UX boundaries (`not-found.jsx`, `error.jsx`), and styled dark/light mode contrasts.
 - **[2026-02-11]**: Implemented Secure Streaming (JWT auth, MediaMTX HTTP auth) + Real Hardware Sensor Integration (MPU6500 + Neo-8M GPS on Pi) + Frontend StreamContext + Dashboard data flow fixes.

@@ -10,17 +10,41 @@ export default function AdminDashboard() {
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
+        let isMounted = true;
         const busesRef = ref(rtdb, "buses");
-        const unsubscribe = onValue(busesRef, (snapshot) => {
-            if (snapshot.exists()) {
-                setBuses(snapshot.val());
-            } else {
-                setBuses({});
-            }
-            setLoading(false);
-        });
 
-        return () => unsubscribe();
+        // Fallback timeout in case of strict network rules or no response
+        const fallbackTimeout = setTimeout(() => {
+            if (isMounted) setLoading(false);
+        }, 10000);
+
+        const unsubscribe = onValue(
+            busesRef,
+            (snapshot) => {
+                if (!isMounted) return;
+                if (snapshot.exists()) {
+                    setBuses(snapshot.val());
+                } else {
+                    setBuses({});
+                }
+                setLoading(false);
+                clearTimeout(fallbackTimeout);
+            },
+            (error) => {
+                console.error("RTDB Subscription Error:", error);
+                if (isMounted) {
+                    setBuses({});
+                    setLoading(false);
+                    clearTimeout(fallbackTimeout);
+                }
+            }
+        );
+
+        return () => {
+            isMounted = false;
+            clearTimeout(fallbackTimeout);
+            unsubscribe();
+        };
     }, []);
 
     if (loading) {

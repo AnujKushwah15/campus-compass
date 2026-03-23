@@ -21,6 +21,7 @@ export default function LoginPage() {
 
     const [loading, setLoading] = useState(false);
     const [authError, setAuthError] = useState('');
+    const [isSignupSuccess, setIsSignupSuccess] = useState(false);
 
     const [formData, setFormData] = useState({
         email: '',
@@ -157,52 +158,54 @@ export default function LoginPage() {
                 displayName: formData.fullName
             });
 
-            // Store user data in Firestore
-            await setDoc(doc(db, "users", user.uid), {
-                uid: user.uid,
-                email: formData.email,
-                fullName: formData.fullName,
-                mobile: formData.mobile,
-                prn: formData.prn || (formData.childPrn ? `PARENT-OF-${formData.childPrn}` : ''),
-                college: formData.college,
-                semester: formData.semester,
-                role: signupRole,
-                createdAt: new Date().toISOString()
-            });
-
-            // Store role-specific data
-            if (signupRole === 'student') {
-                await setDoc(doc(studentsRef, user.uid), {
-                    id: user.uid,
+            try {
+                // Store user data in Firestore
+                await setDoc(doc(db, "users", user.uid), {
+                    uid: user.uid,
+                    email: formData.email,
                     fullName: formData.fullName,
-                    mobileNumber: formData.mobile,
-                    prnNumber: formData.prn,
-                    collegeName: formData.college,
+                    mobile: formData.mobile,
+                    prn: formData.prn || (formData.childPrn ? `PARENT-OF-${formData.childPrn}` : ''),
+                    college: formData.college,
                     semester: formData.semester,
-                    email: formData.email,
-                    parentId: null,
+                    role: signupRole,
+                    createdAt: new Date().toISOString()
                 });
-                router.push('/dashboard/student');
-            } else if (signupRole === 'parent') {
-                // We already validated studentDoc exists above, but need to fetch it again or store it? 
-                // Let's just refetch or assume it's there. 
-                // Optimization: Just refetch to be safe/clean code wise or trust the pre-check.
-                const studentDoc = await findStudentByPRN(formData.childPrn); // Guaranteed to exist now
-                const childId = studentDoc.id;
 
-                await setDoc(doc(studentsRef, studentDoc.id), {
-                    parentId: user.uid
-                }, { merge: true });
+                // Store role-specific data
+                if (signupRole === 'student') {
+                    await setDoc(doc(studentsRef, user.uid), {
+                        id: user.uid,
+                        fullName: formData.fullName,
+                        mobileNumber: formData.mobile,
+                        prnNumber: formData.prn,
+                        collegeName: formData.college,
+                        semester: formData.semester,
+                        email: formData.email,
+                        parentId: null,
+                    });
+                } else if (signupRole === 'parent') {
+                    const studentDoc = await findStudentByPRN(formData.childPrn);
+                    const childId = studentDoc.id;
 
-                await setDoc(doc(parentsRef, user.uid), {
-                    id: user.uid,
-                    fullName: formData.fullName,
-                    email: formData.email,
-                    mobileNumber: formData.mobile,
-                    child_id: childId
-                });
-                router.push('/dashboard/parent');
+                    await setDoc(doc(studentsRef, studentDoc.id), {
+                        parentId: user.uid
+                    }, { merge: true });
+
+                    await setDoc(doc(parentsRef, user.uid), {
+                        id: user.uid,
+                        fullName: formData.fullName,
+                        email: formData.email,
+                        mobileNumber: formData.mobile,
+                        child_id: childId
+                    });
+                }
+            } catch (dbError) {
+                console.error("Firestore save error but user was created:", dbError);
             }
+
+            // User is successfully created, trigger success UI
+            setIsSignupSuccess(true);
 
         } catch (err) {
             console.error("Signup Error:", err);
@@ -245,29 +248,48 @@ export default function LoginPage() {
 
             <Card className="z-10 w-full max-w-md md:max-w-lg mt-4 backdrop-blur-xl border-border shadow-glow animate-pop-in !bg-slate-50 dark:!bg-card" padding="none">
                 {/* Tabs */}
-                <div className="flex border-b border-border">
-                    <button
-                        onClick={() => { setActiveTab('login'); setAuthError(''); }}
-                        className={`flex-1 py-4 text-sm font-bold tracking-wide transition-colors duration-200 
-              ${activeTab === 'login'
-                                ? 'text-primary bg-muted/40 border-b-2 border-primary'
-                                : 'text-muted-foreground hover:bg-muted/20 hover:text-foreground'}`}
-                    >
-                        LOGIN
-                    </button>
-                    <button
-                        onClick={() => { setActiveTab('signup'); setAuthError(''); }}
-                        className={`flex-1 py-4 text-sm font-bold tracking-wide transition-colors duration-200 
-              ${activeTab === 'signup'
-                                ? 'text-primary bg-muted/40 border-b-2 border-primary'
-                                : 'text-muted-foreground hover:bg-muted/20 hover:text-foreground'}`}
-                    >
-                        SIGN UP
-                    </button>
-                </div>
+                {!isSignupSuccess && (
+                    <div className="flex border-b border-border">
+                        <button
+                            onClick={() => { setActiveTab('login'); setAuthError(''); }}
+                            className={`flex-1 py-4 text-sm font-bold tracking-wide transition-colors duration-200 
+                  ${activeTab === 'login'
+                                    ? 'text-primary bg-muted/40 border-b-2 border-primary'
+                                    : 'text-muted-foreground hover:bg-muted/20 hover:text-foreground'}`}
+                        >
+                            LOGIN
+                        </button>
+                        <button
+                            onClick={() => { setActiveTab('signup'); setAuthError(''); }}
+                            className={`flex-1 py-4 text-sm font-bold tracking-wide transition-colors duration-200 
+                  ${activeTab === 'signup'
+                                    ? 'text-primary bg-muted/40 border-b-2 border-primary'
+                                    : 'text-muted-foreground hover:bg-muted/20 hover:text-foreground'}`}
+                        >
+                            SIGN UP
+                        </button>
+                    </div>
+                )}
 
                 <div className="p-6 md:p-8">
-                    {activeTab === 'login' ? (
+                    {isSignupSuccess ? (
+                        <div className="flex flex-col items-center justify-center py-8 text-center space-y-4 animate-in fade-in slide-in-from-bottom-4 duration-500">
+                            <div className="w-16 h-16 bg-green-100 text-green-600 rounded-full flex items-center justify-center mb-2 shadow-inner border border-green-200">
+                                <Shield size={32} />
+                            </div>
+                            <h2 className="text-2xl font-bold text-foreground">Welcome Aboard!</h2>
+                            <p className="text-muted-foreground text-sm max-w-[250px]">
+                                Your account has been created successfully. You are now securely logged in.
+                            </p>
+                            <Button 
+                                className="w-full mt-6 bg-cc-purple-600 hover:bg-cc-purple-700 shadow-xl transition-all" 
+                                onClick={() => router.push(signupRole === 'parent' ? '/dashboard/parent' : '/dashboard/student')}
+                                size="lg"
+                            >
+                                Enter Dashboard <ArrowRight size={18} className="ml-2" />
+                            </Button>
+                        </div>
+                    ) : activeTab === 'login' ? (
                         <form onSubmit={handleLogin} className="space-y-6 animate-fadeIn">
                             <Input
                                 name="email"

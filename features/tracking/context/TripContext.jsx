@@ -1,6 +1,6 @@
 "use client";
 
-import { createContext, useContext, useState, useEffect } from 'react';
+import { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import { db, tripsRef, rtdb } from '@/lib/firebase';
 import { ref, set, serverTimestamp as rtdbTimestamp, onValue } from 'firebase/database';
 import { addDoc, updateDoc, doc, serverTimestamp, query, where, collection, onSnapshot, limit, getDocs, writeBatch } from 'firebase/firestore';
@@ -214,9 +214,8 @@ export function TripProvider({ children }) {
         }
     };
 
-    // 4. Update Location (Called by Driver Page or Hardware)
     // 4. Update Location (Called by Driver Page) - Writes to RTDB (Source: Phone)
-    const updateLocation = async (lat, lng, speed = 0, accuracy = 0) => {
+    const updateLocation = useCallback(async (lat, lng, speed = 0, accuracy = 0) => {
         if (!currentTrip?.busId) return;
 
         try {
@@ -231,7 +230,7 @@ export function TripProvider({ children }) {
             };
 
             // Write to /buses/{busId}/sources/phone
-            const sourceRef = ref(rtdb, `buses/${currentTrip.busId}/sources/phone`);
+            const sourceRef = ref(rtdb, `buses/${currentTrip?.busId}/sources/phone`);
             await set(sourceRef, locationData);
 
             // Note: We NO LONGER write to Firestore 'trips' doc here.
@@ -241,7 +240,7 @@ export function TripProvider({ children }) {
         } catch (error) {
             console.error("Error updating RTDB location:", error);
         }
-    };
+    }, [currentTrip?.busId]);
 
     const value = {
         currentTrip,

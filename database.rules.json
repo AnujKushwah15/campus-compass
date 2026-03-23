@@ -4,7 +4,7 @@
       "$busId": {
         "location": {
           ".read": "auth != null",
-          ".write": false
+          ".write": "auth != null"
         },
         "sources": {
           "neo_m8n": {
@@ -13,7 +13,7 @@
           },
           "phone": {
             ".read": "auth != null",
-            ".write": false
+            ".write": "auth != null"
           },
           "imu": {
             ".read": "auth != null",
