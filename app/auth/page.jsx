@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Logo from '@/components/Logo';
 import Card from '@/components/ui/Card';
@@ -13,11 +13,27 @@ import { auth, db } from '@/lib/firebase';
 import { createUserWithEmailAndPassword, signInWithEmailAndPassword, updateProfile } from 'firebase/auth';
 import { doc, setDoc, query, collection, where, getDocs, getDoc } from 'firebase/firestore';
 import { studentsRef, parentsRef } from '@/lib/firebase';
+import { useAuth } from '@/features/auth/components/AuthProvider';
+
+const ROLE_DASHBOARD = {
+    student: '/dashboard/student',
+    parent: '/dashboard/parent',
+    driver: '/dashboard/driver',
+    admin: '/dashboard/admin',
+};
 
 export default function LoginPage() {
     const [activeTab, setActiveTab] = useState('login');
     const [signupRole, setSignupRole] = useState('student');
     const router = useRouter();
+    const { user, role, loading: authLoading } = useAuth();
+
+    // Redirect already-logged-in users to their dashboard
+    useEffect(() => {
+        if (!authLoading && user && role) {
+            router.replace(ROLE_DASHBOARD[role] ?? '/dashboard/student');
+        }
+    }, [user, role, authLoading, router]);
 
     const [loading, setLoading] = useState(false);
     const [authError, setAuthError] = useState('');
@@ -214,6 +230,20 @@ export default function LoginPage() {
             setLoading(false);
         }
     };
+
+    // Show spinner while Firebase resolves auth state or while redirecting
+    if (authLoading || (!authLoading && user && role)) {
+        return (
+            <div className="min-h-screen flex items-center justify-center bg-background">
+                <div className="flex flex-col items-center gap-4">
+                    <Loader2 className="w-8 h-8 animate-spin text-primary" />
+                    <p className="text-muted-foreground animate-pulse text-sm">
+                        {user ? 'Redirecting to dashboard...' : 'Loading secure session...'}
+                    </p>
+                </div>
+            </div>
+        );
+    }
 
     return (
         <main className="min-h-screen w-full relative overflow-hidden bg-background flex flex-col items-center justify-center p-4">

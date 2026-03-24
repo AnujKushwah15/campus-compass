@@ -9,10 +9,24 @@ import TextReveal from '@/components/ui/TextReveal';
 import ScrollReveal from '@/components/ui/ScrollReveal';
 import BackgroundAnimation from '@/components/ui/BackgroundAnimation';
 import ThemeToggle from '@/components/ThemeToggle';
+import { useAuth } from '@/features/auth/components/AuthProvider';
+
+const ROLE_DASHBOARD = {
+  student: '/dashboard/student',
+  parent: '/dashboard/parent',
+  driver: '/dashboard/driver',
+  admin: '/dashboard/admin',
+};
 
 export default function LandingPage() {
   const [isScrolled, setIsScrolled] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const { user, role, loading: authLoading } = useAuth();
+
+  const dashboardHref = user && role
+    ? (ROLE_DASHBOARD[role] ?? '/dashboard/student')
+    : '/auth';
+  const isLoggedIn = !authLoading && !!user;
 
   useEffect(() => {
     const handleScroll = () => {
@@ -49,16 +63,26 @@ export default function LandingPage() {
           <div className="flex items-center gap-4 flex-shrink-0 z-10">
             {/* Desktop Auth */}
             <div className="hidden md:flex items-center space-x-4">
-              <Link href="/auth">
-                <Button variant="secondary" size="sm" className="hidden lg:inline-flex border-primary text-primary hover:bg-muted hover:shadow-[0_0_20px_rgba(139,92,246,0.6)] transition-all duration-300">
-                  Log In
-                </Button>
-              </Link>
-              <Link href="/auth">
-                <Button variant="primary" size="sm" className="shadow-lg shadow-cc-purple-500/20 ring-2 ring-cc-purple-500 hover:ring-cc-purple-400 transition-all">
-                  Get Started
-                </Button>
-              </Link>
+              {isLoggedIn ? (
+                <Link href={dashboardHref}>
+                  <Button variant="primary" size="sm" className="shadow-lg shadow-cc-purple-500/20 ring-2 ring-cc-purple-500 hover:ring-cc-purple-400 transition-all flex items-center gap-1">
+                    Go to Dashboard <ArrowRight size={14} />
+                  </Button>
+                </Link>
+              ) : (
+                <>
+                  <Link href="/auth">
+                    <Button variant="secondary" size="sm" className="hidden lg:inline-flex border-primary text-primary hover:bg-muted hover:shadow-[0_0_20px_rgba(139,92,246,0.6)] transition-all duration-300" disabled={authLoading}>
+                      Log In
+                    </Button>
+                  </Link>
+                  <Link href="/auth">
+                    <Button variant="primary" size="sm" className="shadow-lg shadow-cc-purple-500/20 ring-2 ring-cc-purple-500 hover:ring-cc-purple-400 transition-all" disabled={authLoading}>
+                      Get Started
+                    </Button>
+                  </Link>
+                </>
+              )}
               <ThemeToggle />
             </div>
 
@@ -80,12 +104,22 @@ export default function LandingPage() {
             <MobileNavLink href="#benefits" label="Benefits" onClick={() => setMobileMenuOpen(false)} />
             <MobileNavLink href="#contact" label="Contact" onClick={() => setMobileMenuOpen(false)} />
             <div className="pt-4 flex flex-col space-y-3">
-              <Link href="/auth" className="w-full">
-                <Button variant="secondary" className="w-full justify-center">Log In</Button>
-              </Link>
-              <Link href="/auth" className="w-full">
-                <Button variant="primary" className="w-full justify-center">Get Started</Button>
-              </Link>
+              {isLoggedIn ? (
+                <Link href={dashboardHref} className="w-full">
+                  <Button variant="primary" className="w-full justify-center flex items-center gap-2">
+                    Go to Dashboard <ArrowRight size={16} />
+                  </Button>
+                </Link>
+              ) : (
+                <>
+                  <Link href="/auth" className="w-full">
+                    <Button variant="secondary" className="w-full justify-center">Log In</Button>
+                  </Link>
+                  <Link href="/auth" className="w-full">
+                    <Button variant="primary" className="w-full justify-center">Get Started</Button>
+                  </Link>
+                </>
+              )}
             </div>
           </div>
         )}
@@ -113,16 +147,26 @@ export default function LandingPage() {
             delay={500}
           />
           <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
-            <Link href="/auth">
-              <Button size="lg" className="rounded-full px-8 shadow-xl shadow-cc-purple-500/20 ring-2 ring-cc-purple-500 hover:ring-cc-purple-400 hover:shadow-cc-purple-500/30 transition-all hover:scale-105">
-                Get Started <ArrowRight className="ml-2 w-5 h-5" />
-              </Button>
-            </Link>
-            <Link href="#features">
-              <Button variant="secondary" size="lg" className="rounded-full px-8 bg-white/60 backdrop-blur-sm border-white hover:bg-white transition-all">
-                Learn More
-              </Button>
-            </Link>
+            {isLoggedIn ? (
+              <Link href={dashboardHref}>
+                <Button size="lg" className="rounded-full px-8 shadow-xl shadow-cc-purple-500/20 ring-2 ring-cc-purple-500 hover:ring-cc-purple-400 hover:shadow-cc-purple-500/30 transition-all hover:scale-105">
+                  Go to Dashboard <ArrowRight className="ml-2 w-5 h-5" />
+                </Button>
+              </Link>
+            ) : (
+              <>
+                <Link href="/auth">
+                  <Button size="lg" className="rounded-full px-8 shadow-xl shadow-cc-purple-500/20 ring-2 ring-cc-purple-500 hover:ring-cc-purple-400 hover:shadow-cc-purple-500/30 transition-all hover:scale-105">
+                    Get Started <ArrowRight className="ml-2 w-5 h-5" />
+                  </Button>
+                </Link>
+                <Link href="#features">
+                  <Button variant="secondary" size="lg" className="rounded-full px-8 bg-white/60 backdrop-blur-sm border-white hover:bg-white transition-all">
+                    Learn More
+                  </Button>
+                </Link>
+              </>
+            )}
           </div>
 
           {/* Hero Mockup Area */}

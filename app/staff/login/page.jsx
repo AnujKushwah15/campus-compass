@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { auth, db } from '@/lib/firebase';
 import { signInWithEmailAndPassword } from 'firebase/auth';
@@ -9,13 +9,27 @@ import Card from '@/components/ui/Card';
 import Input from '@/components/ui/Input';
 import Button from '@/components/ui/Button';
 import Logo from '@/components/Logo';
-import { User, Lock, ArrowRight, Bus } from 'lucide-react';
+import { User, Lock, ArrowRight, Bus, Loader2 } from 'lucide-react';
 import Link from 'next/link';
 import BackgroundAnimation from '@/components/ui/BackgroundAnimation';
+import { useAuth } from '@/features/auth/components/AuthProvider';
+
+const STAFF_DASHBOARDS = {
+    admin: '/dashboard/admin',
+    driver: '/dashboard/driver',
+};
 
 export default function StaffLoginPage() {
     const router = useRouter();
     const [isLoading, setIsLoading] = useState(false);
+    const { user, role, loading: authLoading } = useAuth();
+
+    // Redirect already-logged-in staff to their dashboard
+    useEffect(() => {
+        if (!authLoading && user && STAFF_DASHBOARDS[role]) {
+            router.replace(STAFF_DASHBOARDS[role]);
+        }
+    }, [user, role, authLoading, router]);
 
     const [formData, setFormData] = useState({
         username: '', // Treated as email
@@ -66,6 +80,20 @@ export default function StaffLoginPage() {
             setIsLoading(false);
         }
     };
+
+    // Show spinner while auth resolves or while redirecting
+    if (authLoading || (!authLoading && user && STAFF_DASHBOARDS[role])) {
+        return (
+            <div className="min-h-screen flex items-center justify-center bg-background">
+                <div className="flex flex-col items-center gap-4">
+                    <Loader2 className="w-8 h-8 animate-spin text-destructive" />
+                    <p className="text-muted-foreground animate-pulse text-sm">
+                        {user ? 'Redirecting to dashboard...' : 'Loading secure session...'}
+                    </p>
+                </div>
+            </div>
+        );
+    }
 
     return (
         <main className="min-h-screen w-full relative overflow-hidden bg-background flex flex-col items-center justify-center p-4">

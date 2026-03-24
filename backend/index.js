@@ -539,6 +539,100 @@ async function checkPiHeartbeats() {
 setInterval(checkPiHeartbeats, 10000);
 
 // ═══════════════════════════════════════════════════════════════════════════
+// SECTION 5: ROUTE NAVIGATION (OSRM + Photon Proxy)
+// ═══════════════════════════════════════════════════════════════════════════
+
+const OSRM_BASE = process.env.OSRM_BASE || 'http://127.0.0.1:5050';
+
+// ─── GET /api/route ─────────────────────────────────────────────────────────
+// Returns the shortest driving route between two points.
+// Query params: start_lat, start_lng, end_lat, end_lng
+// Proxies to self-hosted OSRM instance.
+
+app.get('/api/route', async (req, res) => {
+    try {
+        const { start_lat, start_lng, end_lat, end_lng } = req.query;
+
+        if (!start_lat || !start_lng || !end_lat || !end_lng) {
+            return res.status(400).json({ error: 'Missing required params: start_lat, start_lng, end_lat, end_lng' });
+        }
+
+        // OSRM uses lng,lat order
+        const coords = `${start_lng},${start_lat};${end_lng},${end_lat}`;
+        const osrmUrl = `${OSRM_BASE}/route/v1/driving/${coords}?overview=full&geometries=geojson&steps=true`;
+
+        const fetch = (...args) => import('node-fetch').then(({ default: f }) => f(...args));
+        const osrmRes = await fetch(osrmUrl);
+        const data = await osrmRes.json();
+
+        if (data.code !== 'Ok' || !data.routes || data.routes.length === 0) {
+            console.log(`[route] No route found: ${data.code} ${data.message || ''}`);
+            return res.status(404).json({ error: 'No route found', code: data.code });
+        }
+
+        const route = data.routes[0];
+        const result = {
+            geometry: route.geometry,           // GeoJSON LineString
+            distance_m: route.distance,         // meters
+            duration_s: route.duration,          // seconds
+            steps: route.legs[0].steps.map(s => ({
+                instruction: s.maneuver.type + (s.maneuver.modifier ? ` ${s.maneuver.modifier}` : ''),
+                name: s.name || '',
+                distance_m: s.distance,
+                duration_s: s.duration
+            }))
+        };
+
+        console.log(`[route] Found: ${(result.distance_m / 1000).toFixed(1)}km, ${Math.round(result.duration_s / 60)}min`);
+        return res.status(200).json(result);
+
+    } catch (error) {
+        console.error('[route] Error:', error.message);
+        return res.status(500).json({ error: 'Routing service error' });
+    }
+});
+
+// ─── GET /api/search-place ──────────────────────────────────────────────────
+// Geocodes a place name using Photon (Komoot) API.
+// Query params: q (search query)
+// Returns array of {name, lat, lng, type, context}
+
+// Gujarat bounding box for biased results
+const GUJARAT_BBOX = '68.1,20.1,74.5,24.7';
+
+app.get('/api/search-place', async (req, res) => {
+    try {
+        const { q } = req.query;
+        if (!q || q.trim().length < 2) {
+            return res.status(400).json({ error: 'Query too short (min 2 chars)' });
+        }
+
+        const fetch = (...args) => import('node-fetch').then(({ default: f }) => f(...args));
+        const photonUrl = `https://photon.komoot.io/api/?q=${encodeURIComponent(q)}&limit=5&bbox=${GUJARAT_BBOX}&lang=en`;
+        const photonRes = await fetch(photonUrl);
+        const data = await photonRes.json();
+
+        const results = (data.features || []).map(f => {
+            const p = f.properties || {};
+            const [lng, lat] = f.geometry.coordinates;
+            return {
+                name: p.name || p.street || 'Unknown',
+                lat,
+                lng,
+                type: p.osm_value || p.type || '',
+                context: [p.city, p.state, p.country].filter(Boolean).join(', ')
+            };
+        });
+
+        return res.status(200).json(results);
+
+    } catch (error) {
+        console.error('[search-place] Error:', error.message);
+        return res.status(500).json({ error: 'Geocoding service error' });
+    }
+});
+
+// ═══════════════════════════════════════════════════════════════════════════
 // START SERVER
 // ═══════════════════════════════════════════════════════════════════════════
 
