@@ -17,7 +17,7 @@ import Logo from '@/components/Logo';
 
 export default function DriverDashboard() {
     const router = useRouter();
-    const { currentTrip, startTrip, endTrip, updateLocation, busLocation } = useTrip();
+    const { currentTrip, loading: tripLoading, startTrip, endTrip, updateLocation, busLocation } = useTrip();
     const [sosActive, setSosActive] = useState(false);
     const [sendingSOS, setSendingSOS] = useState(false);
     const [isTripping, setIsTripping] = useState(false);
@@ -141,13 +141,17 @@ export default function DriverDashboard() {
             );
         }
 
-        // Start the trip anyway! (The bus might have an Edge Pi device providing GPS)
+        // Start the trip (bus might also have an Edge Pi device providing GPS)
         try {
             await startTrip(driverProfile.assignedBusId, 'route-1');
             setIsTripping(true);
         } catch (error) {
             console.error('Failed to start trip:', error);
-            alert('Failed to start trip. Please try again.');
+            // If the bus already has an active trip, show a specific message
+            const msg = error.message?.includes('already has an active trip')
+                ? `⚠️ ${error.message}\n\nAsk the current driver to end their trip first.`
+                : 'Failed to start trip. Please try again.';
+            alert(msg);
         }
     };
 
@@ -192,6 +196,19 @@ export default function DriverDashboard() {
     const handleProfile = () => {
         router.push('/dashboard/driver/profile');
     };
+
+    // Still waiting for Firestore to resolve the active trip query — show nothing
+    // to prevent the splash from flashing and confusing the driver.
+    if (tripLoading) {
+        return (
+            <div className="min-h-screen bg-background flex items-center justify-center">
+                <div className="flex flex-col items-center gap-3 text-muted-foreground">
+                    <div className="w-8 h-8 border-2 border-primary/30 border-t-primary rounded-full animate-spin" />
+                    <span className="text-sm font-medium">Loading your session…</span>
+                </div>
+            </div>
+        );
+    }
 
     if (!currentTrip && !isTripping) {
         return (

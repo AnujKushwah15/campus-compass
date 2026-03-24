@@ -633,6 +633,160 @@ app.get('/api/search-place', async (req, res) => {
 });
 
 // ═══════════════════════════════════════════════════════════════════════════
+// SECTION 6: PLACES / POI (Overpass API proxy with caching)
+// ═══════════════════════════════════════════════════════════════════════════
+
+// In-memory bbox cache: key = "lat1,lng1,lat2,lng2" → { data, expiresAt }
+const placesCache = new Map();
+const PLACES_CACHE_TTL = 10 * 60 * 1000; // 10 minutes
+
+// Category → friendly type mapping
+const AMENITY_TYPES = new Set([
+    'hospital', 'clinic', 'doctors',
+    'school', 'college', 'university', 'kindergarten',
+    'bank', 'atm',
+    'restaurant', 'cafe', 'fast_food', 'food_court',
+    'pharmacy', 'bus_station', 'fuel', 'police', 'fire_station',
+    'library', 'place_of_worship', 'parking'
+]);
+const SHOP_TYPES = new Set(['supermarket', 'electronics', 'clothes', 'convenience', 'mall', 'bakery']);
+
+function normaliseType(tags) {
+    if (tags.amenity) {
+        if (['hospital', 'clinic', 'doctors'].includes(tags.amenity)) return 'hospital';
+        if (['school', 'college', 'university', 'kindergarten'].includes(tags.amenity)) return 'education';
+        if (['bank', 'atm'].includes(tags.amenity)) return 'bank';
+        if (['restaurant', 'cafe', 'fast_food', 'food_court'].includes(tags.amenity)) return 'restaurant';
+        if (tags.amenity === 'bus_station') return 'bus_stop';
+        if (tags.amenity === 'pharmacy') return 'pharmacy';
+        if (tags.amenity === 'fuel') return 'fuel';
+        if (tags.amenity === 'parking') return 'parking';
+        if (tags.amenity === 'library') return 'library';
+        if (tags.amenity === 'police') return 'police';
+        return tags.amenity;
+    }
+    if (tags.shop && SHOP_TYPES.has(tags.shop)) return 'shop';
+    if (tags.tourism === 'attraction') return 'attraction';
+    if (tags.highway === 'bus_stop') return 'bus_stop';
+    return 'poi';
+}
+
+// ─── GET /api/places ─────────────────────────────────────────────────────────
+// Returns POIs within the given bounding box using the Overpass API.
+// Query params: bbox=<south,west,north,east>  (comma-separated)
+// Returns array of { id, name, type, lat, lng }
+
+app.get('/api/places', async (req, res) => {
+    try {
+        const { bbox } = req.query;
+        if (!bbox) {
+            return res.status(400).json({ error: 'Missing bbox param. Format: south,west,north,east' });
+        }
+
+        const parts = bbox.split(',').map(Number);
+        if (parts.length !== 4 || parts.some(isNaN)) {
+            return res.status(400).json({ error: 'Invalid bbox. Expected 4 numbers: south,west,north,east' });
+        }
+
+        const [south, west, north, east] = parts;
+
+        // Validate sensible bbox size (prevent huge queries)
+        const latSpan = north - south;
+        const lngSpan = east - west;
+        if (latSpan > 0.5 || lngSpan > 0.5) {
+            return res.status(400).json({ error: 'Bounding box too large. Max span 0.5°.' });
+        }
+
+        // Round to 3 decimal places for cache key
+        const cacheKey = [south, west, north, east].map(n => n.toFixed(3)).join(',');
+        const now = Date.now();
+        const cached = placesCache.get(cacheKey);
+        if (cached && cached.expiresAt > now) {
+            res.set('X-Cache', 'HIT');
+            return res.status(200).json(cached.data);
+        }
+
+        const fetch = (...args) => import('node-fetch').then(({ default: f }) => f(...args));
+
+        // Overpass QL — fetch nodes/ways matching our categories within bbox
+        const bboxStr = `${south},${west},${north},${east}`;
+        const query = `
+[out:json][timeout:15];
+(
+  node["amenity"~"hospital|clinic|doctors|school|college|university|kindergarten|bank|atm|restaurant|cafe|fast_food|food_court|pharmacy|bus_station|fuel|police|fire_station|library|parking"](${bboxStr});
+  node["shop"~"supermarket|electronics|clothes|convenience|mall|bakery"](${bboxStr});
+  node["tourism"="attraction"](${bboxStr});
+  node["highway"="bus_stop"](${bboxStr});
+);
+out center 200;
+`.trim();
+
+        const overpassUrl = 'https://overpass-api.de/api/interpreter';
+        let overpassRes;
+        try {
+            overpassRes = await fetch(overpassUrl, {
+                method: 'POST',
+                body: query,
+                headers: { 'Content-Type': 'text/plain' },
+                signal: AbortSignal.timeout(20000),
+            });
+        } catch (fetchErr) {
+            console.error('[places] Overpass fetch error:', fetchErr.message);
+            return res.status(502).json({ error: 'Overpass API unreachable', detail: fetchErr.message });
+        }
+
+        if (!overpassRes.ok) {
+            const body = await overpassRes.text();
+            console.error('[places] Overpass returned HTTP', overpassRes.status, body.slice(0, 200));
+            return res.status(502).json({ error: 'Overpass API error', status: overpassRes.status });
+        }
+
+        const rawData = await overpassRes.json();
+        const elements = rawData.elements || [];
+
+        const places = [];
+        for (const el of elements) {
+            const tags = el.tags || {};
+            const name = tags.name || tags['name:en'] || null;
+            if (!name) continue; // skip unnamed POIs
+
+            const lat = el.lat ?? el.center?.lat;
+            const lng = el.lon ?? el.center?.lon;
+            if (!lat || !lng) continue;
+
+            places.push({
+                id: `osm_${el.id}`,
+                name,
+                type: normaliseType(tags),
+                lat,
+                lng,
+            });
+
+            if (places.length >= 200) break; // hard cap
+        }
+
+        // Store in cache
+        placesCache.set(cacheKey, { data: places, expiresAt: now + PLACES_CACHE_TTL });
+
+        // Prune stale entries (keep memory bounded)
+        if (placesCache.size > 100) {
+            for (const [k, v] of placesCache) {
+                if (v.expiresAt < now) placesCache.delete(k);
+                if (placesCache.size <= 80) break;
+            }
+        }
+
+        console.log(`[places] bbox=${cacheKey} found=${places.length}`);
+        res.set('X-Cache', 'MISS');
+        return res.status(200).json(places);
+
+    } catch (error) {
+        console.error('[places] Error:', error.message);
+        return res.status(500).json({ error: 'Places service error' });
+    }
+});
+
+// ═══════════════════════════════════════════════════════════════════════════
 // START SERVER
 // ═══════════════════════════════════════════════════════════════════════════
 

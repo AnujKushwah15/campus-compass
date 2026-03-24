@@ -195,3 +195,35 @@ Use this file to track major changes, architectural decisions, and daily progres
 ### Network Debugging Tooling
 - **Feature**: Built the `debug/check_network.sh` diagnostic utility.
 - **Detail**: The utility performs systematic diagnostics on the VPS including DNS evaluation, zero-dependency `curl`-based port reachability checks (bypassing `nc` hangs on Windows), automated SSL certificate expiration validation, CORS mapping verification, Nginx proxy tests, and WebRTC STUN evaluation.
+
+## [2026-03-24] Navigation UI Overhaul & Dashboard Reliability
+
+### Navigation UI — Google Maps Experience
+- **Auto-route**: Replaced manual "Find Route" button flow with automatic calculation whenever both start/destination are selected.
+- **Route Cache**: Implemented module-level Map-based caching to prevent duplicate OSRM API calls.
+- **Enhanced Icons**: Replaced default Leaflet markers with custom A/B pin teardops featuring drop-and-bounce CSS animations.
+- **Animated Polyline**: Introduced a progressive drawing component (`AnimatedRoute`) that reveals segments over ~1.2s via interval-based rendering.
+- **Input Focus Flow**: Programmatic focus management between PlaceSearch components; selecting a start location auto-focuses the destination field.
+- **Geolocation**: On-mount geolocation auto-fills "My Location" as the starting point.
+- **Route Summary**: Prominent "ETA Hero" stats with large font size, followed by distance, step count, and a first-step preview chip.
+
+### Places (POI) System Integration
+- **Backend Proxy**: Created `GET /api/places` on the Express backend as a proxy for the Overpass (OpenStreetMap) API.
+- **POI Layer**: Integrated a zoom-aware client layer (`POILayer`) that only fetches/shows markers when zoomed in (`zoom >= 14`).
+- **Client POI Cache**: Per-bbox cache (30 entry cap) prevents redundant fetches.
+- **Category Icons**: Unique emoji-based markers for categorized POIs (Hospitals, Shops, Schools, Bus Stops).
+- **Server-side Cache**: Implemented a 10-minute TTL Map cache for Overpass results on the backend to stay within API limits.
+
+### Dashboard Reliability & Permissions
+- **Driver Auto-Start Fix**: 
+  - Implemented a "Session Age Guard" that auto-closes trips older than 12 hours found in the `trips` collection at login.
+  - Added a `tripLoading` spinner to `driver/page.jsx` to prevent the splash screen from appearing during initial Firestore state resolution.
+- **Atomic Trip Locking**: Rewrote `startTrip` logic in `TripContext.jsx` using a **Firestore Transaction** on the `buses/{id}` document. This ensures at most one active trip can exist for a specific bus ID.
+- **Parent Attendance History**:
+  - Improved visibility for parents by adding missing read/write rules for the `/attendance` collection to `firestore.rules`.
+  - Confirmed deployment to cloud.firestore.
+
+### Verification Status
+- ✅ All features verified via browser subagent.
+- ✅ Dark theme and visual identity preserved.
+- ✅ Lucide-react icon imports fixed for compatibility.

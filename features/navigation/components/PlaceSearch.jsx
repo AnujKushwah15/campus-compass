@@ -1,18 +1,41 @@
 "use client";
 
 import { useState, useEffect, useRef, useCallback } from "react";
-import { Search, MapPin, X, Crosshair } from "lucide-react";
+import { Search, MapPin, X, Crosshair, Loader2 } from "lucide-react";
 
-// Regex to detect coordinate input: "23.0225, 72.5714" or "23.0225 72.5714"
+// Regex to detect coordinate input: "23.0225, 72.5714"
 const COORD_REGEX = /^\s*(-?\d+\.?\d*)\s*[,\s]\s*(-?\d+\.?\d*)\s*$/;
 
-export default function PlaceSearch({ label, value, onChange, placeholder }) {
+// Module-level search cache
+const searchCache = new Map();
+
+export default function PlaceSearch({
+    label,
+    value,
+    onChange,
+    placeholder,
+    inputRef: externalRef,
+    isLoading: externalLoading = false,
+    onSelect,
+}) {
     const [query, setQuery] = useState("");
     const [suggestions, setSuggestions] = useState([]);
     const [loading, setLoading] = useState(false);
     const [isOpen, setIsOpen] = useState(false);
     const debounceRef = useRef(null);
     const containerRef = useRef(null);
+    const localRef = useRef(null);
+    const inputRef = externalRef || localRef;
+
+    // Sync display text when value is set externally (e.g. geolocation fill)
+    useEffect(() => {
+        if (!value) {
+            setQuery("");
+        } else if (value.label && query !== value.label) {
+            setQuery(value.label);
+        }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [value]);
 
     // Close dropdown on outside click
     useEffect(() => {
@@ -31,7 +54,7 @@ export default function PlaceSearch({ label, value, onChange, placeholder }) {
             return;
         }
 
-        // Check if input is coordinates
+        // Coordinate shortcut
         const coordMatch = q.match(COORD_REGEX);
         if (coordMatch) {
             const lat = parseFloat(coordMatch[1]);
@@ -39,21 +62,35 @@ export default function PlaceSearch({ label, value, onChange, placeholder }) {
             if (lat >= -90 && lat <= 90 && lng >= -180 && lng <= 180) {
                 setSuggestions([{
                     name: `${lat.toFixed(4)}, ${lng.toFixed(4)}`,
-                    lat,
-                    lng,
+                    lat, lng,
                     type: "coordinates",
-                    context: "Custom coordinates"
+                    context: "Custom coordinates",
                 }]);
                 setIsOpen(true);
                 return;
             }
         }
 
+        // Check cache first
+        const cacheKey = q.trim().toLowerCase();
+        if (searchCache.has(cacheKey)) {
+            setSuggestions(searchCache.get(cacheKey));
+            setIsOpen(true);
+            return;
+        }
+
         setLoading(true);
         try {
             const res = await fetch(`/api/search-place?q=${encodeURIComponent(q)}`);
             const data = await res.json();
-            setSuggestions(Array.isArray(data) ? data : []);
+            const results = Array.isArray(data) ? data : [];
+            searchCache.set(cacheKey, results);
+            // Evict oldest if cache grows too large
+            if (searchCache.size > 50) {
+                const firstKey = searchCache.keys().next().value;
+                searchCache.delete(firstKey);
+            }
+            setSuggestions(results);
             setIsOpen(true);
         } catch {
             setSuggestions([]);
@@ -65,16 +102,22 @@ export default function PlaceSearch({ label, value, onChange, placeholder }) {
     const handleInput = (e) => {
         const val = e.target.value;
         setQuery(val);
-
+        if (!val) {
+            onChange?.(null);
+            setSuggestions([]);
+            setIsOpen(false);
+        }
         if (debounceRef.current) clearTimeout(debounceRef.current);
-        debounceRef.current = setTimeout(() => searchPlaces(val), 300);
+        debounceRef.current = setTimeout(() => searchPlaces(val), 350);
     };
 
     const handleSelect = (place) => {
-        setQuery(`${place.name}${place.context ? ` — ${place.context}` : ""}`);
+        const label = `${place.name}${place.context ? ` — ${place.context}` : ""}`;
+        setQuery(label);
         setSuggestions([]);
         setIsOpen(false);
         onChange?.({ lat: place.lat, lng: place.lng, label: place.name });
+        onSelect?.({ lat: place.lat, lng: place.lng, label: place.name });
     };
 
     const handleClear = () => {
@@ -82,21 +125,30 @@ export default function PlaceSearch({ label, value, onChange, placeholder }) {
         setSuggestions([]);
         setIsOpen(false);
         onChange?.(null);
+        inputRef.current?.focus();
     };
 
     const handleUseMyLocation = () => {
         if (!navigator.geolocation) return;
+        setLoading(true);
         navigator.geolocation.getCurrentPosition(
             (pos) => {
                 const lat = pos.coords.latitude;
                 const lng = pos.coords.longitude;
-                setQuery(`${lat.toFixed(4)}, ${lng.toFixed(4)}`);
+                const label = `${lat.toFixed(4)}, ${lng.toFixed(4)}`;
+                setQuery("My Location");
                 setIsOpen(false);
                 onChange?.({ lat, lng, label: "My Location" });
+                setLoading(false);
             },
-            () => alert("Unable to get your location")
+            () => {
+                setLoading(false);
+                alert("Unable to get your location");
+            }
         );
     };
+
+    const isSpinning = loading || externalLoading;
 
     return (
         <div ref={containerRef} className="relative">
@@ -104,20 +156,25 @@ export default function PlaceSearch({ label, value, onChange, placeholder }) {
                 {label}
             </label>
             <div className="relative flex items-center">
-                <Search className="absolute left-3 w-4 h-4 text-muted-foreground pointer-events-none" />
+                {isSpinning ? (
+                    <Loader2 className="absolute left-3 w-4 h-4 text-cc-purple-500 animate-spin pointer-events-none" />
+                ) : (
+                    <Search className="absolute left-3 w-4 h-4 text-muted-foreground pointer-events-none" />
+                )}
                 <input
+                    ref={inputRef}
                     type="text"
                     value={query}
                     onChange={handleInput}
                     onFocus={() => suggestions.length > 0 && setIsOpen(true)}
-                    placeholder={placeholder || "Search place or enter lat, lng"}
-                    className="w-full pl-10 pr-20 py-3 bg-card border border-border rounded-xl text-foreground placeholder:text-muted-foreground/50 focus:outline-none focus:ring-2 focus:ring-primary/40 focus:border-primary transition-all text-sm"
+                    placeholder={externalLoading ? "Detecting location…" : (placeholder || "Search place or enter lat, lng")}
+                    className="w-full pl-10 pr-20 py-3 bg-card border border-border rounded-xl text-foreground placeholder:text-muted-foreground/50 focus:outline-none focus:ring-2 focus:ring-cc-purple-500/40 focus:border-cc-purple-500/60 transition-all text-sm"
                 />
                 <div className="absolute right-2 flex items-center gap-1">
                     <button
                         type="button"
                         onClick={handleUseMyLocation}
-                        className="p-1.5 rounded-lg hover:bg-muted text-muted-foreground hover:text-primary transition-colors"
+                        className="p-1.5 rounded-lg hover:bg-muted text-muted-foreground hover:text-cc-purple-500 transition-colors"
                         title="Use my location"
                     >
                         <Crosshair className="w-4 h-4" />
@@ -144,11 +201,9 @@ export default function PlaceSearch({ label, value, onChange, placeholder }) {
                             onClick={() => handleSelect(place)}
                             className="w-full flex items-start gap-3 px-4 py-3 hover:bg-muted/50 transition-colors text-left border-b border-border/50 last:border-0"
                         >
-                            <MapPin className="w-4 h-4 mt-0.5 shrink-0 text-primary" />
+                            <MapPin className="w-4 h-4 mt-0.5 shrink-0 text-cc-purple-500" />
                             <div className="min-w-0">
-                                <div className="text-sm font-medium text-foreground truncate">
-                                    {place.name}
-                                </div>
+                                <div className="text-sm font-medium text-foreground truncate">{place.name}</div>
                                 <div className="text-xs text-muted-foreground truncate">
                                     {place.type && <span className="capitalize">{place.type}</span>}
                                     {place.type && place.context && " · "}
@@ -157,12 +212,6 @@ export default function PlaceSearch({ label, value, onChange, placeholder }) {
                             </div>
                         </button>
                     ))}
-                </div>
-            )}
-
-            {loading && (
-                <div className="absolute z-50 w-full mt-1.5 bg-card border border-border rounded-xl shadow-xl p-4 text-center text-sm text-muted-foreground">
-                    Searching...
                 </div>
             )}
         </div>

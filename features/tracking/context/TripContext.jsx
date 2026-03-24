@@ -3,7 +3,7 @@
 import { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import { db, tripsRef, rtdb } from '@/lib/firebase';
 import { ref, set, serverTimestamp as rtdbTimestamp, onValue } from 'firebase/database';
-import { addDoc, updateDoc, doc, serverTimestamp, query, where, collection, onSnapshot, limit, getDocs, writeBatch } from 'firebase/firestore';
+import { addDoc, updateDoc, doc, serverTimestamp, query, where, collection, onSnapshot, limit, getDocs, writeBatch, runTransaction, getDoc } from 'firebase/firestore';
 import { useAuth } from '@/features/auth/components/AuthProvider';
 
 const TripContext = createContext();
@@ -23,7 +23,6 @@ export function TripProvider({ children }) {
         }
 
         // Query for any 'active' trip for this driver
-        // Note: In a real app, you might want to compound query by busId too
         const q = query(
             tripsRef,
             where("driverId", "==", user.uid),
@@ -31,13 +30,37 @@ export function TripProvider({ children }) {
             limit(1)
         );
 
-        const unsubscribe = onSnapshot(q, (snapshot) => {
+        const unsubscribe = onSnapshot(q, async (snapshot) => {
             if (!snapshot.empty) {
                 const docSnap = snapshot.docs[0];
-                console.log("TripContext: Active Trip Found:", docSnap.data());
-                setCurrentTrip({ id: docSnap.id, ...docSnap.data() });
+                const tripData = docSnap.data();
+
+                // Auto-close stale trips (started > 12 hours ago).
+                // This prevents a trip from a prior session from auto-resuming
+                // the active dashboard when the driver logs in.
+                const startTime = tripData.startTime?.toMillis?.() || 0;
+                const ageMs = Date.now() - startTime;
+                const STALE_THRESHOLD_MS = 12 * 60 * 60 * 1000; // 12 hours
+
+                if (startTime > 0 && ageMs > STALE_THRESHOLD_MS) {
+                    console.warn('TripContext: Stale active trip found (> 12h old). Auto-closing:', docSnap.id);
+                    try {
+                        await updateDoc(doc(db, 'trips', docSnap.id), {
+                            status: 'completed',
+                            endTime: serverTimestamp(),
+                            autoClosed: true,
+                            autoCloseReason: 'stale_on_login',
+                        });
+                    } catch (e) {
+                        console.error('TripContext: Failed to auto-close stale trip:', e);
+                    }
+                    // currentTrip will be set to null on the next snapshot (status no longer 'active')
+                    setLoading(false);
+                    return;
+                }
+
+                setCurrentTrip({ id: docSnap.id, ...tripData });
             } else {
-                console.log("TripContext: No Active Trip");
                 setCurrentTrip(null);
             }
             setLoading(false);
@@ -50,15 +73,12 @@ export function TripProvider({ children }) {
     useEffect(() => {
         if (!currentTrip?.busId) return;
 
-        console.log("TripContext: Fetching students for busId:", currentTrip.busId);
-
         const q = query(
             collection(db, "students"),
             where("busId", "==", currentTrip.busId)
         );
 
         const unsubscribe = onSnapshot(q, (snapshot) => {
-            console.log("TripContext: Student Snapshot Size:", snapshot.size);
             const studentList = snapshot.docs.map(doc => {
                 const sData = doc.data();
                 // [NEW] Merge Live Attendance Status from currentTrip
@@ -70,7 +90,6 @@ export function TripProvider({ children }) {
                     attendanceTimestamp: attendanceRecord?.timestamp || null
                 };
             });
-            console.log("TripContext: Fetched Students with Status:", studentList);
             setStudents(studentList);
         });
 
@@ -99,47 +118,67 @@ export function TripProvider({ children }) {
 
 
     // 2. Start Trip Function
+    // Uses a Firestore transaction on buses/{busId} as an atomic mutex to guarantee
+    // at most ONE active trip per bus at any point in time, preventing race conditions
+    // where two drivers might start simultaneously on the same bus.
     const startTrip = async (busId, routeId) => {
         if (!user) return;
 
+        const busRef = doc(db, 'buses', busId);
+
         try {
-            // [NEW] Cleanup: Automatically close any existing active trips for this bus
-            const qActive = query(
-                tripsRef,
-                where("status", "==", "active"),
-                where("busId", "==", busId)
-            );
+            let newTripId = null;
 
-            const activeSnapshot = await getDocs(qActive);
-            if (!activeSnapshot.empty) {
-                console.log(`TripContext: Found ${activeSnapshot.size} stale active trips. Closing...`);
-                // Close them one by one (batch variable not strictly needed if we just await loop)
-                const batch = writeBatch(db);
-                activeSnapshot.forEach(docSnap => {
-                    batch.update(doc(db, "trips", docSnap.id), {
-                        status: "completed",
-                        endTime: serverTimestamp(),
-                        autoClosed: true
-                    });
-                });
-                await batch.commit();
-            }
+            await runTransaction(db, async (transaction) => {
+                // --- READ PHASE ---
+                const busSnap = await transaction.get(busRef);
+                const busData = busSnap.exists() ? busSnap.data() : {};
+                const existingTripId = busData.activeTripId || null;
 
-            const newTrip = {
-                driverId: user.uid,
-                driverName: user.displayName || user.email,
-                busId: busId,
-                routeId: routeId || "default_route",
-                status: "active",
-                startTime: serverTimestamp(),
-                location: { lat: 0, lng: 0, speed: 0 }, // Initial
-                attendance: {} // To track students
-            };
+                // If the bus already has an activeTripId, verify that trip is truly active
+                if (existingTripId) {
+                    const existingTripRef = doc(db, 'trips', existingTripId);
+                    const existingTripSnap = await transaction.get(existingTripRef);
 
-            const docRef = await addDoc(tripsRef, newTrip);
-            return docRef.id;
+                    if (existingTripSnap.exists() && existingTripSnap.data().status === 'active') {
+                        // A real active trip exists for this bus — block the new one
+                        throw new Error(
+                            `Bus ${busId} already has an active trip (${existingTripId}). ` +
+                            `End that trip before starting a new one.`
+                        );
+                    }
+                    // Stale lock (trip completed/missing) — will be overwritten below
+                    console.warn('TripContext: Stale activeTripId on bus doc, overwriting:', existingTripId);
+                }
+
+                // --- WRITE PHASE ---
+                // Create a new trip document ref (addDoc can't run inside a transaction,
+                // so we create the ref manually and use transaction.set)
+                const newTripRef = doc(collection(db, 'trips'));
+                newTripId = newTripRef.id;
+
+                const newTripData = {
+                    driverId: user.uid,
+                    driverName: user.displayName || user.email,
+                    busId,
+                    routeId: routeId || 'default_route',
+                    status: 'active',
+                    startTime: serverTimestamp(),
+                    location: { lat: 0, lng: 0, speed: 0 },
+                    attendance: {},
+                };
+
+                // Write the new trip
+                transaction.set(newTripRef, newTripData);
+
+                // Stamp the bus doc with the active trip lock
+                transaction.set(busRef, { activeTripId: newTripId }, { merge: true });
+            });
+
+            console.log('TripContext: Trip started with atomic lock:', newTripId);
+            return newTripId;
         } catch (error) {
-            console.error("Error starting trip:", error);
+            console.error('TripContext: startTrip failed:', error.message);
             throw error;
         }
     };
@@ -163,25 +202,20 @@ export function TripProvider({ children }) {
     };
 
     // 3. End Trip Function (Batch Export)
-    // 3. End Trip Function (Batch Export)
     const endTrip = async () => {
         if (!currentTrip) return;
 
         try {
-            console.log("TripContext: Ending trip...", currentTrip.id);
-            console.log("TripContext: Students in state:", students);
+            console.log('TripContext: Ending trip...', currentTrip.id);
 
             const batch = writeBatch(db);
 
-            // 1. Move Attendance to Permanent Collection (Auto-Absent Logic)
+            // 1. Export attendance to permanent collection (auto-absent for unmarked students)
             if (students.length > 0) {
-                console.log(`TripContext: Batching attendance for ${students.length} students...`);
                 students.forEach(student => {
-                    // Logic: If status is 'pending' (not marked), mark as 'absent'
                     const finalStatus = student.status === 'present' ? 'present' : 'absent';
                     const timestamp = student.attendanceTimestamp || new Date().toISOString();
-
-                    const attendanceRef = doc(db, "attendance", `${currentTrip.id}_${student.id}`);
+                    const attendanceRef = doc(db, 'attendance', `${currentTrip.id}_${student.id}`);
                     batch.set(attendanceRef, {
                         id: `${currentTrip.id}_${student.id}`,
                         tripId: currentTrip.id,
@@ -189,27 +223,30 @@ export function TripProvider({ children }) {
                         studentId: student.id,
                         studentName: student.name || 'Unknown',
                         status: finalStatus,
-                        timestamp: timestamp,
-                        date: new Date().toISOString().split('T')[0], // YYYY-MM-DD
-                        autoMarked: student.status === 'pending' // Flag for clarity
+                        timestamp,
+                        date: new Date().toISOString().split('T')[0],
+                        autoMarked: student.status === 'pending',
                     });
                 });
             } else {
-                console.warn("TripContext: No students found in state! Skipping attendance batch export.");
-                alert("Warning: No students found to save attendance for. Check console.");
+                console.warn('TripContext: No students in state — skipping attendance export.');
             }
 
-            // 2. Close the Trip
-            const tripDocRef = doc(db, "trips", currentTrip.id);
+            // 2. Mark trip as completed
+            const tripDocRef = doc(db, 'trips', currentTrip.id);
             batch.update(tripDocRef, {
-                status: "completed",
-                endTime: serverTimestamp()
+                status: 'completed',
+                endTime: serverTimestamp(),
             });
 
+            // 3. Release the bus-level lock so a new trip can be started
+            const busRef = doc(db, 'buses', currentTrip.busId);
+            batch.update(busRef, { activeTripId: null });
+
             await batch.commit();
-            // State will auto-update via listener
+            // currentTrip state will auto-null via the onSnapshot listener
         } catch (error) {
-            console.error("Error ending trip:", error);
+            console.error('TripContext: endTrip failed:', error);
             throw error;
         }
     };
@@ -247,12 +284,10 @@ export function TripProvider({ children }) {
         loading,
         startTrip,
         endTrip,
-        endTrip,
-        updateLocation,
         updateLocation,
         markAttendance,
         students,
-        busLocation // [NEW] Export Live Location
+        busLocation
     };
 
     return (

@@ -259,3 +259,58 @@ body {
 .custom-scrollbar::-webkit-scrollbar-thumb:hover {
   background-color: rgba(148, 163, 184, 0.4);
 }
+
+/* ── Navigation: Animated Polyline ──────────────────────────────────────── */
+.nav-route-line {
+  stroke-dasharray: 5000;
+  stroke-dashoffset: 5000;
+  animation: routeDraw 1.4s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+}
+
+@keyframes routeDraw {
+  to { stroke-dashoffset: 0; }
+}
+
+/* ── Navigation: Top Loading Progress Bar ───────────────────────────────── */
+@keyframes progressSweep {
+  0%   { transform: translateX(-100%); }
+  50%  { transform: translateX(0%); }
+  100% { transform: translateX(100%); }
+}
+
+.nav-progress-sweep {
+  animation: progressSweep 1.2s ease-in-out infinite;
+}
+
+/* ── Navigation: Marker Drop Animation ──────────────────────────────────── */
+@keyframes markerDrop {
+  0%   { transform: translateY(-28px) scale(0.6); opacity: 0; }
+  60%  { transform: translateY(4px)   scale(1.05); opacity: 1; }
+  80%  { transform: translateY(-3px)  scale(0.97); }
+  100% { transform: translateY(0)     scale(1); opacity: 1; }
+}
+
+/* ── Navigation: POI Cluster Styles ─────────────────────────────────────── */
+.poi-cluster {
+  background: rgba(139, 92, 246, 0.9);
+  border: 2px solid white;
+  border-radius: 50%;
+  color: white;
+  font-size: 12px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+  transition: transform 0.15s ease;
+}
+
+.poi-cluster:hover {
+  transform: scale(1.1);
+}
+
+/* ── Navigation: POI Popup ───────────────────────────────────────────────── */
+.leaflet-popup-content-wrapper {
+  border-radius: 12px !important;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.2) !important;
+}
