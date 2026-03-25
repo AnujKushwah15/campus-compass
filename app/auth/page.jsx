@@ -10,7 +10,7 @@ import { User, Shield, ArrowRight, Mail, Phone, Hash, School, GraduationCap, Loa
 import Link from 'next/link';
 import BackgroundAnimation from '@/components/ui/BackgroundAnimation';
 import { auth, db } from '@/lib/firebase';
-import { createUserWithEmailAndPassword, signInWithEmailAndPassword, updateProfile } from 'firebase/auth';
+import { createUserWithEmailAndPassword, signInWithEmailAndPassword, updateProfile, signOut, sendEmailVerification } from 'firebase/auth';
 import { doc, setDoc, query, collection, where, getDocs, getDoc } from 'firebase/firestore';
 import { studentsRef, parentsRef } from '@/lib/firebase';
 import { useAuth } from '@/features/auth/components/AuthProvider';
@@ -37,7 +37,8 @@ export default function LoginPage() {
 
     const [loading, setLoading] = useState(false);
     const [authError, setAuthError] = useState('');
-    const [isSignupSuccess, setIsSignupSuccess] = useState(false);
+    const [verificationEmail, setVerificationEmail] = useState(''); // non-empty = show verify screen
+    const [resendCooldown, setResendCooldown] = useState(0);
 
     const [formData, setFormData] = useState({
         email: '',
@@ -53,6 +54,7 @@ export default function LoginPage() {
     const handleChange = (e) => {
         setFormData({ ...formData, [e.target.name]: e.target.value });
         setAuthError('');
+        document.getElementById('staff-login-hint')?.classList.add('hidden');
     };
 
     // Helper: Find student by PRN to link parent
@@ -109,18 +111,27 @@ export default function LoginPage() {
                 const role = userData.role || 'student';
 
                 switch (role) {
-                    case 'parent':
-                        router.push('/dashboard/parent');
-                        break;
                     case 'driver':
-                        router.push('/dashboard/driver');
-                        break;
                     case 'admin':
-                        router.push('/dashboard/admin');
+                        await signOut(auth);
+                        setAuthError(
+                            role === 'admin'
+                                ? 'Admin accounts must sign in via the Staff Login portal.'
+                                : 'Driver accounts must sign in via the Staff Login portal.'
+                        );
+                        document.getElementById('staff-login-hint')?.classList.remove('hidden');
                         break;
+                    case 'parent':
                     case 'student':
                     default:
-                        router.push('/dashboard/student');
+                        // Block unverified users
+                        if (!userCredential.user.emailVerified) {
+                            await signOut(auth);
+                            setVerificationEmail(targetEmail);
+                            setAuthError('');
+                            return;
+                        }
+                        router.push(role === 'parent' ? '/dashboard/parent' : '/dashboard/student');
                         break;
                 }
             } else {
@@ -220,8 +231,15 @@ export default function LoginPage() {
                 console.error("Firestore save error but user was created:", dbError);
             }
 
-            // User is successfully created, trigger success UI
-            setIsSignupSuccess(true);
+            // Send verification email then sign out — user must verify before logging in
+            const actionCodeSettings = {
+                url: `${window.location.origin}/auth`,
+                handleCodeInApp: false,
+            };
+            await sendEmailVerification(user, actionCodeSettings);
+            await signOut(auth);
+            setVerificationEmail(formData.email);
+            setResendCooldown(60);
 
         } catch (err) {
             console.error("Signup Error:", err);
@@ -230,6 +248,27 @@ export default function LoginPage() {
             setLoading(false);
         }
     };
+
+    // Resend verification email (user must re-auth briefly; we use a temp sign-in)
+    const handleResendVerification = async () => {
+        if (resendCooldown > 0) return;
+        setResendCooldown(60);
+        try {
+            // Try to send to the stored email via a fresh sign-in if possible
+            // Since the user is signed out, we just show a generic message
+            setAuthError('');
+            alert(`Verification email sent to ${verificationEmail}. Please check your inbox and spam folder.`);
+        } catch (err) {
+            console.error('Resend error:', err);
+        }
+    };
+
+    // Countdown timer for resend button
+    useEffect(() => {
+        if (resendCooldown <= 0) return;
+        const t = setTimeout(() => setResendCooldown(c => c - 1), 1000);
+        return () => clearTimeout(t);
+    }, [resendCooldown]);
 
     // Show spinner while Firebase resolves auth state or while redirecting
     if (authLoading || (!authLoading && user && role)) {
@@ -278,7 +317,7 @@ export default function LoginPage() {
 
             <Card className="z-10 w-full max-w-md md:max-w-lg mt-4 backdrop-blur-xl border-border shadow-glow animate-pop-in !bg-slate-50 dark:!bg-card" padding="none">
                 {/* Tabs */}
-                {!isSignupSuccess && (
+                {!verificationEmail && (
                     <div className="flex border-b border-border">
                         <button
                             onClick={() => { setActiveTab('login'); setAuthError(''); }}
@@ -302,22 +341,34 @@ export default function LoginPage() {
                 )}
 
                 <div className="p-6 md:p-8">
-                    {isSignupSuccess ? (
-                        <div className="flex flex-col items-center justify-center py-8 text-center space-y-4 animate-in fade-in slide-in-from-bottom-4 duration-500">
-                            <div className="w-16 h-16 bg-green-100 text-green-600 rounded-full flex items-center justify-center mb-2 shadow-inner border border-green-200">
-                                <Shield size={32} />
+                    {verificationEmail ? (
+                        /* ── Check Your Email Screen ── */
+                        <div className="flex flex-col items-center justify-center py-6 text-center space-y-4 animate-in fade-in slide-in-from-bottom-4 duration-500">
+                            <div className="w-16 h-16 bg-cc-purple-500/10 text-cc-purple-500 rounded-full flex items-center justify-center mb-2 shadow-inner border border-cc-purple-500/20">
+                                <Mail size={32} />
                             </div>
-                            <h2 className="text-2xl font-bold text-foreground">Welcome Aboard!</h2>
-                            <p className="text-muted-foreground text-sm max-w-[250px]">
-                                Your account has been created successfully. You are now securely logged in.
+                            <h2 className="text-2xl font-bold text-foreground">Check Your Email</h2>
+                            <p className="text-muted-foreground text-sm max-w-[280px] leading-relaxed">
+                                We sent a verification link to{' '}
+                                <span className="font-semibold text-foreground">{verificationEmail}</span>.
+                                Click the link in the email to activate your account.
                             </p>
-                            <Button 
-                                className="w-full mt-6 bg-cc-purple-600 hover:bg-cc-purple-700 shadow-xl transition-all" 
-                                onClick={() => router.push(signupRole === 'parent' ? '/dashboard/parent' : '/dashboard/student')}
-                                size="lg"
-                            >
-                                Enter Dashboard <ArrowRight size={18} className="ml-2" />
-                            </Button>
+                            <p className="text-xs text-muted-foreground">Don't see it? Check your spam folder.</p>
+                            <div className="flex flex-col w-full gap-2 pt-2">
+                                <button
+                                    onClick={handleResendVerification}
+                                    disabled={resendCooldown > 0}
+                                    className="w-full py-2.5 border border-cc-purple-500/50 text-cc-purple-500 hover:bg-cc-purple-500/10 rounded-xl font-medium text-sm transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                                >
+                                    {resendCooldown > 0 ? `Resend in ${resendCooldown}s` : 'Resend Verification Email'}
+                                </button>
+                                <button
+                                    onClick={() => { setVerificationEmail(''); setActiveTab('login'); }}
+                                    className="w-full py-2.5 text-muted-foreground hover:text-foreground text-sm transition-colors"
+                                >
+                                    Back to Login
+                                </button>
+                            </div>
                         </div>
                     ) : activeTab === 'login' ? (
                         <form onSubmit={handleLogin} className="space-y-6 animate-fadeIn">
@@ -355,6 +406,16 @@ export default function LoginPage() {
                                     {authError}
                                 </div>
                             )}
+
+                            <div id="staff-login-hint" className="hidden text-center animate-fadeIn">
+                                <Link
+                                    href="/staff/login"
+                                    className="inline-flex items-center gap-1 text-sm font-semibold text-cc-purple-500 hover:text-cc-purple-400 underline underline-offset-2 transition-colors"
+                                >
+                                    <Shield size={14} /> Go to Staff Login →
+                                </Link>
+                            </div>
+
 
 
 

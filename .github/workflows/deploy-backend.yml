@@ -1,5 +1,6 @@
 name: Deploy Backend to VPS
 
+# Triggers on any push to main or anuj branch that touches backend files
 on:
   push:
     branches:
@@ -10,23 +11,33 @@ on:
 
 jobs:
   deploy:
+    name: 🚀 Deploy to VPS
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout Repository
+      # ── 1. Checkout ────────────────────────────────────────────────────────
+      - name: Checkout repository
         uses: actions/checkout@v4
 
+      # ── 2. Copy all backend files via SCP ──────────────────────────────────
       - name: Copy backend files to VPS
         uses: appleboy/scp-action@v0.1.7
         with:
           host: ${{ secrets.VPS_IP }}
           username: root
           key: ${{ secrets.VPS_SSH_KEY }}
-          source: "backend/index.js,backend/package.json,backend/package-lock.json,backend/mediamtx.yml"
-          target: "/root/campus-compass-backend"
-          strip_components: 1
+          # Copies everything needed — index.js, package files, service defs, mediamtx config
+          source: >-
+            backend/index.js,
+            backend/package.json,
+            backend/package-lock.json,
+            backend/mediamtx.yml,
+            backend/campus-compass.service
+          target: /root/cc_deploy
+          strip_components: 1   # strips leading "backend/" — files land in /root/cc_deploy/
 
-      - name: Install dependencies & restart service
+      # ── 3. Install deps + apply config + restart services ──────────────────
+      - name: Install & restart services
         uses: appleboy/ssh-action@v1.0.3
         with:
           host: ${{ secrets.VPS_IP }}
@@ -34,23 +45,68 @@ jobs:
           key: ${{ secrets.VPS_SSH_KEY }}
           script: |
             set -e
-            cd /root/campus-compass-backend
 
-            # Install/update Node dependencies
-            npm install --production
+            DEPLOY_DIR="/root/cc_deploy"
+            BACKEND_DIR="/root/campus-compass-backend"
 
-            # Update Nginx CORS allowlist with real Vercel URL
-            sed -i 's|"https://campus-compass-vercel.app"|"https://campus-compass-iota-rosy.vercel.app"|g' /etc/nginx/nginx.conf
-            # Add vercel URL entry if not already present
-            if ! grep -q "campus-compass-iota-rosy.vercel.app" /etc/nginx/nginx.conf; then
-              sed -i '/map \$http_origin \$cors_origin/,/}/ s|default "";|default "";\n        "https://campus-compass-iota-rosy.vercel.app" $http_origin;|' /etc/nginx/nginx.conf
+            echo "📁 Syncing files to backend dir..."
+            mkdir -p "$BACKEND_DIR"
+            cp "$DEPLOY_DIR/index.js"   "$BACKEND_DIR/index.js"
+            cp "$DEPLOY_DIR/package.json"      "$BACKEND_DIR/package.json"
+            cp "$DEPLOY_DIR/package-lock.json" "$BACKEND_DIR/package-lock.json"
+
+            # Update systemd service file if changed
+            if ! diff -q "$DEPLOY_DIR/campus-compass.service" /etc/systemd/system/campus-compass.service &>/dev/null; then
+              echo "🔄 Service file changed — updating..."
+              cp "$DEPLOY_DIR/campus-compass.service" /etc/systemd/system/campus-compass.service
+              systemctl daemon-reload
             fi
-            nginx -t && systemctl reload nginx
 
-            # Restart the campus-compass backend service
+            # Update MediaMTX config if changed
+            if ! diff -q "$DEPLOY_DIR/mediamtx.yml" /etc/mediamtx.yml &>/dev/null; then
+              echo "🔄 MediaMTX config changed — updating..."
+              cp "$DEPLOY_DIR/mediamtx.yml" /etc/mediamtx.yml
+              systemctl restart mediamtx
+              sleep 2
+              systemctl is-active mediamtx && echo "✅ mediamtx running"
+            fi
+
+            # Install / update Node.js dependencies
+            echo "📦 Installing Node.js dependencies..."
+            cd "$BACKEND_DIR"
+            npm ci --omit=dev --silent
+
+            # Restart the backend service
+            echo "♻️  Restarting campus-compass service..."
             systemctl restart campus-compass
-
-            # Verify it came back up
             sleep 3
-            systemctl is-active campus-compass
-            echo "✅ Backend deployed successfully"
+            systemctl is-active campus-compass && echo "✅ campus-compass running"
+
+            # Health check
+            HTTP=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:3001/health)
+            if [ "$HTTP" = "200" ]; then
+              echo "✅ Health check passed (HTTP $HTTP)"
+            else
+              echo "❌ Health check failed (HTTP $HTTP)"
+              journalctl -u campus-compass -n 30 --no-pager
+              exit 1
+            fi
+
+            # Clean up staging area
+            rm -rf "$DEPLOY_DIR"
+            echo ""
+            echo "🎉 Deploy complete — $(date)"
+
+      # ── 4. Notify on failure ───────────────────────────────────────────────
+      - name: Notify on failure
+        if: failure()
+        uses: actions/github-script@v7
+        with:
+          script: |
+            github.rest.issues.create({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              title: `🚨 VPS Deploy Failed — ${context.sha.substring(0, 7)}`,
+              body: `**Workflow:** ${context.workflow}\n**Branch:** ${context.ref}\n**Commit:** ${context.sha}\n\n[View run](${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId})`,
+              labels: ['bug', 'deployment']
+            })

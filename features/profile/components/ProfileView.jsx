@@ -6,7 +6,7 @@ import { User, Phone, Bus, CreditCard, Lock, ShieldCheck, X, LogOut, AlertTriang
 import { auth, storage, db } from '@/lib/firebase';
 import { updateProfile, signOut, EmailAuthProvider, reauthenticateWithCredential, updatePassword } from 'firebase/auth';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
-import { doc, updateDoc } from 'firebase/firestore';
+import { doc, updateDoc, getDoc, collection, query, where, getDocs } from 'firebase/firestore';
 import Cropper from 'react-easy-crop';
 
 // --- Utility Function for Cropping ---
@@ -102,14 +102,14 @@ async function getCroppedImg(
 
 
 export default function ProfileView({ role = "Student" }) {
-    // Mock User Data
     const [user, setUser] = useState({
-        name: "Alex Johnson",
-        mobile: "+91 98765 43210",
-        busNumber: "MH 12 AB 1234",
-        prn: "12345678",
+        name: "",
+        mobile: null,
+        busNumber: null,
+        prn: null,
         photoURL: null
     });
+    const [profileLoading, setProfileLoading] = useState(true);
 
     const router = useRouter();
     const [isPasswordModalOpen, setPasswordModalOpen] = useState(false);
@@ -127,16 +127,61 @@ export default function ProfileView({ role = "Student" }) {
     const [zoom, setZoom] = useState(1);
     const [croppedAreaPixels, setCroppedAreaPixels] = useState(null);
 
-    // Load actual user data from Auth
+    // Load actual user data from Auth + Firestore
     useEffect(() => {
-        const unsubscribe = auth.onAuthStateChanged((currentUser) => {
-            if (currentUser) {
+        const unsubscribe = auth.onAuthStateChanged(async (currentUser) => {
+            if (!currentUser) { setProfileLoading(false); return; }
+
+            // Base data from Firebase Auth
+            setUser(prev => ({
+                ...prev,
+                name: currentUser.displayName || '',
+                photoURL: currentUser.photoURL,
+            }));
+
+            try {
+                // 1. Fetch user doc (role, name)
+                const userSnap = await getDoc(doc(db, 'users', currentUser.uid));
+                const userData = userSnap.exists() ? userSnap.data() : {};
+
+                // 2. Fetch parents doc (fullName, mobileNumber — legacy collection)
+                const parentSnap = await getDoc(doc(db, 'parents', currentUser.uid));
+                const parentData = parentSnap.exists() ? parentSnap.data() : {};
+
+                // 3. Fetch linked student → prnNumber, assignedBusId
+                const studentSnap = await getDocs(
+                    query(collection(db, 'students'), where('parentId', '==', currentUser.uid))
+                );
+                const studentData = studentSnap.empty ? {} : studentSnap.docs[0].data();
+                const busId = studentData.assignedBusId || userData.assignedBusId || null;
+
+                // 4. Fetch bus plate number
+                let busNumber = busId || null;
+                if (busId) {
+                    try {
+                        const busSnap = await getDoc(doc(db, 'buses', busId));
+                        if (busSnap.exists()) {
+                            busNumber = busSnap.data().number || busSnap.data().plateNumber || busId;
+                        }
+                    } catch (_) { /* keep busId as fallback */ }
+                }
+
                 setUser(prev => ({
                     ...prev,
-                    name: currentUser.displayName || prev.name,
-                    photoURL: currentUser.photoURL,
-                    // In a real app, mobile/prn/bus would come from Firestore
+                    name: currentUser.displayName
+                        || parentData.fullName
+                        || userData.fullName || userData.name
+                        || prev.name,
+                    mobile: parentData.mobileNumber || parentData.mobile
+                        || userData.mobileNumber || userData.mobile || userData.phone
+                        || null,
+                    prn: studentData.prnNumber || studentData.prn || userData.prn || null,
+                    busNumber,
                 }));
+            } catch (err) {
+                console.error('[ProfileView] Failed to load Firestore profile:', err);
+            } finally {
+                setProfileLoading(false);
             }
         });
         return () => unsubscribe();
@@ -315,7 +360,9 @@ export default function ProfileView({ role = "Student" }) {
                                     {user.photoURL ? (
                                         <img src={user.photoURL} alt="Profile" className="w-full h-full object-cover" />
                                     ) : (
-                                        <span className="text-4xl font-bold text-primary">{user.name.charAt(0)}</span>
+                                        <span className="text-4xl font-bold text-primary">
+                                            {user.name ? user.name.charAt(0).toUpperCase() : '?'}
+                                        </span>
                                     )}
                                 </div>
 
@@ -341,7 +388,11 @@ export default function ProfileView({ role = "Student" }) {
                         </div>
 
                         <div className="text-center sm:text-left pt-2">
-                            <h2 className="text-2xl font-bold text-foreground">{user.name}</h2>
+                            {profileLoading ? (
+                                <div className="h-8 w-40 bg-muted animate-pulse rounded-xl mb-2" />
+                            ) : (
+                                <h2 className="text-2xl font-bold text-foreground">{user.name || 'Loading...'}</h2>
+                            )}
                             <span className="inline-block px-3 py-1 bg-secondary/10 text-secondary-foreground rounded-full text-xs font-semibold mt-2">
                                 {role}
                             </span>
@@ -349,9 +400,9 @@ export default function ProfileView({ role = "Student" }) {
                     </div>
 
                     <div className="grid gap-6 sm:grid-cols-2">
-                        <InfoItem className="animate-pop-in delay-300 opacity-0" icon={<Phone size={20} />} label="Mobile Number" value={user.mobile} />
-                        <InfoItem className="animate-pop-in delay-400 opacity-0" icon={<CreditCard size={20} />} label="PRN" value={user.prn} />
-                        <InfoItem className="animate-pop-in delay-500 opacity-0" icon={<Bus size={20} />} label="Bus Number" value={user.busNumber} />
+                        <InfoItem className="animate-pop-in delay-300 opacity-0" icon={<Phone size={20} />} label="Mobile Number" value={user.mobile || '—'} loading={profileLoading} />
+                        <InfoItem className="animate-pop-in delay-400 opacity-0" icon={<CreditCard size={20} />} label="PRN" value={user.prn || '—'} loading={profileLoading} />
+                        <InfoItem className="animate-pop-in delay-500 opacity-0" icon={<Bus size={20} />} label="Bus Number" value={user.busNumber || '—'} loading={profileLoading} />
                     </div>
 
                     <div className="mt-10 pt-6 border-t border-cc-pista-900/10 flex justify-end gap-3 animate-pop-in delay-700 opacity-0">
@@ -575,15 +626,19 @@ export default function ProfileView({ role = "Student" }) {
     );
 }
 
-function InfoItem({ icon, label, value, className }) {
+function InfoItem({ icon, label, value, loading, className }) {
     return (
         <div className={`flex items-start gap-4 p-4 rounded-2xl bg-card/50 border border-cc-purple-500/50 shadow-[0_0_15px_rgba(139,92,246,0.15)] hover:bg-card/80 transition-all ${className || ''}`}>
             <div className="p-2.5 bg-cc-purple-500/10 text-cc-purple-500 rounded-xl border border-cc-purple-500/50 shadow-[0_0_10px_rgba(139,92,246,0.3)]">
                 {icon}
             </div>
-            <div>
+            <div className="flex-1 min-w-0">
                 <p className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-0.5">{label}</p>
-                <p className="font-semibold text-foreground text-lg">{value}</p>
+                {loading ? (
+                    <div className="h-6 w-32 bg-muted animate-pulse rounded-lg mt-1" />
+                ) : (
+                    <p className="font-semibold text-foreground text-lg truncate">{value}</p>
+                )}
             </div>
         </div>
     );
