@@ -1,4 +1,4 @@
-import RouteNavigator from "@/features/navigation/components/RouteNavigator";
+import ClientRouteNavigator from "./ClientRouteNavigator";
 
 export const metadata = {
     title: "Route Navigator | Campus Compass",
@@ -6,5 +6,5 @@ export const metadata = {
 };
 
 export default function NavigationPage() {
-    return <RouteNavigator />;
+    return <ClientRouteNavigator />;
 }

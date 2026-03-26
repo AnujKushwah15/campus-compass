@@ -1,0 +1,31 @@
+
+> campus-compass@0.1.0 build
+> next build
+
+▲ Next.js 16.2.0 (Turbopack)
+- Environments: .env.local
+
+  Creating an optimized production build ...
+
+> Build error occurred
+Error: Turbopack build failed with 1 errors:
+./app/navigation/page.jsx:3:24
+`ssr: false` is not allowed with `next/dynamic` in Server Components. Please move it into a Client Component.
+  [90m1 |[0m [36mimport[0m dynamic [36mfrom[0m [32m"next/dynamic"[0m;
+  [90m2 |[0m
+[31m[1m>[0m [90m3 |[0m [36mconst[0m [33mRouteNavigator[0m = dynamic(
+  [90m  |[0m                        [31m[1m^^^^^^^[0m
+[31m[1m>[0m [90m4 |[0m     () => [36mimport[0m([32m"@/features/navigation/components/RouteNavigator"[0m),
+  [90m  |[0m [31m[1m^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^[0m
+[31m[1m>[0m [90m5 |[0m     { ssr: [36mfalse[0m }
+  [90m  |[0m [31m[1m^^^^^^^^^^^^^^^^^^[0m
+[31m[1m>[0m [90m6 |[0m );
+  [90m  |[0m [31m[1m^[0m
+  [90m7 |[0m
+  [90m8 |[0m [36mexport[0m [36mconst[0m metadata = {
+  [90m9 |[0m     title: [32m"Route Navigator | Campus Compass"[0m,
+
+Ecmascript file had an error
+
+
+    at <unknown> (./app/navigation/page.jsx:3:24)
