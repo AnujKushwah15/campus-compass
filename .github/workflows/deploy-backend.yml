@@ -19,22 +19,17 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      # ── 2. Copy all backend files via SCP ──────────────────────────────────
-      - name: Copy backend files to VPS
-        uses: appleboy/scp-action@v0.1.7
+      # ── 2. Sync ALL backend files via Rsync ────────────────────────────────
+      - name: Sync Backend files to VPS
+        uses: easingthemes/ssh-deploy@v5.1.0
         with:
-          host: ${{ secrets.VPS_IP }}
-          username: root
-          key: ${{ secrets.VPS_SSH_KEY }}
-          # Copies everything needed — index.js, package files, service defs, mediamtx config
-          source: >-
-            backend/index.js,
-            backend/package.json,
-            backend/package-lock.json,
-            backend/mediamtx.yml,
-            backend/campus-compass.service
-          target: /root/cc_deploy
-          strip_components: 1   # strips leading "backend/" — files land in /root/cc_deploy/
+          SSH_PRIVATE_KEY: ${{ secrets.VPS_SSH_KEY }}
+          # Exclude node_modules so we don't sync huge folders or dev deps
+          ARGS: "-rlgoDzvc -i --delete --exclude=node_modules"
+          SOURCE: "backend/"
+          REMOTE_HOST: ${{ secrets.VPS_IP }}
+          REMOTE_USER: "root"
+          TARGET: "/root/campus-compass-backend/"
 
       # ── 3. Install deps + apply config + restart services ──────────────────
       - name: Install & restart services
@@ -46,43 +41,36 @@ jobs:
           script: |
             set -e
 
-            DEPLOY_DIR="/root/cc_deploy"
             BACKEND_DIR="/root/campus-compass-backend"
+            cd "$BACKEND_DIR"
 
-            echo "📁 Syncing files to backend dir..."
-            mkdir -p "$BACKEND_DIR"
-            cp "$DEPLOY_DIR/index.js"   "$BACKEND_DIR/index.js"
-            cp "$DEPLOY_DIR/package.json"      "$BACKEND_DIR/package.json"
-            cp "$DEPLOY_DIR/package-lock.json" "$BACKEND_DIR/package-lock.json"
-
-            # Update systemd service file if changed
-            if ! diff -q "$DEPLOY_DIR/campus-compass.service" /etc/systemd/system/campus-compass.service &>/dev/null; then
+            # 1. Update systemd service file if changed
+            if ! diff -q campus-compass.service /etc/systemd/system/campus-compass.service &>/dev/null; then
               echo "🔄 Service file changed — updating..."
-              cp "$DEPLOY_DIR/campus-compass.service" /etc/systemd/system/campus-compass.service
+              cp campus-compass.service /etc/systemd/system/campus-compass.service
               systemctl daemon-reload
             fi
 
-            # Update MediaMTX config if changed
-            if ! diff -q "$DEPLOY_DIR/mediamtx.yml" /etc/mediamtx.yml &>/dev/null; then
+            # 2. Update MediaMTX config if changed
+            if ! diff -q mediamtx.yml /etc/mediamtx.yml &>/dev/null; then
               echo "🔄 MediaMTX config changed — updating..."
-              cp "$DEPLOY_DIR/mediamtx.yml" /etc/mediamtx.yml
+              cp mediamtx.yml /etc/mediamtx.yml
               systemctl restart mediamtx
               sleep 2
               systemctl is-active mediamtx && echo "✅ mediamtx running"
             fi
 
-            # Install / update Node.js dependencies
+            # 3. Install / update Node.js dependencies
             echo "📦 Installing Node.js dependencies..."
-            cd "$BACKEND_DIR"
             npm ci --omit=dev --silent
 
-            # Restart the backend service
+            # 4. Restart the backend service
             echo "♻️  Restarting campus-compass service..."
             systemctl restart campus-compass
             sleep 3
             systemctl is-active campus-compass && echo "✅ campus-compass running"
 
-            # Health check
+            # 5. Health check
             HTTP=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:3001/health)
             if [ "$HTTP" = "200" ]; then
               echo "✅ Health check passed (HTTP $HTTP)"
@@ -92,8 +80,6 @@ jobs:
               exit 1
             fi
 
-            # Clean up staging area
-            rm -rf "$DEPLOY_DIR"
             echo ""
             echo "🎉 Deploy complete — $(date)"
 
