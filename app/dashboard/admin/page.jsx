@@ -256,7 +256,7 @@ export default function AdminDashboardPage() {
                 <div className="col-span-12 lg:col-span-6 flex flex-col gap-6 h-full">
 
                     {/* ── Bus Monitor Panel ─────────────────────────────────── */}
-                    <div className="rounded-2xl border border-cc-purple-500/20 overflow-hidden shadow-lg bg-card">
+                    <div className="rounded-2xl border border-cc-purple-500/20 overflow-hidden shadow-lg bg-card mb-6">
 
                         {/* Bus Selector Toolbar */}
                         <div className="flex items-center gap-2 px-3 py-2 border-b border-border bg-card/80">
@@ -298,7 +298,7 @@ export default function AdminDashboardPage() {
                         </div>
 
                         {/* Live Stream */}
-                        <div className="h-48 relative">
+                        <div className="aspect-video relative block w-full bg-black">
                             {selectedMonitorEntry ? (
                                 <StreamProvider busId={selectedMonitorEntry.id} key={selectedMonitorEntry.id}>
                                     <AdminStreamWidget
@@ -313,13 +313,16 @@ export default function AdminDashboardPage() {
                                 </div>
                             )}
                         </div>
+                    </div>
 
-                        {/* Map for selected bus */}
-                        <div className="h-44 relative border-t border-border">
-                            <div className="absolute top-2 left-2 z-20 bg-black/60 backdrop-blur-sm px-2 py-0.5 rounded-full text-white text-[10px] font-bold pointer-events-none flex items-center gap-1">
-                                🗺 {selectedMonitorEntry?.label ?? 'Fleet'} — Location
-                            </div>
-                            <BusMap location={selectedMonitorEntry?.location ?? null} allLocations={busLocations} />
+                    {/* ── Fleet Map Panel ───────────────────────────────────── */}
+                    <div className="rounded-2xl border border-cc-purple-500/20 shadow-lg bg-card flex-1 min-h-[300px] flex flex-col overflow-hidden">
+                        <div className="flex items-center gap-2 px-3 py-2 border-b border-border bg-card/80">
+                            <MapPin size={14} className="text-cc-purple-400 shrink-0" />
+                            <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Fleet Global Map</span>
+                        </div>
+                        <div className="flex-1 relative">
+                            <BusMap allLocations={busLocations} />
                         </div>
                     </div>
                 </div>
@@ -368,16 +371,14 @@ function AdminStreamWidget({ selectedCamera, onCameraSelect, busLabel }) {
 }
 
 // ─── BusMap ───────────────────────────────────────────────────────────────────
-// Shows the selected bus location centered. If no location, centers on fleet.
-function BusMap({ location, allLocations }) {
+// Shows the entire active fleet location on the map.
+function BusMap({ allLocations }) {
     // Gather all available locations for context markers
-    const allEntries = Object.entries(allLocations);
-    const fallbackCenter = allEntries.length > 0 ? allEntries[0][1] : null;
-    const center = location || fallbackCenter;
+    const allEntries = Object.entries(allLocations).map(([id, loc]) => ({ ...loc, id, label: `Bus ${id}` }));
 
     return (
-        <div className="w-full h-full">
-            <LiveMap busLocation={center} />
+        <div className="w-full h-full absolute inset-0">
+            <LiveMap busLocations={allEntries} />
         </div>
     );
 }

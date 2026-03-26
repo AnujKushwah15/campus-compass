@@ -54,11 +54,29 @@ export const AuthProvider = ({ children }) => {
     const [user, setUser] = useState(null);
     const [role, setRole] = useState(null);
     const [loading, setLoading] = useState(true);
+    const [isHydrated, setIsHydrated] = useState(false);
 
     useEffect(() => {
+        setIsHydrated(true);
         const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
             if (!currentUser) {
-                // Signed out — wipe any cached session
+                // To prevent the dashboard flicker, we check if sessionStorage has a token.
+                const hasSession = !!sessionStorage.getItem(SESSION_KEY);
+                
+                if (hasSession && loading) {
+                     // We clear session ONLY if we are SURE it's a real logout. 
+                     // Wait a short tick, if it's still null, then clear it.
+                     setTimeout(() => {
+                        if (!auth.currentUser) {
+                            clearSession();
+                            setUser(null);
+                            setRole(null);
+                            setLoading(false);
+                        }
+                     }, 1000);
+                     return;
+                }
+
                 clearSession();
                 setUser(null);
                 setRole(null);

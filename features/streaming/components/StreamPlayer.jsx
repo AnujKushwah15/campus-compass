@@ -1,7 +1,8 @@
 "use client";
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import VideoPlayer from '@/features/streaming/components/VideoPlayer';
+import { Maximize2, Minimize2 } from 'lucide-react';
 
 /**
  * StreamPlayer — UI wrapper for video stream with status indicators.
@@ -38,6 +39,28 @@ export default function StreamPlayer({
     className = '',
 }) {
     const [isPlaying, setIsPlaying] = useState(false);
+    const [isFullscreen, setIsFullscreen] = useState(false);
+    const containerRef = useRef(null);
+
+    // Toggle fullscreen wrapper
+    const toggleFullscreen = () => {
+        if (!document.fullscreenElement) {
+            containerRef.current?.requestFullscreen().catch(err => {
+                console.error(`Error attempting to enable fullscreen: ${err.message}`);
+            });
+        } else {
+            document.exitFullscreen();
+        }
+    };
+
+    // Listen for external fullscreen exits (e.g. Esc key)
+    useEffect(() => {
+        const handleFullscreenChange = () => {
+            setIsFullscreen(!!document.fullscreenElement);
+        };
+        document.addEventListener('fullscreenchange', handleFullscreenChange);
+        return () => document.removeEventListener('fullscreenchange', handleFullscreenChange);
+    }, []);
 
     // Auto-play when streamPath becomes available
     useEffect(() => {
@@ -45,7 +68,10 @@ export default function StreamPlayer({
     }, [streamPath]);
 
     return (
-        <div className={`relative rounded-2xl overflow-hidden bg-gray-900 ${className}`}>
+        <div 
+            ref={containerRef} 
+            className={`relative rounded-2xl overflow-hidden bg-gray-900 ${className} ${isFullscreen ? 'fixed inset-0 z-50 rounded-none' : ''}`}
+        >
 
             {/* ─── Status Bar ──────────────────────────────────────────────── */}
             <div className="absolute top-0 left-0 right-0 z-20 flex flex-wrap items-center justify-between gap-2 px-3 py-2 bg-gradient-to-b from-black/60 to-transparent">
@@ -77,6 +103,15 @@ export default function StreamPlayer({
                             👁 {viewerCount}
                         </span>
                     )}
+
+                    {/* Fullscreen Toggle */}
+                    <button 
+                        onClick={toggleFullscreen}
+                        className="p-1 rounded bg-black/40 text-gray-300 hover:text-white hover:bg-black/80 transition-colors"
+                        title={isFullscreen ? "Exit Fullscreen" : "Fullscreen"}
+                    >
+                        {isFullscreen ? <Minimize2 size={14} /> : <Maximize2 size={14} />}
+                    </button>
                 </div>
             </div>
 

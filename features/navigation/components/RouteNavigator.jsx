@@ -11,8 +11,8 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 
-// Dynamic import for Leaflet (no SSR)
-const NavigationMap = dynamic(() => import("./NavigationMap"), {
+// Dynamic import for the map provider toggle (Ola Maps → OSM fallback)
+const MapProviderToggle = dynamic(() => import("./MapProviderToggle"), {
     ssr: false,
     loading: () => (
         <div className="w-full h-full flex items-center justify-center bg-card rounded-2xl text-muted-foreground animate-pulse">
@@ -437,7 +437,7 @@ export default function RouteNavigator() {
 
                     {/* Map fills remaining space */}
                     <div className="flex-1 min-h-0">
-                        <NavigationMap
+                        <MapProviderToggle
                             startPos={startPos}
                             endPos={endPos}
                             routeData={routeData}

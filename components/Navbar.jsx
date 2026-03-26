@@ -3,21 +3,20 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import Logo from './Logo';
 import { Home, Calendar, User, ChevronDown, Bell } from 'lucide-react';
-
 import ThemeToggle from './ThemeToggle';
+import { useAuth } from '@/features/auth/components/AuthProvider';
 
 export default function Navbar() {
     const pathname = usePathname();
     const isActive = (path) => pathname === path;
+    const { user, role } = useAuth();
 
     // Determine context based on path
     const isParent = pathname.startsWith('/dashboard/parent');
     const basePath = isParent ? '/dashboard/parent' : '/dashboard/student';
 
-    // Mock user state (Dynamic for demo)
-    const user = isParent
-        ? { name: 'Mr. Sharma', role: 'Parent' }
-        : { name: 'Alex Johnson', role: 'Student' };
+    const displayName = user?.displayName || 'Loading...';
+    const displayRole = role ? role.charAt(0).toUpperCase() + role.slice(1) : (isParent ? 'Parent' : 'Student');
 
     return (
         <>
@@ -56,18 +55,17 @@ export default function Navbar() {
                         </Link>
 
 
-                    {/* User Dropdown Trigger */}
-                    <div className="flex items-center gap-3 pl-3 border-l border-border cursor-pointer group">
+                    {/* User Profile Info */}
+                    <div className="flex items-center gap-3 pl-3 border-l border-border group">
                         <div className="w-9 h-9 rounded-full bg-gradient-to-br from-cc-sky-400 to-cc-brown-500 p-0.5 shadow-sm group-hover:shadow-glow transition-all">
                             <div className="w-full h-full bg-card rounded-full flex items-center justify-center text-foreground font-bold text-sm">
-                                {user.name.charAt(0)}
+                                {displayName.charAt(0)}
                             </div>
                         </div>
                         <div className="hidden sm:block text-sm">
-                            <p className="font-semibold text-foreground leading-none">{user.name}</p>
-                            <p className="text-muted-foreground font-medium text-xs mt-0.5">{user.role}</p>
+                            <p className="font-semibold text-foreground leading-none">{displayName}</p>
+                            <p className="text-muted-foreground font-medium text-xs mt-0.5">{displayRole}</p>
                         </div>
-                        <ChevronDown size={16} className="text-muted-foreground group-hover:translate-y-0.5 transition-transform" />
                     </div>
                     </div>
                 </div>

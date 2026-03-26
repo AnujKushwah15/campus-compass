@@ -59,7 +59,7 @@ export default function LoginPage() {
 
     // Helper: Find student by PRN to link parent
     const findStudentByPRN = async (prn) => {
-        const q = query(studentsRef, where("prn", "==", prn));
+        const q = query(studentsRef, where("prnNumber", "==", prn));
         const querySnapshot = await getDocs(q);
         return !querySnapshot.empty ? querySnapshot.docs[0] : null;
     };
@@ -167,68 +167,67 @@ export default function LoginPage() {
         }
 
         try {
-            // New Validation Block: Check PRN *before* creating Firebase Auth User
-            if (signupRole === 'parent') {
-                if (!formData.childPrn) {
-                    throw new Error("Child's PRN is required.");
-                }
-                const studentDoc = await findStudentByPRN(formData.childPrn);
-                if (!studentDoc) {
-                    throw new Error(`Student with PRN "${formData.childPrn}" not found. Please sign up your child first.`);
-                }
+            // New Validation Block: Check PRN locally to avoid empty API calls
+            if (signupRole === 'parent' && !formData.childPrn) {
+                throw new Error("Child's PRN is required.");
             }
 
             const userCredential = await createUserWithEmailAndPassword(auth, formData.email, formData.password);
             const user = userCredential.user;
 
+            if (signupRole === 'parent') {
+                const studentDoc = await findStudentByPRN(formData.childPrn);
+                if (!studentDoc) {
+                    await user.delete();
+                    throw new Error(`Student with PRN "${formData.childPrn}" not found. Please sign up your child first.`);
+                }
+            }
+
             await updateProfile(user, {
                 displayName: formData.fullName
             });
 
-            try {
-                // Store user data in Firestore
-                await setDoc(doc(db, "users", user.uid), {
-                    uid: user.uid,
-                    email: formData.email,
+            // Store user data in Firestore (errors will propagate to the outer catch)
+            await setDoc(doc(db, "users", user.uid), {
+                uid: user.uid,
+                email: formData.email,
+                fullName: formData.fullName,
+                mobile: formData.mobile,
+                prn: formData.prn || (formData.childPrn ? `PARENT-OF-${formData.childPrn}` : ''),
+                college: formData.college,
+                semester: formData.semester,
+                role: signupRole,
+                createdAt: new Date().toISOString()
+            });
+
+            // Store role-specific data
+            if (signupRole === 'student') {
+                await setDoc(doc(studentsRef, user.uid), {
+                    id: user.uid,
                     fullName: formData.fullName,
-                    mobile: formData.mobile,
-                    prn: formData.prn || (formData.childPrn ? `PARENT-OF-${formData.childPrn}` : ''),
-                    college: formData.college,
+                    mobileNumber: formData.mobile,
+                    prnNumber: formData.prn,
+                    collegeName: formData.college,
                     semester: formData.semester,
-                    role: signupRole,
-                    createdAt: new Date().toISOString()
+                    email: formData.email,
+                    parentId: null,
                 });
+            } else if (signupRole === 'parent') {
+                const studentDoc = await findStudentByPRN(formData.childPrn);
+                const childId = studentDoc.id;
 
-                // Store role-specific data
-                if (signupRole === 'student') {
-                    await setDoc(doc(studentsRef, user.uid), {
-                        id: user.uid,
-                        fullName: formData.fullName,
-                        mobileNumber: formData.mobile,
-                        prnNumber: formData.prn,
-                        collegeName: formData.college,
-                        semester: formData.semester,
-                        email: formData.email,
-                        parentId: null,
-                    });
-                } else if (signupRole === 'parent') {
-                    const studentDoc = await findStudentByPRN(formData.childPrn);
-                    const childId = studentDoc.id;
+                // Link parent to child in the student document
+                await setDoc(doc(studentsRef, studentDoc.id), {
+                    parentId: user.uid
+                }, { merge: true });
 
-                    await setDoc(doc(studentsRef, studentDoc.id), {
-                        parentId: user.uid
-                    }, { merge: true });
-
-                    await setDoc(doc(parentsRef, user.uid), {
-                        id: user.uid,
-                        fullName: formData.fullName,
-                        email: formData.email,
-                        mobileNumber: formData.mobile,
-                        child_id: childId
-                    });
-                }
-            } catch (dbError) {
-                console.error("Firestore save error but user was created:", dbError);
+                await setDoc(doc(parentsRef, user.uid), {
+                    id: user.uid,
+                    fullName: formData.fullName,
+                    email: formData.email,
+                    mobileNumber: formData.mobile,
+                    child_id: childId
+                });
             }
 
             // Send verification email then sign out — user must verify before logging in
