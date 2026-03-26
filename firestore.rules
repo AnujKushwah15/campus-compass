@@ -42,19 +42,37 @@ service cloud.firestore {
       allow update: if request.auth.uid == userId
         && !('role' in request.resource.data.diff(resource.data).affectedKeys())
         && !('assignedBusId' in request.resource.data.diff(resource.data).affectedKeys());
-      allow create, delete: if isAdmin();
+      // Allow new students/parents to create their own profile during registration
+      allow create: if isAdmin() ||
+        (isAuth() && request.auth.uid == userId &&
+         request.resource.data.role in ['student', 'parent']);
+      allow delete: if isAdmin();
     }
 
     // ── Students ─────────────────────────────────────────────────────────────
     match /students/{studentId} {
       allow read: if isAuth();
-      allow write: if isAdmin();
+      // Allow a student to create their own record during self-registration
+      allow create: if isAdmin() ||
+        (isAuth() && request.auth.uid == studentId);
+      // Allow a parent to set parentId ONLY if not already linked
+      // Uses '!in' check to also handle when the field is missing (not just null)
+      allow update: if isAdmin() ||
+        (isAuth() &&
+         request.resource.data.diff(resource.data).affectedKeys().hasOnly(['parentId']) &&
+         request.resource.data.parentId == request.auth.uid &&
+         (!('parentId' in resource.data) || resource.data.parentId == null));
+      allow delete: if isAdmin();
     }
 
     // ── Buses ────────────────────────────────────────────────────────────────
     match /buses/{busId} {
       allow read: if isAuth();
-      allow write: if isAdmin();
+      allow update: if isAdmin() || (
+        driverOwnsBus(busId) && 
+        request.resource.data.diff(resource.data).affectedKeys().hasOnly(['activeTripId'])
+      );
+      allow create, delete: if isAdmin();
     }
 
     // ── Trips ────────────────────────────────────────────────────────────────
@@ -84,10 +102,14 @@ service cloud.firestore {
       allow write: if false;
     }
 
-    // ── Parents (legacy) ─────────────────────────────────────────────────────
+    // ── Parents ──────────────────────────────────────────────────────────────
     match /parents/{parentId} {
       allow read: if isAuth() && (request.auth.uid == parentId || isAdmin());
-      allow write: if request.auth.uid == parentId || isAdmin();
+      // Allow new parents to create their own profile during self-registration
+      allow create: if isAdmin() ||
+        (isAuth() && request.auth.uid == parentId);
+      allow update: if request.auth.uid == parentId || isAdmin();
+      allow delete: if isAdmin();
     }
   }
 }
