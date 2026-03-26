@@ -342,4 +342,13 @@ body {
   transition: background-color 0.15s ease;
 }
 .btn-secondary:hover { background-color: var(--color-muted); }
+
+/* ── Hide scrollbar (keeps scroll functionality) ─────────────────────────── */
+.hide-scrollbar {
+  scrollbar-width: none;       /* Firefox */
+  -ms-overflow-style: none;    /* IE / Edge */
+}
+.hide-scrollbar::-webkit-scrollbar {
+  display: none;               /* Chrome / Safari */
+}
 

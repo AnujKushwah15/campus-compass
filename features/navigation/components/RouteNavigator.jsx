@@ -3,10 +3,11 @@
 import { useState, useCallback, useEffect, useRef } from "react";
 import PlaceSearch from "./PlaceSearch";
 import dynamic from "next/dynamic";
+import { POI_CONFIG } from "./NavigationMap";
 import {
     Navigation, Clock, Route, ArrowRight, RotateCcw,
     ChevronDown, ChevronUp, ArrowLeft, CornerUpLeft, CornerUpRight,
-    ArrowUp, Car
+    ArrowUp, Car, Layers
 } from "lucide-react";
 import Link from "next/link";
 
@@ -58,6 +59,22 @@ export default function RouteNavigator() {
     const [showSteps, setShowSteps] = useState(false);
     const [geoLoading, setGeoLoading] = useState(false);
     const [swapRotate, setSwapRotate] = useState(false);
+    const [activeCategory, setActiveCategory] = useState("all");
+
+    // ── Category filter config ───────────────────────────────────────────────
+    const CATEGORIES = [
+        { key: "all",       emoji: "🗺️",  label: "All" },
+        { key: "hospital",  emoji: POI_CONFIG.hospital.emoji,   label: POI_CONFIG.hospital.label },
+        { key: "education", emoji: POI_CONFIG.education.emoji,  label: POI_CONFIG.education.label },
+        { key: "bus_stop",  emoji: POI_CONFIG.bus_stop.emoji,   label: POI_CONFIG.bus_stop.label },
+        { key: "bank",      emoji: POI_CONFIG.bank.emoji,       label: POI_CONFIG.bank.label },
+        { key: "restaurant",emoji: POI_CONFIG.restaurant.emoji, label: POI_CONFIG.restaurant.label },
+        { key: "pharmacy",  emoji: POI_CONFIG.pharmacy.emoji,   label: POI_CONFIG.pharmacy.label },
+        { key: "fuel",      emoji: POI_CONFIG.fuel.emoji,       label: POI_CONFIG.fuel.label },
+        { key: "shop",      emoji: POI_CONFIG.shop.emoji,       label: POI_CONFIG.shop.label },
+        { key: "attraction",emoji: POI_CONFIG.attraction.emoji, label: POI_CONFIG.attraction.label },
+        { key: "police",    emoji: POI_CONFIG.police.emoji,     label: POI_CONFIG.police.label },
+    ];
 
     const destinationRef = useRef(null);
     const autoTriggeredKey = useRef(null);
@@ -389,6 +406,7 @@ export default function RouteNavigator() {
                     )}
                 </div>
 
+<<<<<<< Updated upstream
                 {/* Right Panel — Map (fills remaining space) */}
                 <div className="min-h-[400px] lg:min-h-0 rounded-2xl overflow-hidden shadow-lg border border-cc-purple-500/30 ring-1 ring-cc-purple-500/10">
                     <NavigationMap
@@ -405,6 +423,54 @@ export default function RouteNavigator() {
                             }
                         }}
                     />
+=======
+                {/* Right Panel — Map + category filter */}
+                <div className="min-h-[400px] lg:min-h-0 rounded-2xl overflow-hidden shadow-lg border border-cc-purple-500/20 flex flex-col">
+
+                    {/* ── Category Filter Pill Bar ── */}
+                    <div className="bg-card/95 backdrop-blur-sm border-b border-border px-3 py-2 flex items-center gap-2 shrink-0">
+                        <Layers className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
+                        <div className="flex gap-1.5 overflow-x-auto hide-scrollbar">
+                            {CATEGORIES.map(cat => (
+                                <button
+                                    key={cat.key}
+                                    type="button"
+                                    onClick={() => setActiveCategory(cat.key)}
+                                    className={`
+                                        flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium
+                                        whitespace-nowrap shrink-0 transition-all duration-150 border
+                                        ${
+                                            activeCategory === cat.key
+                                                ? "bg-cc-purple-500 text-white border-cc-purple-500 shadow-sm shadow-cc-purple-500/30"
+                                                : "bg-muted/60 text-muted-foreground border-transparent hover:bg-muted hover:text-foreground"
+                                        }
+                                    `}
+                                >
+                                    <span>{cat.emoji}</span>
+                                    <span>{cat.label}</span>
+                                </button>
+                            ))}
+                        </div>
+                    </div>
+
+                    {/* Map fills remaining space */}
+                    <div className="flex-1 min-h-0">
+                        <NavigationMap
+                            startPos={startPos}
+                            endPos={endPos}
+                            routeData={routeData}
+                            activeCategory={activeCategory}
+                            onPoiSelect={(poi) => {
+                                const pos = { lat: poi.lat, lng: poi.lng, label: poi.name };
+                                if (!startPos) {
+                                    handleStartChange(pos);
+                                } else {
+                                    handleEndChange(pos);
+                                }
+                            }}
+                        />
+                    </div>
+>>>>>>> Stashed changes
                 </div>
             </div>
         </div>

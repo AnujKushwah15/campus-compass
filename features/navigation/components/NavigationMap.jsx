@@ -65,20 +65,20 @@ const startIcon = makePin("#22c55e", "A");
 const endIcon   = makePin("#ef4444", "B");
 
 // ── POI type config ──────────────────────────────────────────────────────────
-const POI_CONFIG = {
-    hospital:   { emoji: "🏥", color: "#ef4444", major: true },
-    education:  { emoji: "🎓", color: "#3b82f6", major: true },
-    bank:       { emoji: "🏦", color: "#f59e0b", major: true },
-    restaurant: { emoji: "🍽️", color: "#f97316", major: false },
-    bus_stop:   { emoji: "🚌", color: "#06b6d4", major: true },
-    pharmacy:   { emoji: "💊", color: "#10b981", major: false },
-    fuel:       { emoji: "⛽", color: "#6b7280", major: false },
-    shop:       { emoji: "🛒", color: "#8b5cf6", major: false },
-    attraction: { emoji: "📍", color: "#ec4899", major: false },
-    library:    { emoji: "📚", color: "#7c3aed", major: false },
-    police:     { emoji: "🚓", color: "#1d4ed8", major: true },
-    parking:    { emoji: "🅿️", color: "#64748b", major: false },
-    poi:        { emoji: "📌", color: "#94a3b8", major: false },
+export const POI_CONFIG = {
+    hospital:   { emoji: "🏥", label: "Hospital",   color: "#ef4444", major: true },
+    education:  { emoji: "🎓", label: "College",    color: "#3b82f6", major: true },
+    bank:       { emoji: "🏦", label: "Bank",       color: "#f59e0b", major: true },
+    restaurant: { emoji: "🍽️", label: "Food",       color: "#f97316", major: false },
+    bus_stop:   { emoji: "🚌", label: "Bus Stop",   color: "#06b6d4", major: true },
+    pharmacy:   { emoji: "💊", label: "Pharmacy",   color: "#10b981", major: false },
+    fuel:       { emoji: "⛽", label: "Fuel",       color: "#6b7280", major: false },
+    shop:       { emoji: "🛒", label: "Shop",       color: "#8b5cf6", major: false },
+    attraction: { emoji: "📍", label: "Attraction", color: "#ec4899", major: false },
+    library:    { emoji: "📚", label: "Library",    color: "#7c3aed", major: false },
+    police:     { emoji: "🚓", label: "Police",     color: "#1d4ed8", major: true },
+    parking:    { emoji: "🅿️", label: "Parking",   color: "#64748b", major: false },
+    poi:        { emoji: "📌", label: "POI",        color: "#94a3b8", major: false },
 };
 
 function makePOIIcon(type) {
@@ -106,7 +106,6 @@ function AnimatedRoute({ routeData }) {
     useEffect(() => {
         if (!routeData?.geometry) return;
 
-        // Remove previous route
         if (layerRef.current) {
             map.removeLayer(layerRef.current);
             layerRef.current = null;
@@ -115,7 +114,6 @@ function AnimatedRoute({ routeData }) {
         const coords = routeData.geometry.coordinates.map(([lng, lat]) => [lat, lng]);
         const total = coords.length;
 
-        // Draw route progressively
         const polyline = L.polyline([], {
             color: "#8b5cf6",
             weight: 5,
@@ -193,19 +191,80 @@ function UserPosition() {
     );
 }
 
-// ── POI Layer (zoom-aware, debounced fetch, simple manual clustering) ─────────
-const poiBboxCache = new Map();
+// ── localStorage POI cache helpers ────────────────────────────────────────────
+const LS_PREFIX = "cc_poi_";
+const LS_TTL    = 30 * 60 * 1000; // 30 minutes
+const LS_MAX_KEYS = 60;
 
-function POILayer({ onPoiSelect }) {
+function lsGet(key) {
+    try {
+        const raw = localStorage.getItem(LS_PREFIX + key);
+        if (!raw) return null;
+        const { data, expiresAt } = JSON.parse(raw);
+        if (Date.now() > expiresAt) { localStorage.removeItem(LS_PREFIX + key); return null; }
+        return data;
+    } catch { return null; }
+}
+
+function lsSet(key, data) {
+    try {
+        localStorage.setItem(LS_PREFIX + key, JSON.stringify({ data, expiresAt: Date.now() + LS_TTL }));
+        // Prune oldest entries when we exceed the cap
+        const allKeys = Object.keys(localStorage).filter(k => k.startsWith(LS_PREFIX));
+        if (allKeys.length > LS_MAX_KEYS) {
+            // Remove the oldest half of stale entries, or just the first ones
+            allKeys.slice(0, allKeys.length - LS_MAX_KEYS).forEach(k => localStorage.removeItem(k));
+        }
+    } catch { /* quota exceeded — fail silently */ }
+}
+
+// Module-level in-memory layer (still useful within single session for speed)
+const memCache = new Map();
+
+function cacheGet(key) {
+    const mem = memCache.get(key);
+    if (mem && mem.expiresAt > Date.now()) return mem.data;
+    return lsGet(key);
+}
+
+function cacheSet(key, data) {
+    memCache.set(key, { data, expiresAt: Date.now() + LS_TTL });
+    if (memCache.size > 60) {
+        const firstKey = memCache.keys().next().value;
+        memCache.delete(firstKey);
+    }
+    lsSet(key, data);
+}
+
+// ── POI Layer ─────────────────────────────────────────────────────────────────
+function POILayer({ onPoiSelect, activeCategory }) {
     const map = useMap();
-    const [pois, setPois] = useState([]);
-    const [zoom, setZoom] = useState(null);
+    const [allPois, setAllPois] = useState([]);   // raw fetched list
+    const [pois, setPois] = useState([]);          // filtered for display
     const fetchTimerRef = useRef(null);
+
+    // Re-filter whenever active category or raw data changes
+    useEffect(() => {
+        setPois(filterPois(allPois, activeCategory, map.getZoom()));
+    }, [allPois, activeCategory]); // eslint-disable-line react-hooks/exhaustive-deps
+
+    function filterPois(data, category, zoom) {
+        let filtered = data;
+        if (category && category !== "all") {
+            filtered = data.filter(p => p.type === category);
+        } else {
+            // zoom-based fallback when showing all
+            if (zoom < 16) {
+                filtered = data.filter(p => (POI_CONFIG[p.type] || POI_CONFIG.poi).major);
+            }
+        }
+        return filtered;
+    }
 
     const fetchPOIs = useCallback(async () => {
         const currentZoom = map.getZoom();
         if (currentZoom < 14) {
-            setPois([]);
+            setAllPois([]);
             return;
         }
 
@@ -216,11 +275,12 @@ function POILayer({ onPoiSelect }) {
         const east  = bounds.getEast().toFixed(4);
         const bbox  = `${south},${west},${north},${east}`;
 
-        // Client-side cache
-        const cacheKey = `${bbox}|${currentZoom}`;
-        if (poiBboxCache.has(cacheKey)) {
-            const cached = poiBboxCache.get(cacheKey);
-            setPois(currentZoom >= 14 ? filterByZoom(cached, currentZoom) : []);
+        // Use "all" when fetching so we cache the full dataset once per bbox;
+        // filtering is done client-side in filterPois().
+        const cacheKey = `${bbox}|all`;
+        const cached = cacheGet(cacheKey);
+        if (cached) {
+            setAllPois(cached);
             return;
         }
 
@@ -228,34 +288,24 @@ function POILayer({ onPoiSelect }) {
             const res = await fetch(`/api/places?bbox=${bbox}`);
             if (!res.ok) return;
             const data = await res.json();
-            poiBboxCache.set(cacheKey, data);
-            // Evict old entries
-            if (poiBboxCache.size > 30) {
-                const firstKey = poiBboxCache.keys().next().value;
-                poiBboxCache.delete(firstKey);
-            }
-            setPois(filterByZoom(data, currentZoom));
+            cacheSet(cacheKey, data);
+            setAllPois(data);
         } catch (_) {
             // fail silently — POIs are optional
         }
     }, [map]);
 
-    // Zoom-based filtering: zoom 14-15 → major only, 16+ → all
-    function filterByZoom(data, z) {
-        if (z >= 16) return data;
-        return data.filter(p => (POI_CONFIG[p.type] || POI_CONFIG.poi).major);
-    }
-
-    // Debounce map move events
+    // Debounce map move / zoom events
     useMapEvents({
         moveend: () => {
             clearTimeout(fetchTimerRef.current);
             fetchTimerRef.current = setTimeout(fetchPOIs, 500);
         },
         zoomend: () => {
-            setZoom(map.getZoom());
             clearTimeout(fetchTimerRef.current);
             fetchTimerRef.current = setTimeout(fetchPOIs, 400);
+            // Re-filter immediately on zoom (no network needed)
+            setPois(filterPois(allPois, activeCategory, map.getZoom()));
         },
     });
 
@@ -314,7 +364,7 @@ function POILayer({ onPoiSelect }) {
 }
 
 // ── Main Map Component ───────────────────────────────────────────────────────
-export default function NavigationMap({ startPos, endPos, routeData, onPoiSelect }) {
+export default function NavigationMap({ startPos, endPos, routeData, onPoiSelect, activeCategory = "all" }) {
     const defaultCenter = [23.0225, 72.5714]; // Ahmedabad
 
     return (
@@ -339,7 +389,7 @@ export default function NavigationMap({ startPos, endPos, routeData, onPoiSelect
                 <AnimatedRoute routeData={routeData} />
 
                 {/* POI Layer */}
-                <POILayer onPoiSelect={onPoiSelect} />
+                <POILayer onPoiSelect={onPoiSelect} activeCategory={activeCategory} />
 
                 {/* Start Marker */}
                 {startPos && (

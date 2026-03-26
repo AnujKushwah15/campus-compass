@@ -638,7 +638,7 @@ app.get('/api/search-place', async (req, res) => {
 
 // In-memory bbox cache: key = "lat1,lng1,lat2,lng2" → { data, expiresAt }
 const placesCache = new Map();
-const PLACES_CACHE_TTL = 10 * 60 * 1000; // 10 minutes
+const PLACES_CACHE_TTL = 30 * 60 * 1000; // 30 minutes
 
 // Category → friendly type mapping
 const AMENITY_TYPES = new Set([
@@ -676,9 +676,57 @@ function normaliseType(tags) {
 // Query params: bbox=<south,west,north,east>  (comma-separated)
 // Returns array of { id, name, type, lat, lng }
 
+// Category → Overpass filter mapping
+const CATEGORY_OVERPASS = {
+    hospital:   { amenity: 'hospital|clinic|doctors' },
+    education:  { amenity: 'school|college|university|kindergarten' },
+    bank:       { amenity: 'bank|atm' },
+    restaurant: { amenity: 'restaurant|cafe|fast_food|food_court' },
+    bus_stop:   { amenity: 'bus_station', highway: 'bus_stop' },
+    pharmacy:   { amenity: 'pharmacy' },
+    fuel:       { amenity: 'fuel' },
+    parking:    { amenity: 'parking' },
+    library:    { amenity: 'library' },
+    police:     { amenity: 'police' },
+    shop:       { shop: 'supermarket|electronics|clothes|convenience|mall|bakery' },
+    attraction: { tourism: 'attraction' },
+};
+
+function buildOverpassQuery(bboxStr, requestedTypes) {
+    // If no specific types (or 'all'), fetch everything
+    if (!requestedTypes || requestedTypes.length === 0) {
+        return `
+[out:json][timeout:20];
+(
+  node["amenity"~"hospital|clinic|doctors|school|college|university|kindergarten|bank|atm|restaurant|cafe|fast_food|food_court|pharmacy|bus_station|fuel|police|fire_station|library|parking"](${bboxStr});
+  node["shop"~"supermarket|electronics|clothes|convenience|mall|bakery"](${bboxStr});
+  node["tourism"="attraction"](${bboxStr});
+  node["highway"="bus_stop"](${bboxStr});
+);
+out center 200;
+`.trim();
+    }
+
+    // Build targeted query for requested categories
+    const lines = new Set();
+    for (const cat of requestedTypes) {
+        const cfg = CATEGORY_OVERPASS[cat];
+        if (!cfg) continue;
+        if (cfg.amenity)  lines.add(`node["amenity"~"${cfg.amenity}"](${bboxStr});`);
+        if (cfg.highway)  lines.add(`node["highway"="${cfg.highway}"](${bboxStr});`);
+        if (cfg.shop)     lines.add(`node["shop"~"${cfg.shop}"](${bboxStr});`);
+        if (cfg.tourism)  lines.add(`node["tourism"="${cfg.tourism}"](${bboxStr});`);
+    }
+    if (lines.size === 0) {
+        // Fallback: fetch all
+        return buildOverpassQuery(bboxStr, null);
+    }
+    return `[out:json][timeout:15];\n(\n  ${[...lines].join('\n  ')}\n);\nout center 200;`;
+}
+
 app.get('/api/places', async (req, res) => {
     try {
-        const { bbox } = req.query;
+        const { bbox, types } = req.query;
         if (!bbox) {
             return res.status(400).json({ error: 'Missing bbox param. Format: south,west,north,east' });
         }
@@ -697,8 +745,14 @@ app.get('/api/places', async (req, res) => {
             return res.status(400).json({ error: 'Bounding box too large. Max span 0.5°.' });
         }
 
-        // Round to 3 decimal places for cache key
-        const cacheKey = [south, west, north, east].map(n => n.toFixed(3)).join(',');
+        // Parse requested types (comma-separated, e.g. "hospital,education")
+        const requestedTypes = types
+            ? types.split(',').map(t => t.trim()).filter(t => CATEGORY_OVERPASS[t])
+            : [];
+
+        // Cache key includes bbox + sorted types
+        const typeKey = requestedTypes.length ? requestedTypes.sort().join('+') : 'all';
+        const cacheKey = [south, west, north, east].map(n => n.toFixed(3)).join(',') + `|${typeKey}`;
         const now = Date.now();
         const cached = placesCache.get(cacheKey);
         if (cached && cached.expiresAt > now) {
@@ -708,18 +762,8 @@ app.get('/api/places', async (req, res) => {
 
         const fetch = (...args) => import('node-fetch').then(({ default: f }) => f(...args));
 
-        // Overpass QL — fetch nodes/ways matching our categories within bbox
         const bboxStr = `${south},${west},${north},${east}`;
-        const query = `
-[out:json][timeout:15];
-(
-  node["amenity"~"hospital|clinic|doctors|school|college|university|kindergarten|bank|atm|restaurant|cafe|fast_food|food_court|pharmacy|bus_station|fuel|police|fire_station|library|parking"](${bboxStr});
-  node["shop"~"supermarket|electronics|clothes|convenience|mall|bakery"](${bboxStr});
-  node["tourism"="attraction"](${bboxStr});
-  node["highway"="bus_stop"](${bboxStr});
-);
-out center 200;
-`.trim();
+        const query = buildOverpassQuery(bboxStr, requestedTypes.length ? requestedTypes : null);
 
         const overpassUrl = 'https://overpass-api.de/api/interpreter';
         let overpassRes;
@@ -748,7 +792,7 @@ out center 200;
         for (const el of elements) {
             const tags = el.tags || {};
             const name = tags.name || tags['name:en'] || null;
-            if (!name) continue; // skip unnamed POIs
+            if (!name) continue;
 
             const lat = el.lat ?? el.center?.lat;
             const lng = el.lon ?? el.center?.lon;
@@ -762,21 +806,21 @@ out center 200;
                 lng,
             });
 
-            if (places.length >= 200) break; // hard cap
+            if (places.length >= 200) break;
         }
 
         // Store in cache
         placesCache.set(cacheKey, { data: places, expiresAt: now + PLACES_CACHE_TTL });
 
         // Prune stale entries (keep memory bounded)
-        if (placesCache.size > 100) {
+        if (placesCache.size > 120) {
             for (const [k, v] of placesCache) {
                 if (v.expiresAt < now) placesCache.delete(k);
-                if (placesCache.size <= 80) break;
+                if (placesCache.size <= 90) break;
             }
         }
 
-        console.log(`[places] bbox=${cacheKey} found=${places.length}`);
+        console.log(`[places] bbox=${cacheKey} types=${typeKey} found=${places.length}`);
         res.set('X-Cache', 'MISS');
         return res.status(200).json(places);
 
