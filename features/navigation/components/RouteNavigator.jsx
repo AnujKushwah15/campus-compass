@@ -166,26 +166,26 @@ export default function RouteNavigator() {
     };
 
     return (
-        <div className="font-sans text-foreground bg-background px-4 sm:px-8 lg:px-12 xl:px-16 py-6">
+        <div className="font-sans text-foreground bg-background min-h-screen px-4 sm:px-8 lg:px-12 xl:px-16 py-6">
 
             {/* Page header */}
-            <header className="flex items-center justify-between gap-4 mb-6 pb-6 border-b border-border">
-                <div className="flex items-center gap-4">
+            <header className="flex items-center justify-between gap-4 mb-6 pb-5 border-b border-border">
+                <div className="flex items-center gap-3">
                     <Link
                         href="/dashboard/admin"
-                        className="p-2 rounded-full hover:bg-muted text-muted-foreground hover:text-foreground transition-colors mr-2"
+                        className="p-2 rounded-full hover:bg-muted text-muted-foreground hover:text-foreground transition-colors"
                         title="Back to Admin Dashboard"
                     >
-                        <ArrowLeft size={24} />
+                        <ArrowLeft size={22} />
                     </Link>
-                    <div className="w-12 h-12 bg-gradient-to-br from-cc-purple-600 to-cc-red-600 rounded-xl flex items-center justify-center text-white shadow-lg shrink-0">
-                        <Navigation size={24} />
+                    <div className="w-11 h-11 bg-gradient-to-br from-cc-purple-600 to-cc-red-600 rounded-xl flex items-center justify-center text-white shadow-lg shrink-0">
+                        <Navigation size={22} />
                     </div>
                     <div>
-                        <h1 className="text-2xl font-bold text-foreground tracking-tight">
+                        <h1 className="text-2xl font-bold text-foreground tracking-tight leading-tight">
                             Route <span className="text-cc-purple-500">Navigator</span>
                         </h1>
-                        <p className="text-muted-foreground font-medium text-sm">
+                        <p className="text-sm text-muted-foreground font-medium">
                             Find the shortest road path between any two places
                         </p>
                     </div>
@@ -200,13 +200,19 @@ export default function RouteNavigator() {
             )}
 
             {/* Main content grid */}
-            <div className="grid grid-cols-1 lg:grid-cols-[320px_1fr] gap-6 h-[calc(100vh-220px)] min-h-[500px]">
+            <div className="grid grid-cols-1 lg:grid-cols-[340px_1fr] gap-6 h-[calc(100vh-210px)] min-h-[520px]">
 
                 {/* Left Panel */}
                 <div className="flex flex-col gap-4 overflow-y-auto custom-scrollbar pr-1">
 
                     {/* Search Inputs */}
-                    <div className="bg-card/95 backdrop-blur-sm rounded-2xl border border-border p-5 shadow-md">
+                    <div className="bg-card rounded-2xl border border-border p-5 shadow-md">
+                        {/* Section heading */}
+                        <div className="flex items-center gap-2 mb-4">
+                            <Route className="w-4 h-4 text-cc-purple-500" />
+                            <span className="text-sm font-bold text-foreground tracking-tight">Plan Your Route</span>
+                        </div>
+
                         <div className="flex flex-col gap-3">
                             <PlaceSearch
                                 label="Starting Point"
@@ -222,7 +228,7 @@ export default function RouteNavigator() {
                                     type="button"
                                     onClick={handleSwap}
                                     disabled={!startPos && !endPos}
-                                    className="p-2 rounded-full border border-border hover:bg-muted hover:border-primary/30 text-muted-foreground hover:text-primary transition-all disabled:opacity-30 disabled:cursor-not-allowed group"
+                                    className="p-2 rounded-full border border-cc-purple-500/30 bg-cc-purple-500/8 hover:bg-cc-purple-500/20 text-cc-purple-500 hover:text-cc-purple-600 transition-all disabled:opacity-30 disabled:cursor-not-allowed shadow-sm"
                                     title="Swap start and end"
                                 >
                                     <ArrowRight
@@ -240,8 +246,11 @@ export default function RouteNavigator() {
                             />
                         </div>
 
+                        {/* Divider */}
+                        <div className="border-t border-border my-4" />
+
                         {/* Action row: Find Route (fallback) + Reset */}
-                        <div className="flex gap-2 mt-4">
+                        <div className="flex gap-2">
                             <button
                                 type="button"
                                 onClick={() => {
@@ -249,7 +258,7 @@ export default function RouteNavigator() {
                                     findRoute(startPos, endPos);
                                 }}
                                 disabled={!startPos || !endPos || loading}
-                                className="flex-1 flex items-center justify-center gap-2 py-3 px-4 rounded-xl font-semibold text-sm bg-cc-purple-500/10 text-cc-purple-600 border border-cc-purple-500/20 hover:bg-cc-purple-500 hover:text-white hover:border-cc-purple-500 active:scale-[0.98] transition-all duration-150 disabled:opacity-40 disabled:cursor-not-allowed"
+                                className="flex-1 flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl font-semibold text-sm bg-cc-purple-500/10 text-cc-purple-600 dark:text-cc-purple-400 border border-cc-purple-500/25 hover:bg-cc-purple-500 hover:text-white hover:border-cc-purple-500 active:scale-[0.98] transition-all duration-150 disabled:opacity-40 disabled:cursor-not-allowed"
                             >
                                 {loading ? (
                                     <span className="inline-block w-4 h-4 border-2 border-current/30 border-t-current rounded-full animate-spin" />
@@ -261,7 +270,7 @@ export default function RouteNavigator() {
                             <button
                                 type="button"
                                 onClick={handleReset}
-                                className="p-3 rounded-xl border border-border hover:bg-muted text-muted-foreground hover:text-foreground active:scale-[0.96] transition-all"
+                                className="p-2.5 rounded-xl border border-border hover:bg-muted text-muted-foreground hover:text-foreground active:scale-[0.96] transition-all"
                                 title="Reset"
                             >
                                 <RotateCcw className="w-4 h-4" />
@@ -278,42 +287,54 @@ export default function RouteNavigator() {
 
                     {/* Route Summary — hero ETA card */}
                     {routeData && (
-                        <div className="bg-card/95 backdrop-blur-sm rounded-2xl border border-cc-purple-500/20 p-5 shadow-md animate-pop-in">
+                        <div className="bg-card rounded-2xl border border-cc-purple-500/30 p-5 shadow-md animate-pop-in">
+
+                            {/* Card heading */}
+                            <div className="flex items-center gap-2 mb-4">
+                                <Clock className="w-4 h-4 text-cc-purple-500" />
+                                <span className="text-sm font-bold text-foreground tracking-tight">Route Summary</span>
+                            </div>
 
                             {/* ETA hero row */}
-                            <div className="flex items-start justify-between gap-3 mb-4">
+                            <div className="flex items-center justify-between gap-3 mb-4 bg-cc-purple-500/8 dark:bg-cc-purple-500/10 rounded-xl px-4 py-3 border border-cc-purple-500/15">
                                 <div>
                                     <div className="flex items-center gap-1.5 text-xs text-muted-foreground mb-0.5">
                                         <Car className="w-3 h-3" />
                                         <span>Driving</span>
                                     </div>
-                                    <div className="text-4xl font-extrabold text-foreground leading-none tracking-tight">
+                                    <div className="text-3xl font-extrabold text-foreground leading-none tracking-tight">
                                         {formatDuration(routeData.duration_s)}
                                     </div>
-                                    <div className="text-sm text-muted-foreground mt-1">
-                                        {formatDistance(routeData.distance_m)}
-                                        {routeData.steps?.length > 0 && (
-                                            <span className="ml-2 text-xs bg-muted px-1.5 py-0.5 rounded-full">
-                                                {routeData.steps.length} steps
-                                            </span>
-                                        )}
-                                    </div>
                                 </div>
-                                <div className="p-2.5 rounded-xl bg-cc-purple-500/10 border border-cc-purple-500/20 shrink-0">
-                                    <Clock className="w-5 h-5 text-cc-purple-500" />
+                                <div className="text-right">
+                                    <div className="text-xs text-muted-foreground mb-0.5">Distance</div>
+                                    <div className="text-lg font-bold text-cc-purple-500">
+                                        {formatDistance(routeData.distance_m)}
+                                    </div>
+                                    {routeData.steps?.length > 0 && (
+                                        <div className="text-xs text-muted-foreground mt-0.5">
+                                            {routeData.steps.length} steps
+                                        </div>
+                                    )}
                                 </div>
                             </div>
 
                             {/* First instruction preview */}
                             {routeData.steps?.[0] && (
-                                <div className="bg-muted/50 rounded-xl px-3 py-2 text-xs text-muted-foreground flex items-center gap-2 mb-3">
+                                <div className="bg-muted rounded-xl px-3 py-2.5 text-xs text-foreground flex items-center gap-2.5 mb-3 border border-border">
                                     <StepIcon instruction={routeData.steps[0].instruction} />
-                                    <span className="capitalize truncate">
+                                    <span className="capitalize truncate font-medium">
                                         {routeData.steps[0].instruction}
-                                        {routeData.steps[0].name ? ` on ${routeData.steps[0].name}` : ""}
+                                        {routeData.steps[0].name
+                                            ? <span className="text-muted-foreground font-normal"> on {routeData.steps[0].name}</span>
+                                            : null
+                                        }
                                     </span>
                                 </div>
                             )}
+
+                            {/* Divider */}
+                            <div className="border-t border-border mb-1" />
 
                             {/* Turn-by-turn steps */}
                             {routeData.steps?.length > 0 && (
@@ -321,14 +342,14 @@ export default function RouteNavigator() {
                                     <button
                                         type="button"
                                         onClick={() => setShowSteps(!showSteps)}
-                                        className="w-full flex items-center justify-between py-2 px-3 rounded-lg hover:bg-muted/50 text-sm text-muted-foreground transition-colors group"
+                                        className="w-full flex items-center justify-between py-2 px-2 rounded-lg hover:bg-muted/60 text-sm transition-colors group"
                                     >
-                                        <span className="font-medium group-hover:text-foreground transition-colors">
+                                        <span className="font-semibold text-foreground group-hover:text-cc-purple-500 transition-colors">
                                             Turn-by-turn directions
                                         </span>
                                         {showSteps
-                                            ? <ChevronUp className="w-4 h-4" />
-                                            : <ChevronDown className="w-4 h-4" />
+                                            ? <ChevronUp className="w-4 h-4 text-muted-foreground" />
+                                            : <ChevronDown className="w-4 h-4 text-muted-foreground" />
                                         }
                                     </button>
 
@@ -337,16 +358,16 @@ export default function RouteNavigator() {
                                             {routeData.steps.map((step, i) => (
                                                 <div
                                                     key={i}
-                                                    className="flex gap-3 py-2 px-3 rounded-lg text-sm hover:bg-muted/30 transition-colors"
+                                                    className="flex gap-3 py-2 px-3 rounded-lg text-sm hover:bg-muted/50 transition-colors border-b border-border/40 last:border-0"
                                                 >
-                                                    <div className="flex items-start gap-2 min-w-0">
-                                                        <span className="text-muted-foreground font-mono text-xs mt-0.5 shrink-0 w-5 text-right">
+                                                    <div className="flex items-center gap-2 shrink-0">
+                                                        <span className="text-muted-foreground font-mono text-[11px] w-5 text-right">
                                                             {i + 1}
                                                         </span>
                                                         <StepIcon instruction={step.instruction} />
                                                     </div>
                                                     <div className="flex-1 min-w-0">
-                                                        <div className="text-foreground capitalize truncate">
+                                                        <div className="text-foreground capitalize truncate font-medium">
                                                             {step.instruction}
                                                             {step.name && (
                                                                 <span className="text-muted-foreground font-normal">
@@ -369,7 +390,7 @@ export default function RouteNavigator() {
                 </div>
 
                 {/* Right Panel — Map (fills remaining space) */}
-                <div className="min-h-[400px] lg:min-h-0 rounded-2xl overflow-hidden shadow-lg border border-cc-purple-500/20">
+                <div className="min-h-[400px] lg:min-h-0 rounded-2xl overflow-hidden shadow-lg border border-cc-purple-500/30 ring-1 ring-cc-purple-500/10">
                     <NavigationMap
                         startPos={startPos}
                         endPos={endPos}

@@ -8,6 +8,34 @@ import {
 import "leaflet/dist/leaflet.css";
 import L from "leaflet";
 
+// Inject override styles for Leaflet popups so they look good in dark theme
+const POPUP_STYLES = `
+  .leaflet-popup-content-wrapper {
+    background: #1e1b2e !important;
+    color: #f1f0f7 !important;
+    border: 1px solid rgba(139,92,246,0.3) !important;
+    border-radius: 12px !important;
+    box-shadow: 0 8px 24px rgba(0,0,0,0.5) !important;
+    padding: 0 !important;
+  }
+  .leaflet-popup-content {
+    margin: 0 !important;
+    padding: 12px 14px !important;
+    line-height: 1.5 !important;
+  }
+  .leaflet-popup-tip {
+    background: #1e1b2e !important;
+  }
+  .leaflet-popup-close-button {
+    color: #a1a0b0 !important;
+    font-size: 18px !important;
+    padding: 6px 8px !important;
+  }
+  .leaflet-popup-close-button:hover {
+    color: #f1f0f7 !important;
+  }
+`;
+
 // ── Marker Icon Helpers ──────────────────────────────────────────────────────
 
 function makePin(color, letter) {
@@ -158,7 +186,9 @@ function UserPosition() {
     if (!pos) return null;
     return (
         <CircleMarker center={pos} radius={8} pathOptions={{ color: "#3b82f6", fillColor: "#3b82f6", fillOpacity: 0.9, weight: 3 }}>
-            <Popup><span className="text-sm font-medium">📍 You are here</span></Popup>
+            <Popup>
+                <span style={{ fontSize: "13px", fontWeight: 600, color: "#f1f0f7" }}>📍 You are here</span>
+            </Popup>
         </CircleMarker>
     );
 }
@@ -249,12 +279,29 @@ function POILayer({ onPoiSelect }) {
                     }}
                 >
                     <Popup>
-                        <div className="text-sm min-w-[120px]">
-                            <div className="font-semibold text-foreground">{poi.name}</div>
-                            <div className="text-xs text-muted-foreground capitalize mt-0.5">{poi.type?.replace("_", " ")}</div>
+                        <div style={{ minWidth: "160px" }}>
+                            <div style={{ fontSize: "14px", fontWeight: 700, color: "#f1f0f7", marginBottom: "2px", lineHeight: 1.3 }}>
+                                {poi.name}
+                            </div>
+                            <div style={{ fontSize: "11px", color: "#a1a0b0", textTransform: "capitalize", marginBottom: "8px" }}>
+                                {poi.type?.replace("_", " ")}
+                            </div>
                             <button
                                 onClick={() => onPoiSelect?.(poi)}
-                                className="mt-2 text-xs text-cc-purple-600 hover:text-cc-purple-500 font-medium flex items-center gap-1"
+                                style={{
+                                    fontSize: "12px",
+                                    fontWeight: 600,
+                                    color: "#a78bfa",
+                                    background: "none",
+                                    border: "none",
+                                    padding: 0,
+                                    cursor: "pointer",
+                                    display: "flex",
+                                    alignItems: "center",
+                                    gap: "4px",
+                                }}
+                                onMouseEnter={e => e.currentTarget.style.color = "#c4b5fd"}
+                                onMouseLeave={e => e.currentTarget.style.color = "#a78bfa"}
                             >
                                 Set as destination →
                             </button>
@@ -272,6 +319,8 @@ export default function NavigationMap({ startPos, endPos, routeData, onPoiSelect
 
     return (
         <div className="w-full h-full rounded-2xl overflow-hidden border border-border shadow-inner relative z-0">
+            {/* Inject dark-theme popup styles */}
+            <style dangerouslySetInnerHTML={{ __html: POPUP_STYLES }} />
             <MapContainer
                 center={startPos ? [startPos.lat, startPos.lng] : defaultCenter}
                 zoom={13}
@@ -296,9 +345,13 @@ export default function NavigationMap({ startPos, endPos, routeData, onPoiSelect
                 {startPos && (
                     <Marker position={[startPos.lat, startPos.lng]} icon={startIcon}>
                         <Popup>
-                            <div className="text-sm">
-                                <strong className="text-green-600">Start</strong><br />
-                                {startPos.label || `${startPos.lat.toFixed(4)}, ${startPos.lng.toFixed(4)}`}
+                            <div>
+                                <div style={{ fontSize: "12px", fontWeight: 700, color: "#4ade80", marginBottom: "3px", textTransform: "uppercase", letterSpacing: "0.05em" }}>
+                                    Start
+                                </div>
+                                <div style={{ fontSize: "13px", color: "#f1f0f7", fontWeight: 500 }}>
+                                    {startPos.label || `${startPos.lat.toFixed(4)}, ${startPos.lng.toFixed(4)}`}
+                                </div>
                             </div>
                         </Popup>
                     </Marker>
@@ -308,9 +361,13 @@ export default function NavigationMap({ startPos, endPos, routeData, onPoiSelect
                 {endPos && (
                     <Marker position={[endPos.lat, endPos.lng]} icon={endIcon}>
                         <Popup>
-                            <div className="text-sm">
-                                <strong className="text-red-500">Destination</strong><br />
-                                {endPos.label || `${endPos.lat.toFixed(4)}, ${endPos.lng.toFixed(4)}`}
+                            <div>
+                                <div style={{ fontSize: "12px", fontWeight: 700, color: "#f87171", marginBottom: "3px", textTransform: "uppercase", letterSpacing: "0.05em" }}>
+                                    Destination
+                                </div>
+                                <div style={{ fontSize: "13px", color: "#f1f0f7", fontWeight: 500 }}>
+                                    {endPos.label || `${endPos.lat.toFixed(4)}, ${endPos.lng.toFixed(4)}`}
+                                </div>
                             </div>
                         </Popup>
                     </Marker>

@@ -152,7 +152,7 @@ export default function PlaceSearch({
 
     return (
         <div ref={containerRef} className="relative">
-            <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-1 block">
+            <label className="text-xs font-bold text-foreground/70 uppercase tracking-wider mb-1.5 block">
                 {label}
             </label>
             <div className="relative flex items-center">
@@ -168,7 +168,7 @@ export default function PlaceSearch({
                     onChange={handleInput}
                     onFocus={() => suggestions.length > 0 && setIsOpen(true)}
                     placeholder={externalLoading ? "Detecting location…" : (placeholder || "Search place or enter lat, lng")}
-                    className="w-full pl-10 pr-20 py-3 bg-card border border-border rounded-xl text-foreground placeholder:text-muted-foreground/50 focus:outline-none focus:ring-2 focus:ring-cc-purple-500/40 focus:border-cc-purple-500/60 transition-all text-sm"
+                    className="w-full pl-10 pr-20 py-2.5 bg-background border border-border rounded-xl text-foreground placeholder:text-muted-foreground/50 focus:outline-none focus:ring-2 focus:ring-cc-purple-500/40 focus:border-cc-purple-500/60 transition-all text-sm shadow-sm"
                 />
                 <div className="absolute right-2 flex items-center gap-1">
                     <button
@@ -193,13 +193,13 @@ export default function PlaceSearch({
 
             {/* Dropdown */}
             {isOpen && suggestions.length > 0 && (
-                <div className="absolute z-50 w-full mt-1.5 bg-card border border-border rounded-xl shadow-xl overflow-hidden animate-dropdown-enter">
+                <div className="absolute z-50 w-full mt-1.5 bg-card border border-border rounded-xl shadow-2xl overflow-hidden animate-dropdown-enter">
                     {suggestions.map((place, i) => (
                         <button
                             key={i}
                             type="button"
                             onClick={() => handleSelect(place)}
-                            className="w-full flex items-start gap-3 px-4 py-3 hover:bg-muted/50 transition-colors text-left border-b border-border/50 last:border-0"
+                            className="w-full flex items-start gap-3 px-4 py-3 hover:bg-muted transition-colors text-left border-b border-border/50 last:border-0"
                         >
                             <MapPin className="w-4 h-4 mt-0.5 shrink-0 text-cc-purple-500" />
                             <div className="min-w-0">
