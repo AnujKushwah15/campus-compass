@@ -406,24 +406,6 @@ export default function RouteNavigator() {
                     )}
                 </div>
 
-<<<<<<< Updated upstream
-                {/* Right Panel — Map (fills remaining space) */}
-                <div className="min-h-[400px] lg:min-h-0 rounded-2xl overflow-hidden shadow-lg border border-cc-purple-500/30 ring-1 ring-cc-purple-500/10">
-                    <NavigationMap
-                        startPos={startPos}
-                        endPos={endPos}
-                        routeData={routeData}
-                        onPoiSelect={(poi) => {
-                            // If start is missing, fill it; otherwise fill end
-                            const pos = { lat: poi.lat, lng: poi.lng, label: poi.name };
-                            if (!startPos) {
-                                handleStartChange(pos);
-                            } else {
-                                handleEndChange(pos);
-                            }
-                        }}
-                    />
-=======
                 {/* Right Panel — Map + category filter */}
                 <div className="min-h-[400px] lg:min-h-0 rounded-2xl overflow-hidden shadow-lg border border-cc-purple-500/20 flex flex-col">
 
@@ -470,7 +452,6 @@ export default function RouteNavigator() {
                             }}
                         />
                     </div>
->>>>>>> Stashed changes
                 </div>
             </div>
         </div>
