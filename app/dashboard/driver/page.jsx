@@ -14,6 +14,8 @@ import { useTrip } from '@/features/tracking/context/TripContext';
 import { StreamProvider, useStream } from '@/features/streaming/context/StreamContext';
 import Link from 'next/link';
 import Logo from '@/components/Logo';
+import ThemeToggle from '@/components/ThemeToggle';
+import BusLoader from '@/components/BusLoader';
 
 export default function DriverDashboard() {
     const router = useRouter();
@@ -200,14 +202,7 @@ export default function DriverDashboard() {
     // Still waiting for Firestore to resolve the active trip query — show nothing
     // to prevent the splash from flashing and confusing the driver.
     if (tripLoading) {
-        return (
-            <div className="min-h-screen bg-background flex items-center justify-center">
-                <div className="flex flex-col items-center gap-3 text-muted-foreground">
-                    <div className="w-8 h-8 border-2 border-primary/30 border-t-primary rounded-full animate-spin" />
-                    <span className="text-sm font-medium">Loading your session…</span>
-                </div>
-            </div>
-        );
+        return <BusLoader fullScreen message="Loading your session…" />;
     }
 
     if (!currentTrip && !isTripping) {
@@ -244,6 +239,7 @@ export default function DriverDashboard() {
                                 <Logo />
                             </Link>
                             <div className="flex items-center gap-2">
+                                <ThemeToggle />
                                 <button
                                     onClick={handleProfile}
                                     className="flex items-center gap-2 px-4 py-2 bg-cc-purple-500/10 text-cc-purple-600 hover:bg-cc-purple-500 hover:text-white rounded-xl transition-all font-semibold shadow-sm"
@@ -465,6 +461,9 @@ function DriverSplashScreen({ onStartTrip, onProfile, locationError }) {
                     )}
 
                     <div className="flex flex-col sm:flex-row justify-center mt-6 gap-3">
+                        <div className="flex justify-center">
+                            <ThemeToggle />
+                        </div>
                         <Button
                             onClick={onProfile}
                             variant="outline"

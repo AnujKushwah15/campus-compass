@@ -6,7 +6,7 @@ import Logo from '@/components/Logo';
 import Card from '@/components/ui/Card';
 import Input from '@/components/ui/Input';
 import Button from '@/components/ui/Button';
-import { User, Shield, ArrowRight, Mail, Phone, Hash, School, GraduationCap, Loader2, Home } from 'lucide-react';
+import { User, Shield, ArrowRight, Mail, Phone, Hash, School, GraduationCap, Home } from 'lucide-react';
 import Link from 'next/link';
 import BackgroundAnimation from '@/components/ui/BackgroundAnimation';
 import { auth, db } from '@/lib/firebase';
@@ -14,6 +14,7 @@ import { createUserWithEmailAndPassword, signInWithEmailAndPassword, updateProfi
 import { doc, setDoc, query, collection, where, getDocs, getDoc } from 'firebase/firestore';
 import { studentsRef, parentsRef } from '@/lib/firebase';
 import { useAuth } from '@/features/auth/components/AuthProvider';
+import BusLoader from '@/components/BusLoader';
 
 const ROLE_DASHBOARD = {
     student: '/dashboard/student',
@@ -270,17 +271,13 @@ export default function LoginPage() {
         return () => clearTimeout(t);
     }, [resendCooldown]);
 
-    // Show spinner while Firebase resolves auth state or while redirecting
+    // Show bus loader while Firebase resolves auth state or while redirecting
     if (authLoading || (!authLoading && user && role)) {
         return (
-            <div className="min-h-screen flex items-center justify-center bg-background">
-                <div className="flex flex-col items-center gap-4">
-                    <Loader2 className="w-8 h-8 animate-spin text-primary" />
-                    <p className="text-muted-foreground animate-pulse text-sm">
-                        {user ? 'Redirecting to dashboard...' : 'Loading secure session...'}
-                    </p>
-                </div>
-            </div>
+            <BusLoader
+                fullScreen
+                message={user ? 'Redirecting to dashboard...' : 'Loading secure session...'}
+            />
         );
     }
 
@@ -420,9 +417,16 @@ export default function LoginPage() {
 
 
                             <Button type="submit" size="lg" className="w-full group opacity-0 animate-pop-in delay-400" disabled={loading}>
-                                {loading ? <Loader2 className="animate-spin mr-2" /> : null}
-                                Login
-                                {!loading && <ArrowRight size={18} className="ml-2 group-hover:translate-x-1 transition-transform" />}
+                                {loading ? (
+                                    <span className="flex items-center gap-2">
+                                        <span className="animate-[busDrive_0.8s_ease-in-out_infinite] inline-block text-lg">🚌</span>
+                                        Logging in...
+                                    </span>
+                                ) : (
+                                    <span className="flex items-center gap-2">
+                                        Login <ArrowRight size={18} className="group-hover:translate-x-1 transition-transform" />
+                                    </span>
+                                )}
                             </Button>
                         </form>
                     ) : (
@@ -487,8 +491,12 @@ export default function LoginPage() {
                             )}
 
                             <Button variant="primary" size="lg" className="w-full mt-2 border border-cc-purple-400 shadow-lg shadow-cc-purple-500/30 hover:shadow-[0_0_25px_rgba(139,92,246,0.6)] hover:border-cc-purple-300 transition-all duration-300 opacity-0 animate-pop-in delay-700" disabled={loading}>
-                                {loading ? <Loader2 className="animate-spin mr-2" /> : null}
-                                Create Account
+                                {loading ? (
+                                    <span className="flex items-center gap-2">
+                                        <span className="animate-[busDrive_0.8s_ease-in-out_infinite] inline-block text-lg">🚌</span>
+                                        Creating account...
+                                    </span>
+                                ) : 'Create Account'}
                             </Button>
 
                             <p className="text-center text-xs text-muted-foreground mt-4">

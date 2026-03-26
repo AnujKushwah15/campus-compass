@@ -4,7 +4,7 @@ import Navbar from '@/components/Navbar';
 import { usePathname, useRouter } from 'next/navigation';
 import { useAuth } from '@/features/auth/components/AuthProvider';
 import { useEffect } from 'react';
-import { Loader2 } from 'lucide-react';
+import BusLoader from '@/components/BusLoader';
 
 export default function DashboardLayout({
     children,
@@ -23,14 +23,7 @@ export default function DashboardLayout({
     }, [user, loading, router]);
 
     if (loading) {
-        return (
-            <div className="min-h-screen flex items-center justify-center bg-background">
-                <div className="flex flex-col items-center gap-4">
-                    <Loader2 className="w-8 h-8 animate-spin text-primary" />
-                    <p className="text-muted-foreground animate-pulse">Loading secure session...</p>
-                </div>
-            </div>
-        );
+        return <BusLoader fullScreen message="Loading secure session..." />;
     }
 
     if (!user) {

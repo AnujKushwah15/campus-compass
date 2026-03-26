@@ -6,6 +6,7 @@ import StreamPlayer from '@/features/streaming/components/StreamPlayer';
 import SettingsModal from '@/features/admin/components/SettingsModal';
 import CameraSelector from '@/features/admin/components/CameraSelector';
 import { ShieldCheck, Settings, Search, Bell, Activity, ChevronDown, Bus, MapPin, User, Navigation } from 'lucide-react';
+import ThemeToggle from '@/components/ThemeToggle';
 import { signOut } from 'firebase/auth';
 import { auth, db, rtdb } from '@/lib/firebase';
 import { useRouter } from 'next/navigation';
@@ -179,6 +180,7 @@ export default function AdminDashboardPage() {
                     <Logo />
                 </Link>
                 <div className="flex items-center gap-2 flex-shrink-0">
+                    <ThemeToggle />
                     <button
                         onClick={() => setIsSettingsOpen(true)}
                         className="flex items-center gap-2 px-4 py-2 bg-cc-purple-500/10 text-cc-purple-600 hover:bg-cc-purple-500 hover:text-white rounded-lg transition-all font-semibold border border-cc-purple-500/20 hover:border-cc-purple-500 whitespace-nowrap"

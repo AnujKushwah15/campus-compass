@@ -161,7 +161,7 @@ export default function LandingPage() {
                   </Button>
                 </Link>
                 <Link href="#features">
-                  <Button variant="secondary" size="lg" className="rounded-full px-8 bg-white/60 backdrop-blur-sm border-white hover:bg-white transition-all">
+                  <Button variant="secondary" size="lg" className="rounded-full px-8 border-2 border-slate-700 dark:border-white text-slate-800 dark:text-white bg-transparent dark:bg-white/10 backdrop-blur-sm hover:bg-slate-800 hover:text-white dark:hover:bg-white dark:hover:text-cc-purple-900 transition-all font-semibold shadow-sm dark:shadow-lg">
                     Learn More
                   </Button>
                 </Link>
