@@ -15,6 +15,7 @@ import { collection, onSnapshot, addDoc, deleteDoc, doc, updateDoc, query, where
 import Logo from '@/components/Logo';
 import { ref, onValue } from 'firebase/database';
 import { StreamProvider, useStream } from '@/features/streaming/context/StreamContext';
+import AdminGuard from '@/features/admin/components/AdminGuard';
 import dynamic from 'next/dynamic';
 
 const LiveMap = dynamic(() => import('@/features/tracking/components/LiveMap'), { ssr: false });
@@ -70,6 +71,8 @@ export default function AdminDashboardPage() {
             if (busData.length > 0) {
                 setSelectedMonitorBusId(prev => prev ?? busData[0].id);
             }
+        }, (error) => {
+            console.error('Buses snapshot error:', error);
         });
         return () => unsubscribe();
     }, []);
@@ -93,9 +96,11 @@ export default function AdminDashboardPage() {
 
     // ── Fetch Students ────────────────────────────────────────────────────────
     useEffect(() => {
-        const q = query(collection(db, 'students'));
+        const q = query(collection(db, 'users'), where('role', '==', 'student'));
         const unsubscribe = onSnapshot(q, (snapshot) => {
             setStudents(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
+        }, (error) => {
+            console.error('Students snapshot error:', error);
         });
         return () => unsubscribe();
     }, []);
@@ -105,6 +110,9 @@ export default function AdminDashboardPage() {
         const alertsQ = query(collection(db, 'alerts'), where('status', '==', 'active'));
         const unsub = onSnapshot(alertsQ, (snap) => {
             setActiveAlerts(snap.docs.map(d => ({ id: d.id, ...d.data() })));
+        }, (error) => {
+             // Students/Parents will likely trigger this if they mount the page briefly
+            console.warn('Alerts snapshot permission denied (expected for non-admins):', error);
         });
         return () => unsub();
     }, []);
@@ -160,12 +168,12 @@ export default function AdminDashboardPage() {
     };
 
     const handleUnassignStudent = async (studentId) => {
-        try { await updateDoc(doc(db, 'students', studentId), { busId: null }); }
+        try { await updateDoc(doc(db, 'users', studentId), { busId: null }); }
         catch (e) { console.error(e); }
     };
 
     const handleAssignStudent = async (studentId, busId) => {
-        try { await updateDoc(doc(db, 'students', studentId), { busId }); }
+        try { await updateDoc(doc(db, 'users', studentId), { busId }); }
         catch (e) { console.error(e); }
     };
 
@@ -173,179 +181,181 @@ export default function AdminDashboardPage() {
 
 
     return (
-        <div className="font-sans text-foreground min-h-screen bg-background px-4 sm:px-8 lg:px-12 xl:px-16 py-6">
-            {/* Top Bar: Branding + Standalone Actions */}
-            <div className="flex items-center justify-between gap-8 mb-6">
-                <Link href="/dashboard/admin" className="hover:opacity-80 transition-opacity flex-shrink-0">
-                    <Logo />
-                </Link>
-                <div className="flex items-center gap-2 flex-shrink-0">
-                    <ThemeToggle />
-                    <button
-                        onClick={() => setIsSettingsOpen(true)}
-                        className="flex items-center gap-2 px-4 py-2 bg-cc-purple-500/10 text-cc-purple-600 hover:bg-cc-purple-500 hover:text-white rounded-lg transition-all font-semibold border border-cc-purple-500/20 hover:border-cc-purple-500 whitespace-nowrap"
-                        title="Configure Cameras"
-                    >
-                        <Settings size={18} />
-                        Settings
-                    </button>
-                    <Link
-                        href="/dashboard/admin/navigation"
-                        className="flex items-center gap-2 px-4 py-2 bg-cc-purple-500/10 text-cc-purple-600 hover:bg-cc-purple-500 hover:text-white rounded-lg transition-all font-semibold border border-cc-purple-500/20 hover:border-cc-purple-500 whitespace-nowrap"
-                    >
-                        <Navigation size={18} />
-                        Navigator
+        <AdminGuard>
+            <div className="font-sans text-foreground min-h-screen bg-background px-4 sm:px-8 lg:px-12 xl:px-16 py-6">
+                {/* ... existing content ... */}
+                <div className="flex items-center justify-between gap-8 mb-6">
+                    <Link href="/dashboard/admin" className="hover:opacity-80 transition-opacity flex-shrink-0">
+                        <Logo />
                     </Link>
-                    <button
-                        onClick={() => router.push('/dashboard/admin/profile')}
-                        className="flex items-center gap-2 px-4 py-2 bg-cc-purple-500/10 text-cc-purple-600 hover:bg-cc-purple-500 hover:text-white rounded-lg transition-all font-semibold border border-cc-purple-500/20 hover:border-cc-purple-500 whitespace-nowrap"
-                    >
-                        <User size={18} />
-                        Profile
-                    </button>
-                </div>
-            </div>
-
-            {/* Header */}
-            <header className="flex flex-col md:flex-row items-center justify-between gap-4 md:gap-0 mb-8 pb-6 border-b border-border w-full">
-                {/* Left: Admin Title */}
-                <div className="flex items-center gap-4 w-full md:w-auto">
-                    <div className="w-12 h-12 bg-gradient-to-br from-cc-purple-600 to-cc-red-600 rounded-xl flex items-center justify-center text-white shadow-lg">
-                        <ShieldCheck size={28} />
-                    </div>
-                    <div>
-                        <h1 className="text-3xl font-bold text-foreground tracking-tight">
-                            Admin Control <span className="text-cc-purple-500">Center</span>
-                        </h1>
-                        <p className="text-muted-foreground font-medium">System Overview &amp; Fleet Management</p>
+                    <div className="flex items-center gap-2 flex-shrink-0">
+                        <ThemeToggle />
+                        <button
+                            onClick={() => setIsSettingsOpen(true)}
+                            className="flex items-center gap-2 px-4 py-2 bg-cc-purple-500/10 text-cc-purple-600 hover:bg-cc-purple-500 hover:text-white rounded-lg transition-all font-semibold border border-cc-purple-500/20 hover:border-cc-purple-500 whitespace-nowrap"
+                            title="Configure Cameras"
+                        >
+                            <Settings size={18} />
+                            Settings
+                        </button>
+                        <Link
+                            href="/dashboard/admin/navigation"
+                            className="flex items-center gap-2 px-4 py-2 bg-cc-purple-500/10 text-cc-purple-600 hover:bg-cc-purple-500 hover:text-white rounded-lg transition-all font-semibold border border-cc-purple-500/20 hover:border-cc-purple-500 whitespace-nowrap"
+                        >
+                            <Navigation size={18} />
+                            Navigator
+                        </Link>
+                        <button
+                            onClick={() => router.push('/dashboard/admin/profile')}
+                            className="flex items-center gap-2 px-4 py-2 bg-cc-purple-500/10 text-cc-purple-600 hover:bg-cc-purple-500 hover:text-white rounded-lg transition-all font-semibold border border-cc-purple-500/20 hover:border-cc-purple-500 whitespace-nowrap"
+                        >
+                            <User size={18} />
+                            Profile
+                        </button>
                     </div>
                 </div>
 
-                {/* Right: Utility Badges */}
-                <div className="flex flex-wrap justify-center md:justify-end items-center gap-2">
-                    <div className="bg-card px-4 py-2 rounded-lg border border-border flex items-center gap-2">
-                        <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse"></div>
-                        <span className="text-sm font-semibold">System Online</span>
+                {/* Header */}
+                <header className="flex flex-col md:flex-row items-center justify-between gap-4 md:gap-0 mb-8 pb-6 border-b border-border w-full">
+                    {/* Left: Admin Title */}
+                    <div className="flex items-center gap-4 w-full md:w-auto">
+                        <div className="w-12 h-12 bg-gradient-to-br from-cc-purple-600 to-cc-red-600 rounded-xl flex items-center justify-center text-white shadow-lg">
+                            <ShieldCheck size={28} />
+                        </div>
+                        <div>
+                            <h1 className="text-3xl font-bold text-foreground tracking-tight">
+                                Admin Control <span className="text-cc-purple-500">Center</span>
+                            </h1>
+                            <p className="text-muted-foreground font-medium">System Overview &amp; Fleet Management</p>
+                        </div>
                     </div>
-                    <Link href="/dashboard/admin/devices" className="bg-card hover:bg-muted px-4 py-2 rounded-lg border border-border flex items-center gap-2 transition-colors group">
-                        <Activity size={16} className="text-muted-foreground group-hover:text-foreground transition-colors" />
-                        <span className="text-sm font-semibold text-muted-foreground group-hover:text-foreground transition-colors">Edge Health</span>
-                    </Link>
-                    <Link href="/dashboard/admin/data" className="bg-card hover:bg-muted px-4 py-2 rounded-lg border border-border flex items-center gap-2 transition-colors group">
-                        <Search size={16} className="text-muted-foreground group-hover:text-foreground transition-colors" />
-                        <span className="text-sm font-semibold text-muted-foreground group-hover:text-foreground transition-colors">Query Data</span>
-                    </Link>
-                </div>
-            </header>
 
-            {/* Main Content Grid */}
-            <div className="grid grid-cols-12 gap-6 h-auto lg:h-[calc(100vh-10rem)] min-h-[calc(100vh-10rem)]">
+                    {/* Right: Utility Badges */}
+                    <div className="flex flex-wrap justify-center md:justify-end items-center gap-2">
+                        <div className="bg-card px-4 py-2 rounded-lg border border-border flex items-center gap-2">
+                            <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse"></div>
+                            <span className="text-sm font-semibold">System Online</span>
+                        </div>
+                        <Link href="/dashboard/admin/devices" className="bg-card hover:bg-muted px-4 py-2 rounded-lg border border-border flex items-center gap-2 transition-colors group">
+                            <Activity size={16} className="text-muted-foreground group-hover:text-foreground transition-colors" />
+                            <span className="text-sm font-semibold text-muted-foreground group-hover:text-foreground transition-colors">Edge Health</span>
+                        </Link>
+                        <Link href="/dashboard/admin/data" className="bg-card hover:bg-muted px-4 py-2 rounded-lg border border-border flex items-center gap-2 transition-colors group">
+                            <Search size={16} className="text-muted-foreground group-hover:text-foreground transition-colors" />
+                            <span className="text-sm font-semibold text-muted-foreground group-hover:text-foreground transition-colors">Query Data</span>
+                        </Link>
+                    </div>
+                </header>
 
-                {/* Column 1: Fleet List & Details */}
-                <div className="col-span-12 lg:col-span-6 flex flex-col gap-6 h-full">
-                    <BusManagement
-                        buses={busesWithMembers}
-                        students={students}
-                        selectedBus={selectedBus}
-                        onSelectBus={handleSelectBus}
-                        onUpdateBus={handleUpdateBus}
-                        onUnassignStudent={handleUnassignStudent}
-                        onAssignStudent={handleAssignStudent}
-                    />
-                </div>
+                {/* Main Content Grid */}
+                <div className="grid grid-cols-12 gap-6 h-auto lg:h-[calc(100vh-10rem)] min-h-[calc(100vh-10rem)]">
 
-                {/* Column 2: Live Monitor + Student Quick Actions */}
-                <div className="col-span-12 lg:col-span-6 flex flex-col gap-6 h-full">
+                    {/* Column 1: Fleet List & Details */}
+                    <div className="col-span-12 lg:col-span-6 flex flex-col gap-6 h-full">
+                        <BusManagement
+                            buses={busesWithMembers}
+                            students={students}
+                            selectedBus={selectedBus}
+                            onSelectBus={handleSelectBus}
+                            onUpdateBus={handleUpdateBus}
+                            onUnassignStudent={handleUnassignStudent}
+                            onAssignStudent={handleAssignStudent}
+                        />
+                    </div>
 
-                    {/* ── Bus Monitor Panel ─────────────────────────────────── */}
-                    <div className="rounded-2xl border border-cc-purple-500/20 overflow-hidden shadow-lg bg-card mb-6">
+                    {/* Column 2: Live Monitor + Student Quick Actions */}
+                    <div className="col-span-12 lg:col-span-6 flex flex-col gap-6 h-full">
 
-                        {/* Bus Selector Toolbar */}
-                        <div className="flex items-center gap-2 px-3 py-2 border-b border-border bg-card/80">
-                            <Bus size={14} className="text-cc-purple-400 shrink-0" />
-                            <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mr-1">Monitor:</span>
+                        {/* ── Bus Monitor Panel ─────────────────────────────────── */}
+                        <div className="rounded-2xl border border-cc-purple-500/20 overflow-hidden shadow-lg bg-card mb-6">
 
-                            {/* Pill tabs — one per bus */}
-                            <div className="flex items-center gap-1 flex-1 min-w-0 overflow-x-auto scrollbar-none">
-                                {busMonitorList.length === 0 ? (
-                                    <span className="text-xs text-muted-foreground italic">No buses yet</span>
-                                ) : (
-                                    busMonitorList.map(entry => (
-                                        <button
-                                            key={entry.id}
-                                            onClick={() => setSelectedMonitorBusId(entry.id)}
-                                            className={`flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold whitespace-nowrap transition-all shrink-0 ${selectedMonitorBusId === entry.id
-                                                ? 'bg-cc-purple-600 text-white shadow-sm shadow-cc-purple-500/30'
-                                                : 'bg-muted text-muted-foreground hover:bg-muted/60 hover:text-foreground'
-                                                }`}
-                                        >
-                                            {/* Live location indicator dot */}
-                                            <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${entry.hasLiveLocation ? 'bg-green-400' : 'bg-zinc-500'}`} />
-                                            {entry.label}
-                                        </button>
-                                    ))
+                            {/* Bus Selector Toolbar */}
+                            <div className="flex items-center gap-2 px-3 py-2 border-b border-border bg-card/80">
+                                <Bus size={14} className="text-cc-purple-400 shrink-0" />
+                                <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mr-1">Monitor:</span>
+
+                                {/* Pill tabs — one per bus */}
+                                <div className="flex items-center gap-1 flex-1 min-w-0 overflow-x-auto scrollbar-none">
+                                    {busMonitorList.length === 0 ? (
+                                        <span className="text-xs text-muted-foreground italic">No buses yet</span>
+                                    ) : (
+                                        busMonitorList.map(entry => (
+                                            <button
+                                                key={entry.id}
+                                                onClick={() => setSelectedMonitorBusId(entry.id)}
+                                                className={`flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold whitespace-nowrap transition-all shrink-0 ${selectedMonitorBusId === entry.id
+                                                    ? 'bg-cc-purple-600 text-white shadow-sm shadow-cc-purple-500/30'
+                                                    : 'bg-muted text-muted-foreground hover:bg-muted/60 hover:text-foreground'
+                                                    }`}
+                                            >
+                                                {/* Live location indicator dot */}
+                                                <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${entry.hasLiveLocation ? 'bg-green-400' : 'bg-zinc-500'}`} />
+                                                {entry.label}
+                                            </button>
+                                        ))
+                                    )}
+                                </div>
+
+                                {/* Location badge for selected bus */}
+                                {selectedMonitorEntry && (
+                                    <div className={`flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold shrink-0 ${selectedMonitorEntry.hasLiveLocation
+                                        ? 'bg-green-500/10 text-green-400'
+                                        : 'bg-zinc-700/40 text-zinc-500'
+                                        }`}>
+                                        <MapPin size={9} />
+                                        {selectedMonitorEntry.hasLiveLocation ? 'GPS Live' : 'No GPS'}
+                                    </div>
                                 )}
                             </div>
 
-                            {/* Location badge for selected bus */}
-                            {selectedMonitorEntry && (
-                                <div className={`flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold shrink-0 ${selectedMonitorEntry.hasLiveLocation
-                                    ? 'bg-green-500/10 text-green-400'
-                                    : 'bg-zinc-700/40 text-zinc-500'
-                                    }`}>
-                                    <MapPin size={9} />
-                                    {selectedMonitorEntry.hasLiveLocation ? 'GPS Live' : 'No GPS'}
-                                </div>
-                            )}
+                            {/* Live Stream */}
+                            <div className="aspect-video relative block w-full bg-black">
+                                {selectedMonitorEntry ? (
+                                    <StreamProvider busId={selectedMonitorEntry.id} key={selectedMonitorEntry.id}>
+                                        <AdminStreamWidget
+                                            selectedCamera={selectedCamera}
+                                            onCameraSelect={() => setIsCameraSelectorOpen(true)}
+                                            busLabel={selectedMonitorEntry.label}
+                                        />
+                                    </StreamProvider>
+                                ) : (
+                                    <div className="w-full h-full flex items-center justify-center bg-zinc-900 text-zinc-500 text-sm">
+                                        No buses configured
+                                    </div>
+                                )}
+                            </div>
                         </div>
 
-                        {/* Live Stream */}
-                        <div className="aspect-video relative block w-full bg-black">
-                            {selectedMonitorEntry ? (
-                                <StreamProvider busId={selectedMonitorEntry.id} key={selectedMonitorEntry.id}>
-                                    <AdminStreamWidget
-                                        selectedCamera={selectedCamera}
-                                        onCameraSelect={() => setIsCameraSelectorOpen(true)}
-                                        busLabel={selectedMonitorEntry.label}
-                                    />
-                                </StreamProvider>
-                            ) : (
-                                <div className="w-full h-full flex items-center justify-center bg-zinc-900 text-zinc-500 text-sm">
-                                    No buses configured
-                                </div>
-                            )}
-                        </div>
-                    </div>
-
-                    {/* ── Fleet Map Panel ───────────────────────────────────── */}
-                    <div className="rounded-2xl border border-cc-purple-500/20 shadow-lg bg-card flex-1 min-h-[300px] flex flex-col overflow-hidden">
-                        <div className="flex items-center gap-2 px-3 py-2 border-b border-border bg-card/80">
-                            <MapPin size={14} className="text-cc-purple-400 shrink-0" />
-                            <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Fleet Global Map</span>
-                        </div>
-                        <div className="flex-1 relative">
-                            <BusMap allLocations={busLocations} />
+                        {/* ── Fleet Map Panel ───────────────────────────────────── */}
+                        <div className="rounded-2xl border border-cc-purple-500/20 shadow-lg bg-card flex-1 min-h-[300px] flex flex-col overflow-hidden">
+                            <div className="flex items-center gap-2 px-3 py-2 border-b border-border bg-card/80">
+                                <MapPin size={14} className="text-cc-purple-400 shrink-0" />
+                                <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Fleet Global Map</span>
+                            </div>
+                            <div className="flex-1 relative">
+                                <BusMap allLocations={busLocations} />
+                            </div>
                         </div>
                     </div>
                 </div>
-            </div>
 
-            {/* Modals */}
-            <SettingsModal
-                isOpen={isSettingsOpen}
-                onClose={() => setIsSettingsOpen(false)}
-                buses={buses}
-                cameras={cameras}
-                onUpdateCameras={setCameras}
-            />
-            <CameraSelector
-                isOpen={isCameraSelectorOpen}
-                onClose={() => setIsCameraSelectorOpen(false)}
-                cameras={cameras}
-                onSelectCamera={setSelectedCamera}
-                currentDetails={selectedCamera}
-            />
-        </div>
+                {/* Modals */}
+                <SettingsModal
+                    isOpen={isSettingsOpen}
+                    onClose={() => setIsSettingsOpen(false)}
+                    buses={buses}
+                    cameras={cameras}
+                    onUpdateCameras={setCameras}
+                />
+                <CameraSelector
+                    isOpen={isCameraSelectorOpen}
+                    onClose={() => setIsCameraSelectorOpen(false)}
+                    cameras={cameras}
+                    onSelectCamera={setSelectedCamera}
+                    currentDetails={selectedCamera}
+                />
+            </div>
+        </AdminGuard>
     );
 }
 

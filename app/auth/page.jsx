@@ -12,7 +12,6 @@ import BackgroundAnimation from '@/components/ui/BackgroundAnimation';
 import { auth, db } from '@/lib/firebase';
 import { createUserWithEmailAndPassword, signInWithEmailAndPassword, updateProfile, signOut, sendEmailVerification } from 'firebase/auth';
 import { doc, setDoc, query, collection, where, getDocs, getDoc } from 'firebase/firestore';
-import { studentsRef, parentsRef } from '@/lib/firebase';
 import { useAuth } from '@/features/auth/components/AuthProvider';
 import BusLoader from '@/components/BusLoader';
 
@@ -29,12 +28,7 @@ export default function LoginPage() {
     const router = useRouter();
     const { user, role, loading: authLoading } = useAuth();
 
-    // Redirect already-logged-in users to their dashboard
-    useEffect(() => {
-        if (!authLoading && user && role) {
-            router.replace(ROLE_DASHBOARD[role] ?? '/dashboard/student');
-        }
-    }, [user, role, authLoading, router]);
+
 
     const [loading, setLoading] = useState(false);
     const [authError, setAuthError] = useState('');
@@ -58,9 +52,20 @@ export default function LoginPage() {
         document.getElementById('staff-login-hint')?.classList.add('hidden');
     };
 
+    // Redirect already-logged-in users to their dashboard
+    useEffect(() => {
+        // Prevent auto-redirect while manually logging in (loading is true)
+        if (!authLoading && user && role && !loading) {
+            // Only auto-redirect if their email is verified or they are staff
+            if (role === 'admin' || role === 'driver' || user.emailVerified) {
+                router.replace(ROLE_DASHBOARD[role] ?? '/dashboard/student');
+            }
+        }
+    }, [user, role, authLoading, loading, router]);
+
     // Helper: Find student by PRN to link parent
     const findStudentByPRN = async (prn) => {
-        const q = query(studentsRef, where("prnNumber", "==", prn));
+        const q = query(collection(db, "users"), where("prn", "==", prn), where("role", "==", "student"));
         const querySnapshot = await getDocs(q);
         return !querySnapshot.empty ? querySnapshot.docs[0] : null;
     };
@@ -188,47 +193,37 @@ export default function LoginPage() {
                 displayName: formData.fullName
             });
 
-            // Store user data in Firestore (errors will propagate to the outer catch)
-            await setDoc(doc(db, "users", user.uid), {
+            // Base User Data shared across all roles
+            const baseUserData = {
                 uid: user.uid,
                 email: formData.email,
                 fullName: formData.fullName,
-                mobile: formData.mobile,
-                prn: formData.prn || (formData.childPrn ? `PARENT-OF-${formData.childPrn}` : ''),
-                college: formData.college,
-                semester: formData.semester,
+                mobileNumber: formData.mobile,
                 role: signupRole,
                 createdAt: new Date().toISOString()
-            });
+            };
 
-            // Store role-specific data
             if (signupRole === 'student') {
-                await setDoc(doc(studentsRef, user.uid), {
-                    id: user.uid,
-                    fullName: formData.fullName,
-                    mobileNumber: formData.mobile,
-                    prnNumber: formData.prn,
-                    collegeName: formData.college,
+                await setDoc(doc(db, "users", user.uid), {
+                    ...baseUserData,
+                    prn: formData.prn,
+                    college: formData.college,
                     semester: formData.semester,
-                    email: formData.email,
                     parentId: null,
+                    busId: null
                 });
             } else if (signupRole === 'parent') {
                 const studentDoc = await findStudentByPRN(formData.childPrn);
-                const childId = studentDoc.id;
+                
+                // Create parent record
+                await setDoc(doc(db, "users", user.uid), {
+                    ...baseUserData
+                });
 
-                // Link parent to child in the student document
-                await setDoc(doc(studentsRef, studentDoc.id), {
+                // Link parent to child's document
+                await setDoc(doc(db, "users", studentDoc.id), {
                     parentId: user.uid
                 }, { merge: true });
-
-                await setDoc(doc(parentsRef, user.uid), {
-                    id: user.uid,
-                    fullName: formData.fullName,
-                    email: formData.email,
-                    mobileNumber: formData.mobile,
-                    child_id: childId
-                });
             }
 
             // Send verification email then sign out — user must verify before logging in

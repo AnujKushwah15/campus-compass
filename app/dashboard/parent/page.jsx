@@ -32,9 +32,9 @@ export default function ParentDashboard() {
 
                 // 1. Fetch student linked to this parent
                 try {
-                    const studentsRef = collection(db, "students");
+                    const usersRef = collection(db, "users");
                     // Using parentId field established in Auth Flow
-                    const q = query(studentsRef, where("parentId", "==", currentUser.uid), limit(1));
+                    const q = query(usersRef, where("role", "==", "student"), where("parentId", "==", currentUser.uid), limit(1));
                     const querySnapshot = await getDocs(q);
 
                     if (!querySnapshot.empty) {
@@ -44,7 +44,7 @@ export default function ParentDashboard() {
                         // Set basic link info
                         const linkData = {
                             studentId: studentDoc.id,
-                            name: studentData.name,
+                            name: studentData.fullName || studentData.name,
                             prn: studentData.prn,
                             busId: studentData.assignedBusId,
                             busNumber: studentData.busNumber || "Assigned Bus",
@@ -71,6 +71,9 @@ export default function ParentDashboard() {
                                 } else {
                                     setTripData(null); // No active trip
                                 }
+                                setLoading(false);
+                            }, (error) => {
+                                console.error("ParentDashboard: Trip snapshot error:", error);
                                 setLoading(false);
                             });
 

@@ -16,14 +16,14 @@ export default function ParentAttendancePage() {
             if (user) {
                 try {
                     // 1. Fetch linked student(s)
-                    const studentsRef = collection(db, 'students');
-                    const qStudent = query(studentsRef, where('parentId', '==', user.uid));
+                    const usersRef = collection(db, 'users');
+                    const qStudent = query(usersRef, where('role', '==', 'student'), where('parentId', '==', user.uid));
                     const studentSnap = await getDocs(qStudent);
 
                     if (!studentSnap.empty) {
                         const studentDoc = studentSnap.docs[0]; // Default to first student
                         const student = studentDoc.data();
-                        setStudentName(student.name);
+                        setStudentName(student.fullName || student.name);
 
                         // 2. Fetch Attendance (Current Month + Previous 3 Months)
                         const threeMonthsAgo = new Date();

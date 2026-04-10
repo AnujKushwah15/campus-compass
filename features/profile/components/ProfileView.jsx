@@ -144,13 +144,9 @@ export default function ProfileView({ role = "Student" }) {
                 const userSnap = await getDoc(doc(db, 'users', currentUser.uid));
                 const userData = userSnap.exists() ? userSnap.data() : {};
 
-                // 2. Fetch parents doc (fullName, mobileNumber — legacy collection)
-                const parentSnap = await getDoc(doc(db, 'parents', currentUser.uid));
-                const parentData = parentSnap.exists() ? parentSnap.data() : {};
-
-                // 3. Fetch linked student → prnNumber, assignedBusId
+                // 2. Fetch linked student (if this user is a parent) → prnNumber, assignedBusId
                 const studentSnap = await getDocs(
-                    query(collection(db, 'students'), where('parentId', '==', currentUser.uid))
+                    query(collection(db, 'users'), where('role', '==', 'student'), where('parentId', '==', currentUser.uid))
                 );
                 const studentData = studentSnap.empty ? {} : studentSnap.docs[0].data();
                 const busId = studentData.assignedBusId || userData.assignedBusId || null;
@@ -169,11 +165,9 @@ export default function ProfileView({ role = "Student" }) {
                 setUser(prev => ({
                     ...prev,
                     name: currentUser.displayName
-                        || parentData.fullName
                         || userData.fullName || userData.name
                         || prev.name,
-                    mobile: parentData.mobileNumber || parentData.mobile
-                        || userData.mobileNumber || userData.mobile || userData.phone
+                    mobile: userData.mobileNumber || userData.mobile || userData.phone
                         || null,
                     prn: studentData.prnNumber || studentData.prn || userData.prn || null,
                     busNumber,

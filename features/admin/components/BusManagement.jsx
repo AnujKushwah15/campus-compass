@@ -19,6 +19,8 @@ export default function BusManagement({ buses, students = [], selectedBus, onSel
             if (docSnapshot.exists()) {
                 setAttendanceData(docSnapshot.data().attendance || {});
             }
+        }, (error) => {
+            console.error("BusManagement: Trip snapshot error:", error);
         });
 
         return () => unsubscribe();

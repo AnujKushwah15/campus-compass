@@ -371,7 +371,8 @@ app.post('/stream-auth', async (req, res) => {
                 const assignedNorm = normalize(userData.assignedBusId);
                 allowed = assignedNorm === requestedNorm && assignedNorm !== '';
             } else if (role === 'parent') {
-                const studentsSnap = await firestore.collection('students')
+                const studentsSnap = await firestore.collection('users')
+                    .where('role', '==', 'student')
                     .where('parentId', '==', uid)
                     .get();
                 if (!studentsSnap.empty) {

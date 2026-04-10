@@ -5,6 +5,7 @@ import { usePathname, useRouter } from 'next/navigation';
 import { useAuth } from '@/features/auth/components/AuthProvider';
 import { useEffect } from 'react';
 import BusLoader from '@/components/BusLoader';
+import { Loader2 } from 'lucide-react';
 
 /** Map each role to the dashboard path it is allowed to access. */
 const ROLE_DASHBOARDS = {

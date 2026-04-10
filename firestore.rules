@@ -1,115 +1,166 @@
 rules_version = '2';
-
-// ─────────────────────────────────────────────────────────────────────────────
-// Campus Compass — Firestore Security Rules
-//
-// Role hierarchy (stored in users/{uid}.role):
-//   admin  → full access to everything
-//   driver → read most things; write trips for their own bus
-//   parent → read own student + linked bus data; no writes to system collections
-//
-// NOTE: Custom claims are not used here — role checks read the users collection.
-// The backend (Admin SDK) bypasses these rules entirely.
-// ─────────────────────────────────────────────────────────────────────────────
-
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    // ── Helper functions ─────────────────────────────────────────────────────
+    // =========================
+    // 🔹 Helper Functions
+    // =========================
 
     function isAuth() {
       return request.auth != null;
     }
 
+    function userDoc() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid));
+    }
+
     function isAdmin() {
-      return isAuth() &&
-        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
+      return isAuth() && userDoc().data.role == "admin";
     }
 
     function isDriver() {
-      return isAuth() &&
-        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'driver';
+      return isAuth() && userDoc().data.role == "driver";
+    }
+
+    function isParent() {
+      return isAuth() && userDoc().data.role == "parent";
     }
 
     function driverOwnsBus(busId) {
-      return isDriver() &&
-        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.assignedBusId == busId;
+      return isDriver() && userDoc().data.assignedBusId == busId;
     }
 
-    // ── Users ────────────────────────────────────────────────────────────────
+    function isParentOf(studentId) {
+      return isParent() &&
+        exists(/databases/$(database)/documents/users/$(studentId)) &&
+        get(/databases/$(database)/documents/users/$(studentId)).data.parentId == request.auth.uid;
+    }
+
+    function validKeys(data, allowedKeys) {
+      return data.keys().hasOnly(allowedKeys);
+    }
+
+    function smallPayload() {
+      return request.resource.data.size() < 10000; // ~10KB
+    }
+
+    // =========================
+    // 🔹 USERS
+    // =========================
+
     match /users/{userId} {
-      allow read: if isAuth() && (request.auth.uid == userId || isAdmin());
-      allow update: if request.auth.uid == userId
-        && !('role' in request.resource.data.diff(resource.data).affectedKeys())
-        && !('assignedBusId' in request.resource.data.diff(resource.data).affectedKeys());
-      // Allow new students/parents to create their own profile during registration
-      allow create: if isAdmin() ||
-        (isAuth() && request.auth.uid == userId &&
-         request.resource.data.role in ['student', 'parent']);
-      allow delete: if isAdmin();
-    }
 
-    // ── Students ─────────────────────────────────────────────────────────────
-    match /students/{studentId} {
       allow read: if isAuth();
-      // Allow a student to create their own record during self-registration
-      allow create: if isAdmin() ||
-        (isAuth() && request.auth.uid == studentId);
-      // Allow a parent to set parentId ONLY if not already linked
-      // Uses '!in' check to also handle when the field is missing (not just null)
-      allow update: if isAdmin() ||
-        (isAuth() &&
-         request.resource.data.diff(resource.data).affectedKeys().hasOnly(['parentId']) &&
-         request.resource.data.parentId == request.auth.uid &&
-         (!('parentId' in resource.data) || resource.data.parentId == null));
-      allow delete: if isAdmin();
-    }
 
-    // ── Buses ────────────────────────────────────────────────────────────────
-    match /buses/{busId} {
-      allow read: if isAuth();
-      allow update: if isAdmin() || (
-        driverOwnsBus(busId) && 
-        request.resource.data.diff(resource.data).affectedKeys().hasOnly(['activeTripId'])
+      allow create: if isAdmin() || (
+        isAuth() 
+        && request.auth.uid == userId
+        && request.resource.data.role in ['student', 'parent', 'driver']
+        && smallPayload()
       );
-      allow create, delete: if isAdmin();
+
+      allow update: if isAdmin() || (
+        isAuth()
+        && request.auth.uid == userId
+        && !('role' in request.resource.data.diff(resource.data).affectedKeys())
+        && smallPayload()
+      ) || (
+        // Allow parents to claim a student during linking
+        isAuth()
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['parentId'])
+        && request.resource.data.parentId == request.auth.uid
+      );
+
+      allow delete: if isAdmin();
     }
 
-    // ── Trips ────────────────────────────────────────────────────────────────
+    // =========================
+    // 🔹 BUSES
+    // =========================
+
+    match /buses/{busId} {
+
+      allow read: if isAuth();
+
+      allow write: if isAdmin()
+        && validKeys(request.resource.data, ['plateNumber', 'capacity', 'status', 'driverId'])
+        && smallPayload();
+    }
+
+    // =========================
+    // 🔹 ROUTES
+    // =========================
+
+    match /routes/{routeId} {
+
+      allow read: if isAuth();
+
+      allow write: if isAdmin()
+        && validKeys(request.resource.data, ['name', 'busId', 'stops'])
+        && smallPayload();
+    }
+
+
+
+    // =========================
+    // 🔹 TRIPS
+    // =========================
+
     match /trips/{tripId} {
+
       allow read: if isAuth();
-      allow create: if isAdmin() || driverOwnsBus(request.resource.data.busId);
-      allow update: if isAdmin() || driverOwnsBus(resource.data.busId);
+
+      allow create: if isAdmin()
+        || (isDriver()
+          && request.resource.data.driverId == request.auth.uid
+          && driverOwnsBus(request.resource.data.busId)
+          && validKeys(request.resource.data, [
+            'driverId',
+            'busId',
+            'status',
+            'startTime',
+            'endTime',
+            'attendance'
+          ])
+          && smallPayload()
+        );
+
+      allow update: if isAdmin()
+        || (isDriver()
+          && resource.data.driverId == request.auth.uid
+          && driverOwnsBus(resource.data.busId)
+          && smallPayload()
+        );
+
       allow delete: if isAdmin();
     }
 
-    // ── Attendance ───────────────────────────────────────────────────────────
-    match /attendance/{docId} {
-      allow read: if isAuth();
-      allow write: if isAdmin() || isDriver();
-    }
+    // =========================
+    // 🔹 ATTENDANCE
+    // =========================
 
-    // ── Alerts ───────────────────────────────────────────────────────────────
-    match /alerts/{alertId} {
-      allow read: if isAdmin() || isDriver();
-      allow create: if isDriver();
-      allow update, delete: if isAdmin();
-    }
+    match /attendance/{attendanceId} {
 
-    // ── Stream Logs ──────────────────────────────────────────────────────────
-    match /streamLogs/{logId} {
-      allow read: if isAdmin();
-      allow write: if false;
-    }
+      allow read: if isAdmin()
+        || isDriver()
+        || (isParent() && isParentOf(resource.data.studentId));
 
-    // ── Parents ──────────────────────────────────────────────────────────────
-    match /parents/{parentId} {
-      allow read: if isAuth() && (request.auth.uid == parentId || isAdmin());
-      // Allow new parents to create their own profile during self-registration
-      allow create: if isAdmin() ||
-        (isAuth() && request.auth.uid == parentId);
-      allow update: if request.auth.uid == parentId || isAdmin();
+      allow create, update: if isAdmin()
+        || (isDriver()
+          && driverOwnsBus(resource.data.busId)
+          && validKeys(request.resource.data, [
+            'tripId',
+            'studentId',
+            'status',
+            'date',
+            'autoMarked',
+            'busId'
+          ])
+          && smallPayload()
+        );
+
       allow delete: if isAdmin();
     }
+
   }
 }

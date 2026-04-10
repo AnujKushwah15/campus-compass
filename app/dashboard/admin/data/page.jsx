@@ -5,15 +5,14 @@ import { db } from '@/lib/firebase';
 import { collection, query, where, getDocs, limit, orderBy } from 'firebase/firestore';
 import { ArrowLeft, Search, Filter, SortAsc, SortDesc, ChevronDown } from 'lucide-react';
 import Link from 'next/link';
+import AdminGuard from '@/features/admin/components/AdminGuard';
 
 const KNOWN_COLLECTIONS = [
-    'students',
-    'buses',
     'users',
+    'buses',
     'trips',
     'routes',
-    'attendance',
-    'parents'
+    'attendance'
 ];
 
 const OPERATORS = [
@@ -90,7 +89,7 @@ function CustomSelect({ label, value, options, onChange, placeholder = "Select..
 }
 
 export default function DataQueryPage() {
-    const [collectionName, setCollectionName] = useState('students');
+    const [collectionName, setCollectionName] = useState('users');
     const [fieldName, setFieldName] = useState('');
     const [operator, setOperator] = useState('==');
     const [value, setValue] = useState('');
@@ -201,148 +200,141 @@ export default function DataQueryPage() {
     const sortFieldOptions = [{ value: '', label: 'No Sorting' }, ...fieldOptions];
 
     return (
-        <div className="font-sans text-foreground min-h-screen bg-background p-6">
-            {/* Header */}
-            <div className="mb-8 flex items-center gap-4">
-                <Link href="/dashboard/admin" className="p-2 hover:bg-muted rounded-full transition-colors">
-                    <ArrowLeft size={24} />
-                </Link>
-                <h1 className="text-3xl font-bold text-foreground">Data Query Interface</h1>
-            </div>
+        <AdminGuard>
+            <div className="font-sans text-foreground min-h-screen bg-background p-6">
+                {/* Header */}
+                <div className="mb-8 flex items-center gap-4">
+                    <Link href="/dashboard/admin" className="p-2 hover:bg-muted rounded-full transition-colors">
+                        <ArrowLeft size={24} />
+                    </Link>
+                    <h1 className="text-3xl font-bold text-foreground">Data Query Interface</h1>
+                </div>
 
-            {/* Query Form */}
-            <div className="bg-card p-6 rounded-2xl border border-border mb-8 shadow-sm">
-                <form onSubmit={handleSearch} className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 items-end">
+                {/* Query Form */}
+                <div className="bg-card p-6 rounded-2xl border border-border mb-8 shadow-sm">
+                    <form onSubmit={handleSearch} className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 items-end">
 
-                    {/* Row 1: Collection & Fields */}
-                    <CustomSelect
-                        label="Collection"
-                        value={collectionName}
-                        options={collectionOptions}
-                        onChange={setCollectionName}
-                    />
-
-                    <CustomSelect
-                        label="Filter Field"
-                        value={fieldName}
-                        options={[{ value: '', label: 'Select Field...' }, ...fieldOptions]}
-                        onChange={setFieldName}
-                        placeholder="Select Field..."
-                    />
-
-                    <CustomSelect
-                        label="Operator"
-                        value={operator}
-                        options={OPERATORS}
-                        onChange={setOperator}
-                    />
-
-                    <div className="space-y-1.5">
-                        <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Value (Optional)</label>
-                        <input
-                            type="text"
-                            placeholder={['in', 'not-in', 'array-contains-any'].includes(operator) ? "e.g. active, idle" : "Value to match..."}
-                            value={value}
-                            onChange={(e) => setValue(e.target.value)}
-                            className="w-full px-4 py-2.5 rounded-xl border border-border bg-card text-foreground focus:ring-2 focus:ring-cc-purple-500/50 focus:outline-none transition-all placeholder:text-muted-foreground/50 h-[46px]"
+                        {/* Row 1: Collection & Fields */}
+                        <CustomSelect
+                            label="Collection"
+                            value={collectionName}
+                            options={collectionOptions}
+                            onChange={setCollectionName}
                         />
-                    </div>
 
-                    {/* Row 2: Sorting & Action */}
-                    {/* Sort By Field Removed */}
-                    {/* <CustomSelect
-                        label="Sort By (Optional)"
-                        value={sortField}
-                        options={sortFieldOptions}
-                        onChange={setSortField}
-                        placeholder="No Sorting"
-                    /> */}
+                        <CustomSelect
+                            label="Filter Field"
+                            value={fieldName}
+                            options={[{ value: '', label: 'Select Field...' }, ...fieldOptions]}
+                            onChange={setFieldName}
+                            placeholder="Select Field..."
+                        />
 
-                    <div className="space-y-1.5">
-                        <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Order</label>
-                        <div className="flex bg-muted/20 rounded-xl p-1 border border-border h-[46px]">
+                        <CustomSelect
+                            label="Operator"
+                            value={operator}
+                            options={OPERATORS}
+                            onChange={setOperator}
+                        />
+
+                        <div className="space-y-1.5">
+                            <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Value (Optional)</label>
+                            <input
+                                type="text"
+                                placeholder={['in', 'not-in', 'array-contains-any'].includes(operator) ? "e.g. active, idle" : "Value to match..."}
+                                value={value}
+                                onChange={(e) => setValue(e.target.value)}
+                                className="w-full px-4 py-2.5 rounded-xl border border-border bg-card text-foreground focus:ring-2 focus:ring-cc-purple-500/50 focus:outline-none transition-all placeholder:text-muted-foreground/50 h-[46px]"
+                            />
+                        </div>
+
+                        {/* Row 2: Sorting & Action */}
+                        <div className="space-y-1.5">
+                            <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Order</label>
+                            <div className="flex bg-muted/20 rounded-xl p-1 border border-border h-[46px]">
+                                <button
+                                    type="button"
+                                    onClick={() => setSortOrder('asc')}
+                                    className={`flex-1 flex items-center justify-center gap-2 py-1.5 rounded-lg text-sm font-medium transition-all ${sortOrder === 'asc' ? 'bg-card shadow-sm text-foreground border border-border/50' : 'text-muted-foreground hover:bg-card/50'}`}
+                                >
+                                    <SortAsc size={16} /> Asc
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={() => setSortOrder('desc')}
+                                    className={`flex-1 flex items-center justify-center gap-2 py-1.5 rounded-lg text-sm font-medium transition-all ${sortOrder === 'desc' ? 'bg-card shadow-sm text-foreground border border-border/50' : 'text-muted-foreground hover:bg-card/50'}`}
+                                >
+                                    <SortDesc size={16} /> Desc
+                                </button>
+                            </div>
+                        </div>
+
+                        <div className="lg:col-span-3 flex justify-end">
                             <button
-                                type="button"
-                                onClick={() => setSortOrder('asc')}
-                                className={`flex-1 flex items-center justify-center gap-2 py-1.5 rounded-lg text-sm font-medium transition-all ${sortOrder === 'asc' ? 'bg-card shadow-sm text-foreground border border-border/50' : 'text-muted-foreground hover:bg-card/50'}`}
+                                type="submit"
+                                className="w-full lg:w-auto px-8 py-2.5 bg-cc-purple-600 hover:bg-cc-purple-700 text-white rounded-xl font-bold shadow-md shadow-cc-purple-500/20 active:scale-95 transition-all flex items-center justify-center gap-2 h-[46px]"
                             >
-                                <SortAsc size={16} /> Asc
-                            </button>
-                            <button
-                                type="button"
-                                onClick={() => setSortOrder('desc')}
-                                className={`flex-1 flex items-center justify-center gap-2 py-1.5 rounded-lg text-sm font-medium transition-all ${sortOrder === 'desc' ? 'bg-card shadow-sm text-foreground border border-border/50' : 'text-muted-foreground hover:bg-card/50'}`}
-                            >
-                                <SortDesc size={16} /> Desc
+                                {loading ? <span className="animate-spin">⌛</span> : <Search size={18} />}
+                                Run Query
                             </button>
                         </div>
-                    </div>
 
-                    <div className="lg:col-span-3 flex justify-end">
-                        <button
-                            type="submit"
-                            className="w-full lg:w-auto px-8 py-2.5 bg-cc-purple-600 hover:bg-cc-purple-700 text-white rounded-xl font-bold shadow-md shadow-cc-purple-500/20 active:scale-95 transition-all flex items-center justify-center gap-2 h-[46px]"
-                        >
-                            {loading ? <span className="animate-spin">⌛</span> : <Search size={18} />}
-                            Run Query
-                        </button>
-                    </div>
+                    </form>
+                </div>
 
-                </form>
-            </div>
+                {/* Results */}
+                <div className="space-y-4">
+                    <h2 className="text-xl font-semibold flex items-center gap-2">
+                        <Filter size={20} className="text-cc-purple-500" />
+                        Query Results
+                        <span className="text-sm font-normal text-muted-foreground bg-secondary px-2 py-0.5 rounded-full ml-2">
+                            {results.length} found
+                        </span>
+                    </h2>
 
-            {/* Results */}
-            <div className="space-y-4">
-                <h2 className="text-xl font-semibold flex items-center gap-2">
-                    <Filter size={20} className="text-cc-purple-500" />
-                    Query Results
-                    <span className="text-sm font-normal text-muted-foreground bg-secondary px-2 py-0.5 rounded-full ml-2">
-                        {results.length} found
-                    </span>
-                </h2>
+                    {error && (
+                        <div className="p-4 bg-red-500/10 border border-red-500/20 rounded-xl text-red-600 font-medium">
+                            {error}
+                        </div>
+                    )}
 
-                {error && (
-                    <div className="p-4 bg-red-500/10 border border-red-500/20 rounded-xl text-red-600 font-medium">
-                        {error}
-                    </div>
-                )}
-
-                {results.length > 0 ? (
-                    <div className="bg-card rounded-2xl border border-border overflow-hidden shadow-sm">
-                        <div className="overflow-x-auto">
-                            <table className="w-full text-sm text-left">
-                                <thead className="text-xs text-muted-foreground uppercase bg-secondary/50 border-b border-border">
-                                    <tr>
-                                        <th className="px-6 py-3 font-bold">ID</th>
-                                        <th className="px-6 py-3 font-bold">Data</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    {results.map((doc) => (
-                                        <tr key={doc.id} className="bg-background border-b border-border hover:bg-muted/30 transition-colors">
-                                            <td className="px-6 py-4 font-mono text-xs font-semibold text-foreground/70 align-top">
-                                                {doc.id}
-                                            </td>
-                                            <td className="px-6 py-4">
-                                                <pre className="whitespace-pre-wrap font-mono text-xs text-muted-foreground">
-                                                    {JSON.stringify({ ...doc, id: undefined }, null, 2)}
-                                                </pre>
-                                            </td>
+                    {results.length > 0 ? (
+                        <div className="bg-card rounded-2xl border border-border overflow-hidden shadow-sm">
+                            <div className="overflow-x-auto">
+                                <table className="w-full text-sm text-left">
+                                    <thead className="text-xs text-muted-foreground uppercase bg-secondary/50 border-b border-border">
+                                        <tr>
+                                            <th className="px-6 py-3 font-bold">ID</th>
+                                            <th className="px-6 py-3 font-bold">Data</th>
                                         </tr>
-                                    ))}
-                                </tbody>
-                            </table>
+                                    </thead>
+                                    <tbody>
+                                        {results.map((doc) => (
+                                            <tr key={doc.id} className="bg-background border-b border-border hover:bg-muted/30 transition-colors">
+                                                <td className="px-6 py-4 font-mono text-xs font-semibold text-foreground/70 align-top">
+                                                    {doc.id}
+                                                </td>
+                                                <td className="px-6 py-4">
+                                                    <pre className="whitespace-pre-wrap font-mono text-xs text-muted-foreground">
+                                                        {JSON.stringify({ ...doc, id: undefined }, null, 2)}
+                                                    </pre>
+                                                </td>
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                </table>
+                            </div>
                         </div>
-                    </div>
-                ) : (
-                    !loading && (
-                        <div className="text-center py-12 border-2 border-dashed border-border rounded-2xl opacity-50">
-                            <Search size={40} className="mx-auto mb-4 text-muted-foreground" />
-                            <p className="text-muted-foreground">Execute a query to see results here</p>
-                        </div>
-                    )
-                )}
+                    ) : (
+                        !loading && (
+                            <div className="text-center py-12 border-2 border-dashed border-border rounded-2xl opacity-50">
+                                <Search size={40} className="mx-auto mb-4 text-muted-foreground" />
+                                <p className="text-muted-foreground">Execute a query to see results here</p>
+                            </div>
+                        )
+                    )}
+                </div>
             </div>
-        </div>
+        </AdminGuard>
     );
 }

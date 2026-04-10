@@ -9,7 +9,7 @@ import { useAuth } from '@/features/auth/components/AuthProvider';
 const TripContext = createContext();
 
 export function TripProvider({ children }) {
-    const { user } = useAuth();
+    const { user, role } = useAuth();
     const [currentTrip, setCurrentTrip] = useState(null);
     const [students, setStudents] = useState([]); // [NEW] List of students for the active trip
     const [loading, setLoading] = useState(true);
@@ -17,7 +17,7 @@ export function TripProvider({ children }) {
 
     // 1. Listen for Active Trip
     useEffect(() => {
-        if (!user) {
+        if (!user || role !== 'driver') {
             setLoading(false);
             return;
         }
@@ -64,17 +64,21 @@ export function TripProvider({ children }) {
                 setCurrentTrip(null);
             }
             setLoading(false);
+        }, (error) => {
+            console.error('TripContext: Active trip snapshot error:', error);
+            setLoading(false);
         });
 
         return () => unsubscribe();
-    }, [user]);
+    }, [user, role]);
 
     // 1.5 Fetch Students when Trip is Active
     useEffect(() => {
         if (!currentTrip?.busId) return;
 
         const q = query(
-            collection(db, "students"),
+            collection(db, "users"),
+            where("role", "==", "student"),
             where("busId", "==", currentTrip.busId)
         );
 
@@ -91,6 +95,8 @@ export function TripProvider({ children }) {
                 };
             });
             setStudents(studentList);
+        }, (error) => {
+            console.error('TripContext: Students snapshot error:', error);
         });
 
         return () => unsubscribe();
@@ -221,7 +227,7 @@ export function TripProvider({ children }) {
                         tripId: currentTrip.id,
                         busId: currentTrip.busId,
                         studentId: student.id,
-                        studentName: student.name || 'Unknown',
+                        studentName: student.fullName || 'Unknown',
                         status: finalStatus,
                         timestamp,
                         date: new Date().toISOString().split('T')[0],
