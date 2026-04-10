@@ -1,6 +1,6 @@
 name: Deploy Backend to VPS
 
-# Triggers on any push to main or anuj branch that touches backend files
+# Triggers on push to main or anuj when backend files change
 on:
   push:
     branches:
@@ -13,51 +13,58 @@ jobs:
   deploy:
     name: 🚀 Deploy to VPS
     runs-on: ubuntu-latest
+    timeout-minutes: 10
 
     steps:
-      # ── 1. Checkout ────────────────────────────────────────────────────────
+      # ── 1. Checkout ──────────────────────────────────────────────────────────
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      # ── 2. Sync ALL backend files via Rsync ────────────────────────────────
-      - name: Sync Backend files to VPS
-        uses: easingthemes/ssh-deploy@v5.1.0
+      # ── 2. Transfer backend files via SCP ────────────────────────────────────
+      # Uses appleboy/scp-action — reliable, no rsync quirks
+      # Excludes node_modules (installed fresh on VPS in step 3)
+      - name: Copy backend files to VPS
+        uses: appleboy/scp-action@v0.1.7
         with:
-          SSH_PRIVATE_KEY: ${{ secrets.VPS_SSH_KEY }}
-          # Exclude node_modules so we don't sync huge folders or dev deps
-          ARGS: "-rlgoDzvc -i --delete --exclude=node_modules"
-          SOURCE: "backend/"
-          REMOTE_HOST: ${{ secrets.VPS_IP }}
-          REMOTE_USER: "root"
-          TARGET: "/root/campus-compass-backend/"
+          host: ${{ secrets.VPS_IP }}
+          username: root
+          key: ${{ secrets.VPS_SSH_KEY }}
+          port: 22
+          source: "backend/"
+          target: "/root/campus-compass-backend/"
+          strip_components: 1          # strips the leading "backend/" prefix
+          overwrite: true
 
-      # ── 3. Install deps + apply config + restart services ──────────────────
+      # ── 3. Install deps + apply config + restart services ────────────────────
       - name: Install & restart services
         uses: appleboy/ssh-action@v1.0.3
         with:
           host: ${{ secrets.VPS_IP }}
           username: root
           key: ${{ secrets.VPS_SSH_KEY }}
+          port: 22
+          command_timeout: 5m
           script: |
             set -e
-
             BACKEND_DIR="/root/campus-compass-backend"
             cd "$BACKEND_DIR"
 
-            # 1. Update systemd service file if changed
+            # 1. Sync systemd service file if it changed
             if ! diff -q campus-compass.service /etc/systemd/system/campus-compass.service &>/dev/null; then
               echo "🔄 Service file changed — updating..."
               cp campus-compass.service /etc/systemd/system/campus-compass.service
               systemctl daemon-reload
             fi
 
-            # 2. Update MediaMTX config if changed
-            if ! diff -q mediamtx.yml /etc/mediamtx.yml &>/dev/null; then
+            # 2. Sync MediaMTX config if it changed
+            #    Config lives in /etc/mediamtx/mediamtx.yml (NOT /etc/mediamtx.yml)
+            if ! diff -q mediamtx.yml /etc/mediamtx/mediamtx.yml &>/dev/null; then
               echo "🔄 MediaMTX config changed — updating..."
-              cp mediamtx.yml /etc/mediamtx.yml
+              mkdir -p /etc/mediamtx
+              cp mediamtx.yml /etc/mediamtx/mediamtx.yml
               systemctl restart mediamtx
               sleep 2
-              systemctl is-active mediamtx && echo "✅ mediamtx running"
+              systemctl is-active mediamtx && echo "✅ mediamtx running" || { echo "❌ mediamtx failed to restart"; exit 1; }
             fi
 
             # 3. Install / update Node.js dependencies
@@ -68,7 +75,7 @@ jobs:
             echo "♻️  Restarting campus-compass service..."
             systemctl restart campus-compass
             sleep 3
-            systemctl is-active campus-compass && echo "✅ campus-compass running"
+            systemctl is-active campus-compass && echo "✅ campus-compass running" || { echo "❌ campus-compass failed"; journalctl -u campus-compass -n 30 --no-pager; exit 1; }
 
             # 5. Health check
             HTTP=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:3001/health)
@@ -83,8 +90,8 @@ jobs:
             echo ""
             echo "🎉 Deploy complete — $(date)"
 
-      # ── 4. Notify on failure ───────────────────────────────────────────────
-      - name: Notify on failure
+      # ── 4. Open a GitHub Issue on failure ────────────────────────────────────
+      - name: Open issue on failure
         if: failure()
         uses: actions/github-script@v7
         with:
