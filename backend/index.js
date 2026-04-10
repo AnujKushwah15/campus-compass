@@ -294,14 +294,19 @@ const normalize = (id) => id ? String(id).replace(/^bus-/, '') : '';
 
 app.post('/stream-auth', async (req, res) => {
     try {
+        if (!req.body || typeof req.body !== 'object') {
+            return res.status(400).json({ error: 'Invalid request body' });
+        }
         const { action, path, query, ip, protocol } = req.body;
 
-        console.log(`[stream-auth] action=${action} path=${path} ip=${ip} protocol=${protocol}`);
-
-        // Allow MediaMTX internal API actions
+        // Silently allow MediaMTX internal API health-check polls (fires every ~30s) —
+        // logging these would completely bury real auth events in the journal.
         if (action === 'api') {
             return res.status(200).json({ ok: true });
         }
+
+        // Log only meaningful auth events
+        console.log(`[stream-auth] action=${action} path=${path} ip=${ip} protocol=${protocol}`);
 
         // Allow publish — Pi cameras are authenticated via MediaMTX internal users
         if (action === 'publish') {
@@ -395,8 +400,9 @@ app.post('/stream-auth', async (req, res) => {
             return res.status(200).json({ ok: true });
         }
 
-        // Unknown action
-        return res.status(400).json({ error: 'Unknown action' });
+        // Unknown action — respond with JSON (not Express default HTML)
+        console.warn(`[stream-auth] Unknown action='${action}' from ${ip}`);
+        return res.status(400).json({ error: `Unknown action: ${action}` });
 
     } catch (error) {
         console.error('[stream-auth] Error:', error);

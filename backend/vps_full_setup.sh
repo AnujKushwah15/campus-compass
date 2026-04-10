@@ -101,7 +101,9 @@ echo "📁 [4/8] Setting up backend directory at $BACKEND_DIR..."
 mkdir -p "$BACKEND_DIR"
 
 # Write MediaMTX config
-cat > /etc/mediamtx.yml << MEDIAMTX_EOF
+# Write MediaMTX config (to the correct directory MediaMTX v1.x expects)
+mkdir -p /etc/mediamtx
+cat > /etc/mediamtx/mediamtx.yml << MEDIAMTX_EOF
 logLevel: info
 rtspAddress: ":8554"
 webrtcAddress: ":8189"
@@ -146,7 +148,8 @@ After=network.target
 [Service]
 Type=simple
 User=root
-ExecStart=/usr/local/bin/mediamtx /etc/mediamtx.yml
+WorkingDirectory=/etc/mediamtx
+ExecStart=/usr/local/bin/mediamtx /etc/mediamtx/mediamtx.yml
 Restart=on-failure
 RestartSec=5
 
@@ -239,7 +242,7 @@ server {
         proxy_read_timeout  60s;
     }
 
-    # WebRTC WHEP endpoint — proxy directly to MediaMTX
+    # WebRTC WHEP endpoint — proxy directly to MediaMTX (port 8189)
     location ~ ^/stream/(.+)/whep$ {
         limit_req zone=api burst=5 nodelay;
         proxy_pass          http://127.0.0.1:8189;
@@ -267,7 +270,8 @@ ufw allow 80/tcp    # HTTP (redirect to HTTPS)
 ufw allow 443/tcp   # HTTPS (Nginx → backend)
 ufw allow 8554/tcp  # RTSP  (Pi → MediaMTX)
 ufw allow 8554/udp  # RTSP  (UDP variant)
-ufw allow 8189/udp  # WebRTC (ICE/STUN)
+ufw allow 8189/tcp  # WebRTC HTTP (WHEP endpoint via Nginx)
+ufw allow 8189/udp  # WebRTC ICE/STUN (UDP data plane)
 # Port 9997 (MediaMTX API) is intentionally NOT opened — localhost only
 # Port 3001 (Node.js) is intentionally NOT opened — proxied via Nginx
 ufw --force enable
