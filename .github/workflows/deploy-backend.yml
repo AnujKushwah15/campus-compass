@@ -15,7 +15,7 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: read
-      issues: write      # needed for the failure notification step
+      issues: write
     timeout-minutes: 10
 
     steps:
@@ -23,31 +23,47 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      # ── 2. Transfer backend files via SCP ────────────────────────────────────
-      # Uses appleboy/scp-action — reliable, no rsync quirks
-      # Excludes node_modules (installed fresh on VPS in step 3)
-      - name: Copy backend files to VPS
-        uses: appleboy/scp-action@v0.1.7
-        with:
-          host: ${{ secrets.VPS_IP }}
-          username: root
-          key: ${{ secrets.VPS_SSH_KEY }}
-          port: 22
-          source: "backend/"
-          target: "/root/campus-compass-backend/"
-          strip_components: 1          # strips the leading "backend/" prefix
-          overwrite: true
+      # ── 2. Write SSH key and transfer files via rsync ─────────────────────────
+      # We write the key with printf to guarantee LF line endings.
+      # GitHub Secrets textarea strips newlines; printf restores them at runtime.
+      - name: Sync backend files to VPS
+        env:
+          VPS_IP: ${{ secrets.VPS_IP }}
+          VPS_SSH_KEY: ${{ secrets.VPS_SSH_KEY }}
+        run: |
+          # Write the SSH private key with proper newlines (printf handles \n in secret)
+          mkdir -p ~/.ssh
+          printf '%s' "$VPS_SSH_KEY" > ~/.ssh/deploy_key
+          chmod 600 ~/.ssh/deploy_key
+
+          # Disable host key checking for CI (VPS IP is known, not user-supplied)
+          cat >> ~/.ssh/config <<EOF
+          Host $VPS_IP
+            StrictHostKeyChecking no
+            UserKnownHostsFile /dev/null
+          EOF
+
+          # Test the connection before rsync
+          ssh -i ~/.ssh/deploy_key root@$VPS_IP "echo '✅ SSH connection verified'"
+
+          # Rsync backend files — excludes node_modules (installed on server)
+          rsync -rlgoDzvc --delete \
+            --exclude=node_modules \
+            -e "ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no" \
+            backend/ \
+            root@$VPS_IP:/root/campus-compass-backend/
 
       # ── 3. Install deps + apply config + restart services ────────────────────
       - name: Install & restart services
-        uses: appleboy/ssh-action@v1.0.3
-        with:
-          host: ${{ secrets.VPS_IP }}
-          username: root
-          key: ${{ secrets.VPS_SSH_KEY }}
-          port: 22
-          command_timeout: 5m
-          script: |
+        env:
+          VPS_IP: ${{ secrets.VPS_IP }}
+          VPS_SSH_KEY: ${{ secrets.VPS_SSH_KEY }}
+        run: |
+          mkdir -p ~/.ssh
+          printf '%s' "$VPS_SSH_KEY" > ~/.ssh/deploy_key
+          chmod 600 ~/.ssh/deploy_key
+
+          ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no root@$VPS_IP 'bash -s' << 'ENDSSH'
             set -e
             BACKEND_DIR="/root/campus-compass-backend"
             cd "$BACKEND_DIR"
@@ -78,7 +94,11 @@ jobs:
             echo "♻️  Restarting campus-compass service..."
             systemctl restart campus-compass
             sleep 3
-            systemctl is-active campus-compass && echo "✅ campus-compass running" || { echo "❌ campus-compass failed"; journalctl -u campus-compass -n 30 --no-pager; exit 1; }
+            systemctl is-active campus-compass && echo "✅ campus-compass running" || {
+              echo "❌ campus-compass failed to start"
+              journalctl -u campus-compass -n 30 --no-pager
+              exit 1
+            }
 
             # 5. Health check
             HTTP=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:3001/health)
@@ -92,6 +112,7 @@ jobs:
 
             echo ""
             echo "🎉 Deploy complete — $(date)"
+          ENDSSH
 
       # ── 4. Open a GitHub Issue on failure ────────────────────────────────────
       - name: Open issue on failure
