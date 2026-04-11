@@ -8,6 +8,8 @@ import { Calendar, CheckCircle, XCircle, Clock } from 'lucide-react';
 export default function AttendanceView({ data, title, studentName, titleClassName }) {
     // data structure expected:
     // { totalDays: 24, presentDays: 20, absentDays: 4, percentage: 83, history: [ { date: '2023-12-01', status: 'present' }, ... ] }
+    // Guard: render nothing meaningful if data is not yet ready
+    if (!data) return null;
 
     // Helper to get days in month
     const currentDate = new Date();
@@ -15,8 +17,6 @@ export default function AttendanceView({ data, title, studentName, titleClassNam
     const currentYear = currentDate.getFullYear();
     const daysInMonth = new Date(currentYear, currentDate.getMonth() + 1, 0).getDate();
 
-    // Generate dummy calendar days if not provided in history
-    // We will just map the passed history or create a mock view
 
     return (
         <div className="space-y-6 animate-fadeIn">
@@ -66,100 +66,102 @@ export default function AttendanceView({ data, title, studentName, titleClassNam
             </div>
 
             {/* Calendar View */}
-            <Card className="relative overflow-hidden !bg-slate-50 dark:!bg-card bg-[radial-gradient(#e5e7eb_1px,transparent_1px)] [background-size:16px_16px] dark:bg-[radial-gradient(rgba(255,255,255,0.05)_1px,transparent_1px)] opacity-0 animate-pop-in delay-500">
-                <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 mb-4">
-                    <h3 className="font-bold text-cc-purple-800 text-lg">Monthly Overview</h3>
-                    <div className="flex flex-wrap gap-x-4 gap-y-2 text-sm">
-                        <div className="flex items-center gap-1.5">
-                            <div className="w-3 h-3 rounded-sm bg-green-100 border border-green-300 dark:bg-green-900 dark:border-green-700"></div>
-                            <span className="text-black dark:text-white">Present</span>
+            {Array.isArray(data.history) && data.history.length === 0 ? (
+                <Card className="relative overflow-hidden !bg-slate-50 dark:!bg-card opacity-0 animate-pop-in delay-500">
+                    <div className="flex flex-col items-center justify-center py-16 text-center gap-4">
+                        <div className="w-16 h-16 rounded-full bg-muted flex items-center justify-center text-3xl border border-border">
+                            📅
                         </div>
-                        <div className="flex items-center gap-1.5">
-                            <div className="w-3 h-3 rounded-sm bg-red-100 border border-red-300 dark:bg-red-900 dark:border-red-700"></div>
-                            <span className="text-black dark:text-white">Absent</span>
-                        </div>
-                        <div className="flex items-center gap-1.5">
-                            <div className="w-3 h-3 rounded-sm bg-gray-100 border border-gray-300 dark:bg-slate-800 dark:border-slate-600"></div>
-                            <span className="text-black dark:text-white">Holiday/Weekend</span>
+                        <div>
+                            <p className="font-semibold text-foreground text-lg">No Attendance Records Yet</p>
+                            <p className="text-muted-foreground text-sm mt-1 max-w-xs">
+                                Your attendance will appear here once you have been assigned to a bus and trips have been recorded.
+                            </p>
                         </div>
                     </div>
-                </div>
-
-                {/* Calendar Grid Mockup */}
-                <div className="grid grid-cols-7 gap-2 text-center mb-2">
-                    {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map(day => (
-                        <div key={day} className="text-xs font-semibold text-cc-purple-400 dark:text-gray-300 uppercase tracking-wider py-2">
-                            {day}
+                </Card>
+            ) : (
+                <Card className="relative overflow-hidden !bg-slate-50 dark:!bg-card bg-[radial-gradient(#e5e7eb_1px,transparent_1px)] [background-size:16px_16px] dark:bg-[radial-gradient(rgba(255,255,255,0.05)_1px,transparent_1px)] opacity-0 animate-pop-in delay-500">
+                    <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 mb-4">
+                        <h3 className="font-bold text-cc-purple-800 text-lg">Monthly Overview</h3>
+                        <div className="flex flex-wrap gap-x-4 gap-y-2 text-sm">
+                            <div className="flex items-center gap-1.5">
+                                <div className="w-3 h-3 rounded-sm bg-green-100 border border-green-300 dark:bg-green-900 dark:border-green-700"></div>
+                                <span className="text-black dark:text-white">Present</span>
+                            </div>
+                            <div className="flex items-center gap-1.5">
+                                <div className="w-3 h-3 rounded-sm bg-red-100 border border-red-300 dark:bg-red-900 dark:border-red-700"></div>
+                                <span className="text-black dark:text-white">Absent</span>
+                            </div>
+                            <div className="flex items-center gap-1.5">
+                                <div className="w-3 h-3 rounded-sm bg-gray-100 border border-gray-300 dark:bg-slate-800 dark:border-slate-600"></div>
+                                <span className="text-black dark:text-white">Holiday/Weekend</span>
+                            </div>
                         </div>
-                    ))}
-                </div>
-                <div className="grid grid-cols-7 gap-2">
-                    {/* Empty slots for days before the 1st of the month */}
-                    {Array.from({ length: new Date(currentYear, currentDate.getMonth(), 1).getDay() }).map((_, i) => (
-                        <div key={`empty-${i}`} className="min-h-[60px] md:min-h-[80px]"></div>
-                    ))}
+                    </div>
 
-                    {Array.from({ length: daysInMonth }).map((_, i) => {
-                        const day = i + 1;
+                    {/* Calendar Grid */}
+                    <div className="grid grid-cols-7 gap-2 text-center mb-2">
+                        {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map(day => (
+                            <div key={day} className="text-xs font-semibold text-cc-purple-400 dark:text-gray-300 uppercase tracking-wider py-2">
+                                {day}
+                            </div>
+                        ))}
+                    </div>
+                    <div className="grid grid-cols-7 gap-2">
+                        {/* Empty slots for days before the 1st of the month */}
+                        {Array.from({ length: new Date(currentYear, currentDate.getMonth(), 1).getDay() }).map((_, i) => (
+                            <div key={`empty-${i}`} className="min-h-[60px] md:min-h-[80px]"></div>
+                        ))}
 
-                        // Accurate day of week calculation
-                        const dateObj = new Date(currentYear, currentDate.getMonth(), day);
-                        const dayOfWeek = dateObj.getDay(); // 0 = Sun, 6 = Sat
-                        const isWeekend = dayOfWeek === 0 || dayOfWeek === 6;
+                        {Array.from({ length: daysInMonth }).map((_, i) => {
+                            const day = i + 1;
+                            const dateObj = new Date(currentYear, currentDate.getMonth(), day);
+                            const dayOfWeek = dateObj.getDay();
 
-                        let isPresent = false;
-                        let isAbsent = false;
+                            let isPresent = false;
+                            let isAbsent = false;
 
-                        if (data.history && Array.isArray(data.history)) {
-                            // Real Data Logic
-                            // Format date as YYYY-MM-DD to match Firestore keys/fields
-                            // We need to be careful with timezones, but for now assuming strings match
+                            const history = Array.isArray(data.history) ? data.history : [];
                             const year = dateObj.getFullYear();
                             const month = String(dateObj.getMonth() + 1).padStart(2, '0');
                             const dayStr = String(day).padStart(2, '0');
                             const dateString = `${year}-${month}-${dayStr}`;
 
-                            const record = data.history.find(r => r.date === dateString);
+                            const record = history.find(r => r.date === dateString);
                             if (record) {
                                 isPresent = record.status === 'present';
                                 isAbsent = record.status === 'absent';
                             }
-                        } else {
-                            // Mock Logic (Fallback)
-                            isAbsent = !isWeekend && (day === 4 || day === 12 || day === 21 || day === 25);
-                            isPresent = !isWeekend && !isAbsent;
-                        }
 
-                        let bgClass = "bg-gray-50 text-gray-400 dark:bg-slate-800/50 dark:text-gray-500"; // Default/Weekend
-                        let borderClass = "border-gray-100 dark:border-slate-700"
+                            let bgClass = "bg-gray-50 text-gray-400 dark:bg-slate-800/50 dark:text-gray-500";
+                            let borderClass = "border-gray-100 dark:border-slate-700";
 
-                        if (isPresent) {
-                            bgClass = "bg-green-100 text-green-800 hover:bg-green-200 dark:bg-green-900/20 dark:text-white dark:hover:bg-green-900/30";
-                            borderClass = "border-green-300 dark:border-green-900/50";
-                        } else if (isAbsent) {
-                            bgClass = "bg-red-100 text-red-800 hover:bg-red-200 dark:bg-red-900/20 dark:text-white dark:hover:bg-red-900/30";
-                            borderClass = "border-red-300 dark:border-red-900/50";
-                        }
+                            if (isPresent) {
+                                bgClass = "bg-green-100 text-green-800 hover:bg-green-200 dark:bg-green-900/20 dark:text-white dark:hover:bg-green-900/30";
+                                borderClass = "border-green-300 dark:border-green-900/50";
+                            } else if (isAbsent) {
+                                bgClass = "bg-red-100 text-red-800 hover:bg-red-200 dark:bg-red-900/20 dark:text-white dark:hover:bg-red-900/30";
+                                borderClass = "border-red-300 dark:border-red-900/50";
+                            }
 
-                        return (
-                            <div
-                                key={i}
-                                className={`
-                                    min-h-[60px] md:min-h-[80px] p-2 rounded-lg border flex flex-col items-center justify-between transition-colors
-                                    ${bgClass} ${borderClass}
-                                `}
-                            >
-                                <span className="text-sm font-medium">{day}</span>
-                                {isPresent && <CheckCircle size={16} className="text-green-500 opacity-60" />}
-                                {isAbsent && <XCircle size={16} className="text-red-500 opacity-60" />}
-                            </div>
-                        )
-                    })}
-                </div>
-                {/* Decorative background elements */}
-                <div className="absolute right-0 top-0 w-64 h-64 opacity-[0.03] rounded-full translate-x-20 -translate-y-20 blur-3xl bg-cc-purple-500 pointer-events-none"></div>
-                <div className="absolute left-0 bottom-0 w-48 h-48 opacity-[0.03] rounded-full -translate-x-10 translate-y-10 blur-2xl bg-cc-sky-500 pointer-events-none"></div>
-            </Card>
+                            return (
+                                <div
+                                    key={i}
+                                    className={`min-h-[60px] md:min-h-[80px] p-2 rounded-lg border flex flex-col items-center justify-between transition-colors ${bgClass} ${borderClass}`}
+                                >
+                                    <span className="text-sm font-medium">{day}</span>
+                                    {isPresent && <CheckCircle size={16} className="text-green-500 opacity-60" />}
+                                    {isAbsent && <XCircle size={16} className="text-red-500 opacity-60" />}
+                                </div>
+                            );
+                        })}
+                    </div>
+                    {/* Decorative background elements */}
+                    <div className="absolute right-0 top-0 w-64 h-64 opacity-[0.03] rounded-full translate-x-20 -translate-y-20 blur-3xl bg-cc-purple-500 pointer-events-none"></div>
+                    <div className="absolute left-0 bottom-0 w-48 h-48 opacity-[0.03] rounded-full -translate-x-10 translate-y-10 blur-2xl bg-cc-sky-500 pointer-events-none"></div>
+                </Card>
+            )}
         </div>
     );
 }

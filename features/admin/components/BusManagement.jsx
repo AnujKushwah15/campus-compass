@@ -8,23 +8,43 @@ export default function BusManagement({ buses, students = [], selectedBus, onSel
     const [attendanceData, setAttendanceData] = useState({});
     const [isAssigning, setIsAssigning] = useState(false);
 
-    // Listen to live attendance updates for the demo trip
+    // Listen to live attendance updates for the currently selected bus's active trip
     useEffect(() => {
-        // In a real app, we would query the active trip for the *selectedBus*
-        // For this demo, we use the same hardcoded ID as the Driver side
-        const TRIP_ID = "trip_demo_1";
-        const tripRef = doc(db, "trips", TRIP_ID);
+        if (!selectedBus?.id) {
+            setAttendanceData({});
+            return;
+        }
 
-        const unsubscribe = onSnapshot(tripRef, (docSnapshot) => {
-            if (docSnapshot.exists()) {
-                setAttendanceData(docSnapshot.data().attendance || {});
+        // Listen to the bus doc to get the activeTripId dynamically
+        const busRef = doc(db, 'buses', selectedBus.id);
+        let unsubTrip = () => {};
+
+        const unsubBus = onSnapshot(busRef, (busSnap) => {
+            unsubTrip(); // clean up previous trip listener
+            const activeTripId = busSnap.data()?.activeTripId;
+            if (!activeTripId) {
+                setAttendanceData({});
+                return;
             }
+            const tripRef = doc(db, 'trips', activeTripId);
+            unsubTrip = onSnapshot(tripRef, (tripSnap) => {
+                if (tripSnap.exists()) {
+                    setAttendanceData(tripSnap.data().attendance || {});
+                } else {
+                    setAttendanceData({});
+                }
+            }, (error) => {
+                console.error('BusManagement: Trip snapshot error:', error);
+            });
         }, (error) => {
-            console.error("BusManagement: Trip snapshot error:", error);
+            console.error('BusManagement: Bus snapshot error:', error);
         });
 
-        return () => unsubscribe();
-    }, []);
+        return () => {
+            unsubBus();
+            unsubTrip();
+        };
+    }, [selectedBus?.id]);
 
     const filteredBuses = buses.filter(bus =>
         bus.number.toLowerCase().includes(searchTerm.toLowerCase())

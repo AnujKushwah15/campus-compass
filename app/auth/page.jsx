@@ -214,7 +214,7 @@ export default function LoginPage() {
                 });
             } else if (signupRole === 'parent') {
                 const studentDoc = await findStudentByPRN(formData.childPrn);
-                
+
                 // Create parent record
                 await setDoc(doc(db, "users", user.uid), {
                     ...baseUserData
@@ -265,8 +265,14 @@ export default function LoginPage() {
         return () => clearTimeout(t);
     }, [resendCooldown]);
 
-    // Show bus loader while Firebase resolves auth state or while redirecting
-    if (authLoading || (!authLoading && user && role)) {
+    // Show bus loader while Firebase resolves auth state or while redirecting.
+    // IMPORTANT: Only redirect (show loader) if the user will actually be sent somewhere.
+    // Staff (admin/driver) are always redirected. Students/parents must have emailVerified.
+    // Unverified students/parents get the verification screen instead — never the loader.
+    const willRedirect = user && role && (
+        role === 'admin' || role === 'driver' || user.emailVerified
+    );
+    if (authLoading || (!authLoading && willRedirect)) {
         return (
             <BusLoader
                 fullScreen
