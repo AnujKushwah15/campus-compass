@@ -33,7 +33,9 @@ export default function LoginPage() {
     const [loading, setLoading] = useState(false);
     const [authError, setAuthError] = useState('');
     const [verificationEmail, setVerificationEmail] = useState(''); // non-empty = show verify screen
+    const [verificationPassword, setVerificationPassword] = useState(''); // kept briefly for resend
     const [resendCooldown, setResendCooldown] = useState(0);
+    const [resendStatus, setResendStatus] = useState(''); // 'sent' | 'error' | ''
 
     const [formData, setFormData] = useState({
         email: '',
@@ -226,15 +228,18 @@ export default function LoginPage() {
                 }, { merge: true });
             }
 
-            // Send verification email then sign out — user must verify before logging in
+            // Send verification email with custom action handler URL.
+            // The continueUrl domain must be in Firebase Console → Auth → Authorized Domains.
             const actionCodeSettings = {
-                url: `${window.location.origin}/auth`,
+                url: 'https://campus-compass-iota-rosy.vercel.app/auth',
                 handleCodeInApp: false,
             };
             await sendEmailVerification(user, actionCodeSettings);
             await signOut(auth);
             setVerificationEmail(formData.email);
+            setVerificationPassword(formData.password); // held for resend only
             setResendCooldown(60);
+            setResendStatus('');
 
         } catch (err) {
             console.error("Signup Error:", err);
@@ -244,17 +249,25 @@ export default function LoginPage() {
         }
     };
 
-    // Resend verification email (user must re-auth briefly; we use a temp sign-in)
+    // Resend verification email — re-signs in briefly to get a live user object,
+    // sends the email, then immediately signs out again.
     const handleResendVerification = async () => {
         if (resendCooldown > 0) return;
         setResendCooldown(60);
+        setResendStatus('');
         try {
-            // Try to send to the stored email via a fresh sign-in if possible
-            // Since the user is signed out, we just show a generic message
-            setAuthError('');
-            alert(`Verification email sent to ${verificationEmail}. Please check your inbox and spam folder.`);
+            const actionCodeSettings = {
+                url: 'https://campus-compass-iota-rosy.vercel.app/auth',
+                handleCodeInApp: false,
+            };
+            // Temporarily sign in to obtain the live user object needed for sendEmailVerification
+            const { user } = await signInWithEmailAndPassword(auth, verificationEmail, verificationPassword);
+            await sendEmailVerification(user, actionCodeSettings);
+            await signOut(auth);
+            setResendStatus('sent');
         } catch (err) {
             console.error('Resend error:', err);
+            setResendStatus('error');
         }
     };
 
@@ -351,7 +364,7 @@ export default function LoginPage() {
                                 Click the link in the email to activate your account.
                             </p>
                             <p className="text-xs text-muted-foreground">Don't see it? Check your spam folder.</p>
-                            <div className="flex flex-col w-full gap-2 pt-2">
+                        <div className="flex flex-col w-full gap-2 pt-2">
                                 <button
                                     onClick={handleResendVerification}
                                     disabled={resendCooldown > 0}
@@ -359,8 +372,14 @@ export default function LoginPage() {
                                 >
                                     {resendCooldown > 0 ? `Resend in ${resendCooldown}s` : 'Resend Verification Email'}
                                 </button>
+                                {resendStatus === 'sent' && (
+                                    <p className="text-green-600 text-xs text-center font-medium">✓ Email sent! Check your inbox.</p>
+                                )}
+                                {resendStatus === 'error' && (
+                                    <p className="text-red-500 text-xs text-center font-medium">Failed to resend. Please go back and sign up again.</p>
+                                )}
                                 <button
-                                    onClick={() => { setVerificationEmail(''); setActiveTab('login'); }}
+                                    onClick={() => { setVerificationEmail(''); setVerificationPassword(''); setActiveTab('login'); }}
                                     className="w-full py-2.5 text-muted-foreground hover:text-foreground text-sm transition-colors"
                                 >
                                     Back to Login
