@@ -5,12 +5,12 @@ import dynamic from 'next/dynamic';
 import Card from '@/components/ui/Card';
 import Badge from '@/components/ui/Badge';
 import AnimatedCounter from '@/components/ui/AnimatedCounter';
-import { Phone, Clock, MapPin } from 'lucide-react';
+import { Phone, Clock, MapPin, Bus, Send, CheckCircle2, XCircle, Loader2 } from 'lucide-react';
 import Button from '@/components/ui/Button';
 
 // Firebase
 import { db, rtdb } from '@/lib/firebase';
-import { doc, getDoc, onSnapshot } from 'firebase/firestore';
+import { doc, getDoc, onSnapshot, setDoc, collection, query, where, serverTimestamp, getDocs } from 'firebase/firestore';
 import { ref, onValue } from 'firebase/database';
 import { useAuth } from '@/features/auth/components/AuthProvider';
 import BusLoader from '@/components/BusLoader';
@@ -113,18 +113,7 @@ export default function StudentDashboard() {
 
     if (!isAssigned) {
         return (
-            <div className="flex flex-col items-center justify-center min-h-[60vh] text-center space-y-4 animate-fadeIn">
-                <div className="w-20 h-20 bg-muted/50 rounded-full flex items-center justify-center text-4xl mb-4 shadow-sm border border-border">
-                    🚷
-                </div>
-                <h2 className="text-2xl font-bold text-foreground">No Bus Assigned</h2>
-                <p className="text-muted-foreground max-w-md">
-                    You have not been assigned to any bus yet. Once the administration assigns you to a bus route, your live tracking dashboard will appear here.
-                </p>
-                <Button variant="outline" onClick={() => window.location.reload()} className="mt-4">
-                    Refresh Status
-                </Button>
-            </div>
+            <NoBusAssignedView user={user} />
         );
     }
 
@@ -305,4 +294,187 @@ function getDistance(lat1, lon1, lat2, lon2) {
               Math.sin(dLon/2) * Math.sin(dLon/2);
     const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
     return R * c;
+}
+
+// ─── NoBusAssignedView ────────────────────────────────────────────────────────
+// Shows when a student has no busId. Lets them submit a bus assignment request.
+function NoBusAssignedView({ user }) {
+    const [buses, setBuses] = useState([]);
+    const [preferredBusId, setPreferredBusId] = useState('');
+    const [message, setMessage] = useState('');
+    const [existingRequest, setExistingRequest] = useState(null); // null = loading, false = none
+    const [submitting, setSubmitting] = useState(false);
+    const [submitted, setSubmitted] = useState(false);
+
+    // Fetch available buses
+    useEffect(() => {
+        const unsub = onSnapshot(collection(db, 'buses'), (snap) => {
+            setBuses(snap.docs.map(d => ({ id: d.id, ...d.data() })));
+        });
+        return () => unsub();
+    }, []);
+
+    // Check for existing pending request (doc ID = student UID)
+    useEffect(() => {
+        if (!user?.uid) return;
+        const unsub = onSnapshot(doc(db, 'busRequests', user.uid), (snap) => {
+            if (snap.exists()) {
+                setExistingRequest({ id: snap.id, ...snap.data() });
+            } else {
+                setExistingRequest(false);
+            }
+        });
+        return () => unsub();
+    }, [user?.uid]);
+
+    const handleSubmit = async (e) => {
+        e.preventDefault();
+        if (!user?.uid) return;
+        setSubmitting(true);
+        try {
+            // Fetch student profile for details to include in request
+            const studentSnap = await getDoc(doc(db, 'users', user.uid));
+            const studentData = studentSnap.exists() ? studentSnap.data() : {};
+
+            await setDoc(doc(db, 'busRequests', user.uid), {
+                studentId: user.uid,
+                studentName: studentData.name || studentData.fullName || user.displayName || 'Unknown',
+                studentPrn: studentData.prn || '',
+                studentEmail: user.email || studentData.email || '',
+                studentCollege: studentData.college || '',
+                studentSemester: studentData.semester || '',
+                studentMobile: studentData.mobile || '',
+                preferredBusId: preferredBusId || null,
+                message: message.trim() || null,
+                status: 'pending',
+                createdAt: serverTimestamp(),
+                resolvedAt: null,
+                resolvedBy: null,
+            });
+            setSubmitted(true);
+        } catch (err) {
+            console.error('Request submit error:', err);
+            alert('Failed to submit request. Please try again.');
+        }
+        setSubmitting(false);
+    };
+
+    // Loading state
+    if (existingRequest === null) {
+        return (
+            <div className="flex flex-col items-center justify-center min-h-[60vh] text-center">
+                <Loader2 className="w-8 h-8 animate-spin text-cc-purple-500" />
+            </div>
+        );
+    }
+
+    // Existing pending request
+    if (existingRequest && existingRequest.status === 'pending') {
+        return (
+            <div className="flex flex-col items-center justify-center min-h-[60vh] text-center space-y-4 animate-fadeIn">
+                <div className="w-20 h-20 bg-cc-purple-500/10 rounded-full flex items-center justify-center mb-2 shadow-inner border border-cc-purple-500/20">
+                    <Clock className="w-10 h-10 text-cc-purple-500" />
+                </div>
+                <h2 className="text-2xl font-bold text-foreground">Request Pending</h2>
+                <p className="text-muted-foreground max-w-md">
+                    Your bus assignment request has been submitted and is waiting for admin approval.
+                    You'll be assigned to a bus soon.
+                </p>
+                {existingRequest.preferredBusId && (
+                    <div className="inline-flex items-center gap-2 px-4 py-2 bg-cc-purple-500/10 rounded-lg border border-cc-purple-500/20 text-sm">
+                        <Bus size={16} className="text-cc-purple-500" />
+                        <span className="text-muted-foreground">Preferred:</span>
+                        <span className="font-semibold text-foreground">
+                            {buses.find(b => b.id === existingRequest.preferredBusId)?.number || existingRequest.preferredBusId}
+                        </span>
+                    </div>
+                )}
+                <Button variant="outline" onClick={() => window.location.reload()} className="mt-4">
+                    Refresh Status
+                </Button>
+            </div>
+        );
+    }
+
+    // Rejected request — let them re-submit
+    const wasRejected = existingRequest && existingRequest.status === 'rejected';
+
+    // Success state after submission
+    if (submitted) {
+        return (
+            <div className="flex flex-col items-center justify-center min-h-[60vh] text-center space-y-4 animate-fadeIn">
+                <div className="w-20 h-20 bg-green-500/10 rounded-full flex items-center justify-center mb-2 shadow-inner border border-green-500/20">
+                    <CheckCircle2 className="w-10 h-10 text-green-500" />
+                </div>
+                <h2 className="text-2xl font-bold text-foreground">Request Submitted!</h2>
+                <p className="text-muted-foreground max-w-md">
+                    Your bus assignment request has been sent to the administration.
+                    You'll receive access once an admin approves it.
+                </p>
+                <Button variant="outline" onClick={() => window.location.reload()} className="mt-4">
+                    Refresh Status
+                </Button>
+            </div>
+        );
+    }
+
+    // Request form
+    return (
+        <div className="flex flex-col items-center justify-center min-h-[60vh] text-center space-y-6 animate-fadeIn">
+            <div className="w-20 h-20 bg-muted/50 rounded-full flex items-center justify-center text-4xl mb-2 shadow-sm border border-border">
+                🚌
+            </div>
+            <h2 className="text-2xl font-bold text-foreground">No Bus Assigned</h2>
+            <p className="text-muted-foreground max-w-md">
+                You haven't been assigned to a bus yet. Submit a request to the administration and they'll assign you to a route.
+            </p>
+
+            {wasRejected && (
+                <div className="flex items-center gap-2 px-4 py-2 bg-red-500/10 rounded-lg border border-red-500/20 text-sm text-red-600">
+                    <XCircle size={16} />
+                    Your previous request was not approved. You can submit a new one.
+                </div>
+            )}
+
+            <form onSubmit={handleSubmit} className="w-full max-w-sm space-y-4 text-left">
+                <div>
+                    <label className="block text-xs uppercase font-bold text-muted-foreground mb-1.5">Preferred Bus (Optional)</label>
+                    <select
+                        value={preferredBusId}
+                        onChange={(e) => setPreferredBusId(e.target.value)}
+                        className="w-full px-3 py-2.5 rounded-xl border border-border focus:outline-none focus:ring-2 focus:ring-cc-purple-500/50 bg-background text-foreground"
+                    >
+                        <option value="">No preference</option>
+                        {buses.map(bus => (
+                            <option key={bus.id} value={bus.id}>
+                                {bus.number || bus.plateNumber} — {bus.route || 'Route not set'}
+                            </option>
+                        ))}
+                    </select>
+                </div>
+                <div>
+                    <label className="block text-xs uppercase font-bold text-muted-foreground mb-1.5">Message to Admin (Optional)</label>
+                    <textarea
+                        value={message}
+                        onChange={(e) => setMessage(e.target.value)}
+                        placeholder="e.g. I live near Stop 3 on Route A..."
+                        rows={3}
+                        maxLength={200}
+                        className="w-full px-3 py-2.5 rounded-xl border border-border focus:outline-none focus:ring-2 focus:ring-cc-purple-500/50 bg-background text-foreground text-sm resize-none"
+                    />
+                </div>
+                <button
+                    type="submit"
+                    disabled={submitting}
+                    className="w-full py-3 bg-cc-purple-600 text-white rounded-xl hover:bg-cc-purple-700 transition font-bold shadow-md shadow-cc-purple-500/20 active:scale-95 duration-200 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                >
+                    {submitting ? (
+                        <><Loader2 className="w-4 h-4 animate-spin" /> Submitting...</>
+                    ) : (
+                        <><Send size={16} /> Request Bus Assignment</>
+                    )}
+                </button>
+            </form>
+        </div>
+    );
 }

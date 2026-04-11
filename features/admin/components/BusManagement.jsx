@@ -2,11 +2,13 @@ import { useState, useEffect } from 'react';
 import Badge from '@/components/ui/Badge';
 import { db } from '@/lib/firebase';
 import { doc, onSnapshot } from 'firebase/firestore';
+import { ChevronDown, ChevronRight, Mail, Phone, Hash, School, GraduationCap } from 'lucide-react';
 
 export default function BusManagement({ buses, students = [], selectedBus, onSelectBus, onUpdateBus, onUnassignStudent, onAssignStudent }) {
     const [searchTerm, setSearchTerm] = useState('');
     const [attendanceData, setAttendanceData] = useState({});
     const [isAssigning, setIsAssigning] = useState(false);
+    const [showUnassigned, setShowUnassigned] = useState(false);
 
     // Listen to live attendance updates for the currently selected bus's active trip
     useEffect(() => {
@@ -240,6 +242,77 @@ export default function BusManagement({ buses, students = [], selectedBus, onSel
                                         </div>
                                     )}
                                 </div>
+                            </div>
+
+                            {/* ── Unassigned Students ──────────────────────────── */}
+                            <div className="bg-card/40 rounded-xl border border-border/50 overflow-hidden">
+                                <button
+                                    onClick={() => setShowUnassigned(!showUnassigned)}
+                                    className="w-full flex items-center justify-between p-4 hover:bg-muted/30 transition-colors"
+                                >
+                                    <h4 className="font-semibold text-foreground flex items-center gap-2">
+                                        Unassigned Students
+                                        <Badge variant="outline" size="sm" className="bg-yellow-500/10 text-yellow-600 border-yellow-500/20">
+                                            {students.filter(s => !s.busId).length}
+                                        </Badge>
+                                    </h4>
+                                    {showUnassigned ? <ChevronDown size={16} className="text-muted-foreground" /> : <ChevronRight size={16} className="text-muted-foreground" />}
+                                </button>
+
+                                {showUnassigned && (
+                                    <div className="px-4 pb-4 space-y-2 max-h-[300px] overflow-y-auto custom-scrollbar">
+                                        {students.filter(s => !s.busId).length > 0 ? (
+                                            students.filter(s => !s.busId).map(student => (
+                                                <div key={student.id} className="bg-background/80 p-3 rounded-lg border border-border shadow-sm space-y-2">
+                                                    <div className="flex items-start justify-between gap-2">
+                                                        <div className="flex-1 min-w-0">
+                                                            <div className="text-sm font-bold text-foreground truncate">{student.name || student.fullName || 'Unknown'}</div>
+                                                            <div className="flex items-center gap-2 mt-1 flex-wrap">
+                                                                {student.prn && (
+                                                                    <span className="inline-flex items-center gap-1 text-xs text-muted-foreground bg-muted/50 px-1.5 py-0.5 rounded font-mono">
+                                                                        <Hash size={10} /> {student.prn}
+                                                                    </span>
+                                                                )}
+                                                                {student.email && (
+                                                                    <span className="inline-flex items-center gap-1 text-xs text-muted-foreground truncate">
+                                                                        <Mail size={10} /> {student.email}
+                                                                    </span>
+                                                                )}
+                                                            </div>
+                                                            <div className="flex items-center gap-2 mt-1 flex-wrap">
+                                                                {student.college && (
+                                                                    <span className="inline-flex items-center gap-1 text-xs text-muted-foreground">
+                                                                        <School size={10} /> {student.college}
+                                                                    </span>
+                                                                )}
+                                                                {student.semester && (
+                                                                    <span className="inline-flex items-center gap-1 text-xs text-muted-foreground">
+                                                                        <GraduationCap size={10} /> Sem {student.semester}
+                                                                    </span>
+                                                                )}
+                                                                {student.mobile && (
+                                                                    <span className="inline-flex items-center gap-1 text-xs text-muted-foreground">
+                                                                        <Phone size={10} /> {student.mobile}
+                                                                    </span>
+                                                                )}
+                                                            </div>
+                                                        </div>
+                                                        <button
+                                                            onClick={() => onAssignStudent(student.id, selectedBus.id)}
+                                                            className="px-3 py-1.5 bg-cc-purple-500/10 text-cc-purple-600 border border-cc-purple-500/20 rounded-lg text-xs font-bold hover:bg-cc-purple-600 hover:text-white transition shrink-0"
+                                                        >
+                                                            Assign
+                                                        </button>
+                                                    </div>
+                                                </div>
+                                            ))
+                                        ) : (
+                                            <div className="text-center py-4 text-muted-foreground text-sm">
+                                                All students are assigned to a bus.
+                                            </div>
+                                        )}
+                                    </div>
+                                )}
                             </div>
                         </div>
                     ) : (

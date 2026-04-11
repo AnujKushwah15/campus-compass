@@ -163,5 +163,34 @@ service cloud.firestore {
       allow delete: if isAdmin();
     }
 
+    // =========================
+    // 🔹 BUS REQUESTS
+    // =========================
+
+    match /busRequests/{requestId} {
+
+      // Students can read their own request (requestId == studentId)
+      // Admins can read all requests
+      allow read: if isAdmin()
+        || (isAuth() && request.auth.uid == requestId);
+
+      // Students can create/overwrite their own request only
+      // requestId must equal their UID to enforce one-request-per-student
+      allow create: if isAuth()
+        && request.auth.uid == requestId
+        && request.resource.data.status == "pending"
+        && smallPayload();
+
+      // Students can update their own pending request (e.g. cancel)
+      // Admins can update any request (approve/reject)
+      allow update: if isAdmin()
+        || (isAuth()
+          && request.auth.uid == requestId
+          && smallPayload()
+        );
+
+      allow delete: if isAdmin();
+    }
+
   }
 }

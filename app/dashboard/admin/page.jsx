@@ -16,6 +16,7 @@ import Logo from '@/components/Logo';
 import { ref, onValue } from 'firebase/database';
 import { StreamProvider, useStream } from '@/features/streaming/context/StreamContext';
 import AdminGuard from '@/features/admin/components/AdminGuard';
+import BusRequests from '@/features/admin/components/BusRequests';
 import dynamic from 'next/dynamic';
 
 const LiveMap = dynamic(() => import('@/features/tracking/components/LiveMap'), { ssr: false });
@@ -45,6 +46,8 @@ export default function AdminDashboardPage() {
     // Modal States
     const [isSettingsOpen, setIsSettingsOpen] = useState(false);
     const [isCameraSelectorOpen, setIsCameraSelectorOpen] = useState(false);
+    const [isRequestsOpen, setIsRequestsOpen] = useState(false);
+    const [pendingRequestCount, setPendingRequestCount] = useState(0);
 
     const router = useRouter();
 
@@ -197,6 +200,19 @@ export default function AdminDashboardPage() {
                         >
                             <Settings size={18} />
                             Settings
+                        </button>
+                        <button
+                            onClick={() => setIsRequestsOpen(true)}
+                            className="relative flex items-center gap-2 px-4 py-2 bg-cc-purple-500/10 text-cc-purple-600 hover:bg-cc-purple-500 hover:text-white rounded-lg transition-all font-semibold border border-cc-purple-500/20 hover:border-cc-purple-500 whitespace-nowrap"
+                            title="Bus Assignment Requests"
+                        >
+                            <Bell size={18} />
+                            Requests
+                            {pendingRequestCount > 0 && (
+                                <span className="absolute -top-1.5 -right-1.5 w-5 h-5 bg-red-500 text-white text-[10px] font-bold rounded-full flex items-center justify-center animate-pulse shadow-lg shadow-red-500/50">
+                                    {pendingRequestCount}
+                                </span>
+                            )}
                         </button>
                         <Link
                             href="/dashboard/admin/navigation"
@@ -353,6 +369,12 @@ export default function AdminDashboardPage() {
                     cameras={cameras}
                     onSelectCamera={setSelectedCamera}
                     currentDetails={selectedCamera}
+                />
+                <BusRequests
+                    buses={buses}
+                    isOpen={isRequestsOpen}
+                    onClose={() => setIsRequestsOpen(false)}
+                    onRequestCountChange={setPendingRequestCount}
                 />
             </div>
         </AdminGuard>
