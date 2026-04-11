@@ -306,13 +306,15 @@ export default function LoginPage() {
             </div>
 
             {/* Staff Login Button */}
-            <div className="absolute top-4 right-4 md:top-6 md:right-6 z-50 animate-fadeInDown">
-                <Link href="/staff/login">
-                    <Button variant="outline" className="bg-background/50 backdrop-blur-md text-foreground hover:bg-accent hover:text-accent-foreground transition-all text-sm shadow-sm flex items-center gap-2 border-border/50">
-                        <Shield size={16} /> Staff Login
-                    </Button>
-                </Link>
-            </div>
+            {!verificationEmail && (
+                <div className="absolute top-4 right-4 md:top-6 md:right-6 z-50 animate-fadeInDown">
+                    <Link href="/staff/login">
+                        <Button variant="outline" className="bg-background/50 backdrop-blur-md text-foreground hover:bg-accent hover:text-accent-foreground transition-all text-sm shadow-sm flex items-center gap-2 border-border/50">
+                            <Shield size={16} /> Staff Login
+                        </Button>
+                    </Link>
+                </div>
+            )}
             {/* Background Elements */}
             <div className="absolute inset-0 z-0 opacity-40 pointer-events-none">
                 <BackgroundAnimation />
