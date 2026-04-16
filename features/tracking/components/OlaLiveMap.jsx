@@ -124,6 +124,44 @@ export default function OlaLiveMap({ busLocation, busLocations = [], stops = [],
     // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
 
+    // Create proper SVG Bus Icon
+    const createBusEl = useCallback((color, label) => {
+        const el = document.createElement("div");
+        el.innerHTML = `
+            <div style="display:flex;flex-direction:column;align-items:center;cursor:pointer;">
+              <div style="
+                background:${color};
+                border:2.5px solid white;
+                border-radius:8px;
+                width:42px;height:26px;
+                box-shadow:0 4px 14px rgba(0,0,0,0.45);
+                display:flex;align-items:center;justify-content:center;
+                animation: busPop 0.4s cubic-bezier(0.34,1.56,0.64,1) both;">
+                <svg width="24" height="16" viewBox="0 0 24 16" fill="none" xmlns="http://www.w3.org/2000/svg">
+                  <rect x="1" y="1" width="22" height="11" rx="3" fill="white" fill-opacity="0.22"/>
+                  <rect x="2" y="2" width="8" height="5" rx="1" fill="white" fill-opacity="0.6"/>
+                  <rect x="14" y="2" width="8" height="5" rx="1" fill="white" fill-opacity="0.6"/>
+                  <circle cx="5" cy="14" r="2" fill="white"/>
+                  <circle cx="19" cy="14" r="2" fill="white"/>
+                </svg>
+              </div>
+              ${label ? `<div style="
+                margin-top:3px;
+                background:${color};
+                color:white;
+                font-size:9px;
+                font-weight:700;
+                border-radius:4px;
+                padding:1px 6px;
+                white-space:nowrap;
+                box-shadow:0 2px 6px rgba(0,0,0,0.3);
+                border:1.5px solid white;
+                letter-spacing:0.03em;
+              ">${label}</div>` : ""}
+            </div>`;
+        return el;
+    }, []);
+
     // Create Pin Helper
     const createPinEl = useCallback((color, iconEmoji) => {
         const el = document.createElement("div");
@@ -178,18 +216,21 @@ export default function OlaLiveMap({ busLocation, busLocations = [], stops = [],
             const color = isSelected ? "#8b5cf6" : "#4ade80"; // Purple for selected, green for others
             const label = bus.label || `Bus ${id}`;
             
-            // If marker exists but needs a color change (selection changed), we recreate it
+            // Recreate if selection changed (color flip)
             if (busMarkersRef.current[id] && busMarkersRef.current[id].isSelected !== isSelected) {
                 busMarkersRef.current[id].marker.remove();
                 delete busMarkersRef.current[id];
             }
             
             if (!busMarkersRef.current[id]) {
-                const el = createPinEl(color, "🚍");
+                const el = createBusEl(color, label);
                 const marker = new maplibregl.Marker({ element: el })
                     .setLngLat([bus.lng, bus.lat])
-                    .setPopup(new maplibregl.Popup({ offset: 25 }).setHTML(
-                        `<b style="color:${color}">${label}</b><br>Speed: ${bus.speed || 0} km/h`
+                    .setPopup(new maplibregl.Popup({ offset: 30 }).setHTML(
+                        `<div style="min-width:120px;">
+                            <div style="font-size:13px;font-weight:700;color:${color};margin-bottom:4px;">🚍 ${label}</div>
+                            <div style="font-size:11px;color:#a1a0b0;">Speed: <span style="color:#f1f0f7;font-weight:600;">${bus.speed || 0} km/h</span></div>
+                        </div>`
                     ))
                     .addTo(map);
                 busMarkersRef.current[id] = { marker, isSelected };
@@ -197,7 +238,12 @@ export default function OlaLiveMap({ busLocation, busLocations = [], stops = [],
                 busMarkersRef.current[id].marker.setLngLat([bus.lng, bus.lat]);
                 const popup = busMarkersRef.current[id].marker.getPopup();
                 if (popup) {
-                    popup.setHTML(`<b style="color:${color}">${label}</b><br>Speed: ${bus.speed || 0} km/h`);
+                    popup.setHTML(
+                        `<div style="min-width:120px;">
+                            <div style="font-size:13px;font-weight:700;color:${color};margin-bottom:4px;">🚍 ${label}</div>
+                            <div style="font-size:11px;color:#a1a0b0;">Speed: <span style="color:#f1f0f7;font-weight:600;">${bus.speed || 0} km/h</span></div>
+                        </div>`
+                    );
                 }
             }
         });
@@ -219,6 +265,14 @@ export default function OlaLiveMap({ busLocation, busLocations = [], stops = [],
 
     return (
         <div className="w-full h-full rounded-2xl overflow-hidden border border-border bg-muted relative">
+            <style dangerouslySetInnerHTML={{
+                __html: `
+                    @keyframes busPop {
+                        from { opacity:0; transform:scale(0.4) translateY(-10px); }
+                        to   { opacity:1; transform:scale(1) translateY(0); }
+                    }
+                `
+            }} />
             <div ref={containerRef} className="w-full h-full" />
             {!ready && !initFailed && (
                 <div className="absolute inset-0 flex items-center justify-center bg-card/80 backdrop-blur-sm">

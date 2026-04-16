@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useRef, useCallback } from "react";
 import {
-    MapContainer, TileLayer, Marker, Popup,
+    MapContainer, TileLayer, Marker, Popup, Polyline,
     useMap, CircleMarker, useMapEvents
 } from "react-leaflet";
 import "leaflet/dist/leaflet.css";
@@ -63,6 +63,31 @@ function makePin(color, letter) {
 
 const startIcon = makePin("#22c55e", "A");
 const endIcon   = makePin("#ef4444", "B");
+
+// ── Bus Icon ─────────────────────────────────────────────────────────────────
+function makeBusIcon(label = "") {
+    return L.divIcon({
+        className: "",
+        html: `<div style="display:flex;flex-direction:column;align-items:center;animation:markerDrop 0.4s cubic-bezier(0.34,1.56,0.64,1) both;">
+          <div style="
+            background:#8b5cf6;border:2.5px solid white;border-radius:8px;
+            width:38px;height:24px;box-shadow:0 4px 12px rgba(0,0,0,0.4);
+            display:flex;align-items:center;justify-content:center;">
+            <svg width="20" height="14" viewBox="0 0 24 16" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <rect x="1" y="1" width="22" height="12" rx="3" fill="white" fill-opacity="0.25"/>
+              <rect x="2" y="2" width="8" height="5" rx="1" fill="white" fill-opacity="0.6"/>
+              <rect x="14" y="2" width="8" height="5" rx="1" fill="white" fill-opacity="0.6"/>
+              <circle cx="5" cy="14" r="2" fill="white"/>
+              <circle cx="19" cy="14" r="2" fill="white"/>
+            </svg>
+          </div>
+          ${label ? `<div style="margin-top:2px;background:#8b5cf6;color:white;font-size:9px;font-weight:700;border-radius:4px;padding:1px 5px;border:1.5px solid white;box-shadow:0 2px 6px rgba(0,0,0,0.3);white-space:nowrap;">${label}</div>` : ""}
+        </div>`,
+        iconSize: [40, label ? 46 : 30],
+        iconAnchor: [20, label ? 46 : 30],
+        popupAnchor: [0, -50],
+    });
+}
 
 // ── POI type config ──────────────────────────────────────────────────────────
 export const POI_CONFIG = {
@@ -145,24 +170,30 @@ function AnimatedRoute({ routeData }) {
 }
 
 // ── Map bounds fitter ────────────────────────────────────────────────────────
-function MapFitter({ startPos, endPos, routeGeometry }) {
+function MapFitter({ startPos, endPos, waypoints = [], routeGeometry }) {
     const map = useMap();
 
     useEffect(() => {
         if (routeGeometry?.coordinates?.length > 0) {
+            // Full route: fit to route geometry
             const coords = routeGeometry.coordinates.map(([lng, lat]) => [lat, lng]);
             map.fitBounds(L.latLngBounds(coords), { padding: [48, 48], maxZoom: 16, animate: true, duration: 1.2 });
-        } else if (startPos && endPos) {
-            map.fitBounds(
-                L.latLngBounds([[startPos.lat, startPos.lng], [endPos.lat, endPos.lng]]),
-                { padding: [60, 60], maxZoom: 16, animate: true }
-            );
-        } else if (startPos) {
-            map.flyTo([startPos.lat, startPos.lng], 14, { animate: true, duration: 1 });
-        } else if (endPos) {
-            map.flyTo([endPos.lat, endPos.lng], 14, { animate: true, duration: 1 });
+        } else {
+            // Progressive fit: use all known positions (start + waypoints + end)
+            const allKnown = [
+                startPos,
+                ...waypoints.filter(Boolean),
+                endPos,
+            ].filter(Boolean);
+
+            if (allKnown.length >= 2) {
+                const latlngs = allKnown.map(p => [p.lat, p.lng]);
+                map.fitBounds(L.latLngBounds(latlngs), { padding: [60, 60], maxZoom: 16, animate: true });
+            } else if (allKnown.length === 1) {
+                map.flyTo([allKnown[0].lat, allKnown[0].lng], 14, { animate: true, duration: 1 });
+            }
         }
-    }, [startPos, endPos, routeGeometry, map]);
+    }, [startPos, endPos, waypoints, routeGeometry, map]);
 
     return null;
 }
@@ -364,7 +395,16 @@ function POILayer({ onPoiSelect, activeCategory }) {
 }
 
 // ── Main Map Component ───────────────────────────────────────────────────────
-export default function NavigationMap({ startPos, endPos, routeData, onPoiSelect, activeCategory = "all" }) {
+export default function NavigationMap({
+    startPos,
+    endPos,
+    routeData,
+    onPoiSelect,
+    activeCategory = "all",
+    waypoints = [],
+    busLocations = [],
+    previewCoordinates = null,
+}) {
     const defaultCenter = [23.0225, 72.5714]; // Ahmedabad
 
     return (
@@ -382,14 +422,69 @@ export default function NavigationMap({ startPos, endPos, routeData, onPoiSelect
                     url="https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png"
                 />
 
-                <MapFitter startPos={startPos} endPos={endPos} routeGeometry={routeData?.geometry} />
+                <MapFitter startPos={startPos} endPos={endPos} waypoints={waypoints} routeGeometry={routeData?.geometry} />
                 <UserPosition />
 
                 {/* Animated route polyline */}
                 <AnimatedRoute routeData={routeData} />
 
+                {/* Dashed preview line: straight-line connector before full route */}
+                {previewCoordinates && previewCoordinates.length >= 2 && (
+                    <Polyline
+                        positions={previewCoordinates.map(p => [p.lat, p.lng])}
+                        pathOptions={{
+                            color: "#8b5cf6",
+                            weight: 3,
+                            dashArray: "8 12",
+                            opacity: 0.65,
+                            lineCap: "round",
+                            lineJoin: "round",
+                        }}
+                    />
+                )}
+
                 {/* POI Layer */}
                 <POILayer onPoiSelect={onPoiSelect} activeCategory={activeCategory} />
+
+                {/* Intermediate waypoint stop markers */}
+                {waypoints.map((wp, idx) => wp && (
+                    <Marker
+                        key={`wp-${idx}`}
+                        position={[wp.lat, wp.lng]}
+                        icon={makePin("#8b5cf6", String(idx + 1))}
+                    >
+                        <Popup>
+                            <div>
+                                <div style={{ fontSize: "12px", fontWeight: 700, color: "#a78bfa", marginBottom: "3px", textTransform: "uppercase", letterSpacing: "0.05em" }}>
+                                    Stop {idx + 1}
+                                </div>
+                                <div style={{ fontSize: "13px", color: "#f1f0f7", fontWeight: 500 }}>
+                                    {wp.label || `${wp.lat.toFixed(4)}, ${wp.lng.toFixed(4)}`}
+                                </div>
+                            </div>
+                        </Popup>
+                    </Marker>
+                ))}
+
+                {/* Live bus markers */}
+                {busLocations.map((bus) => (
+                    <Marker
+                        key={bus.id}
+                        position={[bus.lat, bus.lng]}
+                        icon={makeBusIcon(bus.label || `Bus ${bus.id}`)}
+                    >
+                        <Popup>
+                            <div style={{ minWidth: "120px" }}>
+                                <div style={{ fontSize: "13px", fontWeight: 700, color: "#a78bfa", marginBottom: "4px" }}>
+                                    🚍 {bus.label || `Bus ${bus.id}`}
+                                </div>
+                                <div style={{ fontSize: "11px", color: "#a1a0b0" }}>
+                                    Speed: <span style={{ color: "#f1f0f7", fontWeight: 600 }}>{bus.speed || 0} km/h</span>
+                                </div>
+                            </div>
+                        </Popup>
+                    </Marker>
+                ))}
 
                 {/* Start Marker */}
                 {startPos && (

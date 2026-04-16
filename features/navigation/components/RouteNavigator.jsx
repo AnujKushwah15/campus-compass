@@ -1,15 +1,18 @@
 "use client";
 
-import { useState, useCallback, useEffect, useRef } from "react";
+import { useState, useCallback, useEffect, useRef, useMemo } from "react";
 import PlaceSearch from "./PlaceSearch";
 import dynamic from "next/dynamic";
 import { POI_CONFIG } from "./NavigationMap";
 import {
     Navigation, Clock, Route, ArrowRight, RotateCcw,
     ChevronDown, ChevronUp, ArrowLeft, CornerUpLeft, CornerUpRight,
-    ArrowUp, Car, Layers
+    ArrowUp, Car, Layers, Plus, X, Bus, Check, MapPin, GripVertical
 } from "lucide-react";
 import Link from "next/link";
+import { db, rtdb } from "@/lib/firebase";
+import { collection, onSnapshot, doc, updateDoc } from "firebase/firestore";
+import { ref, onValue } from "firebase/database";
 
 // Dynamic import for the map provider toggle (Ola Maps → OSM fallback)
 const MapProviderToggle = dynamic(() => import("./MapProviderToggle"), {
@@ -43,16 +46,18 @@ function StepIcon({ instruction }) {
     return <ArrowUp className="w-3.5 h-3.5 shrink-0 text-muted-foreground" />;
 }
 
-// Route cache keyed by rounded coordinates
+// Route cache keyed by rounded coordinates + waypoints
 const routeCache = new Map();
 
-function makeRouteCacheKey(s, e) {
-    return `${s.lat.toFixed(4)},${s.lng.toFixed(4)}→${e.lat.toFixed(4)},${e.lng.toFixed(4)}`;
+function makeRouteCacheKey(s, e, waypoints) {
+    const wpKey = waypoints.map(w => `${w.lat.toFixed(4)},${w.lng.toFixed(4)}`).join("|");
+    return `${s.lat.toFixed(4)},${s.lng.toFixed(4)}→${wpKey ? wpKey + "→" : ""}${e.lat.toFixed(4)},${e.lng.toFixed(4)}`;
 }
 
 export default function RouteNavigator() {
     const [startPos, setStartPos] = useState(null);
     const [endPos, setEndPos] = useState(null);
+    const [waypoints, setWaypoints] = useState([]); // intermediate stops [{lat,lng,label}]
     const [routeData, setRouteData] = useState(null);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState(null);
@@ -60,6 +65,15 @@ export default function RouteNavigator() {
     const [geoLoading, setGeoLoading] = useState(false);
     const [swapRotate, setSwapRotate] = useState(false);
     const [activeCategory, setActiveCategory] = useState("all");
+
+    // Bus assignment state
+    const [buses, setBuses] = useState([]);
+    const [selectedBusId, setSelectedBusId] = useState("");
+    const [assigning, setAssigning] = useState(false);
+    const [assignSuccess, setAssignSuccess] = useState(false);
+
+    // Real-time bus locations from RTDB
+    const [busLocations, setBusLocations] = useState([]);
 
     // ── Category filter config ───────────────────────────────────────────────
     const CATEGORIES = [
@@ -79,6 +93,34 @@ export default function RouteNavigator() {
     const destinationRef = useRef(null);
     const autoTriggeredKey = useRef(null);
 
+    // ── Load buses from Firestore ────────────────────────────────────────────
+    useEffect(() => {
+        const unsub = onSnapshot(collection(db, "buses"), (snap) => {
+            setBuses(snap.docs.map(d => ({ id: d.id, ...d.data() })));
+        });
+        return () => unsub();
+    }, []);
+
+    // ── Real-time bus locations from RTDB ────────────────────────────────────
+    useEffect(() => {
+        const busesRef = ref(rtdb, "buses");
+        const unsub = onValue(busesRef, (snapshot) => {
+            const data = snapshot.val();
+            if (!data) { setBusLocations([]); return; }
+            const locs = Object.entries(data)
+                .filter(([, bd]) => bd?.location?.lat && bd?.location?.lng)
+                .map(([busId, bd]) => ({
+                    id: busId,
+                    lat: bd.location.lat,
+                    lng: bd.location.lng,
+                    speed: bd.location.speed || 0,
+                    label: `Bus ${busId}`,
+                }));
+            setBusLocations(locs);
+        });
+        return () => unsub();
+    }, []);
+
     // ── Auto-fill start from geolocation on mount ────────────────────────────
     useEffect(() => {
         if (!navigator.geolocation) return;
@@ -91,7 +133,6 @@ export default function RouteNavigator() {
                     label: "My Location",
                 });
                 setGeoLoading(false);
-                // Focus destination after geo resolves
                 setTimeout(() => destinationRef.current?.focus(), 300);
             },
             () => setGeoLoading(false),
@@ -99,15 +140,14 @@ export default function RouteNavigator() {
         );
     }, []);
 
-    // ── Auto-trigger route when both positions are set ───────────────────────
-    const findRoute = useCallback(async (start, end) => {
+    // ── Find route (supports waypoints) ─────────────────────────────────────
+    const findRoute = useCallback(async (start, end, wps = []) => {
         if (!start || !end) return;
 
-        const cacheKey = makeRouteCacheKey(start, end);
-        if (autoTriggeredKey.current === cacheKey) return;   // already fetched
+        const cacheKey = makeRouteCacheKey(start, end, wps);
+        if (autoTriggeredKey.current === cacheKey) return;
         autoTriggeredKey.current = cacheKey;
 
-        // Check cache
         if (routeCache.has(cacheKey)) {
             setRouteData(routeCache.get(cacheKey));
             setError(null);
@@ -126,6 +166,9 @@ export default function RouteNavigator() {
                 end_lat: end.lat,
                 end_lng: end.lng,
             });
+            if (wps.length > 0) {
+                params.set("waypoints", JSON.stringify(wps.map(w => ({ lat: w.lat, lng: w.lng }))));
+            }
             const res = await fetch(`/api/route?${params}`);
             const data = await res.json();
 
@@ -143,14 +186,13 @@ export default function RouteNavigator() {
         }
     }, []);
 
-    // Trigger whenever both positions are filled
+    // Trigger whenever positions or waypoints change
     useEffect(() => {
         if (startPos && endPos) {
-            findRoute(startPos, endPos);
+            findRoute(startPos, endPos, waypoints);
         }
-    }, [startPos, endPos, findRoute]);
+    }, [startPos, endPos, waypoints, findRoute]);
 
-    // Auto-focus destination when start is selected
     const handleStartChange = useCallback((pos) => {
         setStartPos(pos);
         setRouteData(null);
@@ -164,13 +206,37 @@ export default function RouteNavigator() {
         autoTriggeredKey.current = null;
     }, []);
 
+    // Waypoint management
+    const addWaypoint = () => {
+        setWaypoints(prev => [...prev, null]);
+    };
+
+    const updateWaypoint = (idx, pos) => {
+        setWaypoints(prev => {
+            const next = [...prev];
+            next[idx] = pos;
+            return next;
+        });
+        setRouteData(null);
+        autoTriggeredKey.current = null;
+    };
+
+    const removeWaypoint = (idx) => {
+        setWaypoints(prev => prev.filter((_, i) => i !== idx));
+        setRouteData(null);
+        autoTriggeredKey.current = null;
+    };
+
     const handleReset = () => {
         setStartPos(null);
         setEndPos(null);
+        setWaypoints([]);
         setRouteData(null);
         setError(null);
         setShowSteps(false);
         autoTriggeredKey.current = null;
+        setAssignSuccess(false);
+        setSelectedBusId("");
     };
 
     const handleSwap = () => {
@@ -181,6 +247,49 @@ export default function RouteNavigator() {
         setRouteData(null);
         autoTriggeredKey.current = null;
     };
+
+    // ── Assign route to bus ──────────────────────────────────────────────────
+    const handleAssignRoute = async () => {
+        if (!selectedBusId || !routeData) return;
+        setAssigning(true);
+        setAssignSuccess(false);
+        try {
+            // Build a route config object to save to Firestore
+            const routeConfig = {
+                assignedRouteData: {
+                    start: startPos ? { lat: startPos.lat, lng: startPos.lng, label: startPos.label || "" } : null,
+                    end: endPos ? { lat: endPos.lat, lng: endPos.lng, label: endPos.label || "" } : null,
+                    waypoints: waypoints.filter(Boolean).map(w => ({ lat: w.lat, lng: w.lng, label: w.label || "" })),
+                    distance_m: routeData.distance_m,
+                    duration_s: routeData.duration_s,
+                    assignedAt: new Date().toISOString(),
+                }
+            };
+            await updateDoc(doc(db, "buses", selectedBusId), routeConfig);
+            setAssignSuccess(true);
+            setTimeout(() => setAssignSuccess(false), 3000);
+        } catch (err) {
+            console.error("Route assignment error:", err);
+            setError("Failed to assign route. Check permissions.");
+        } finally {
+            setAssigning(false);
+        }
+    };
+
+    // Active (non-null) waypoints for map display
+    const activeWaypoints = waypoints.filter(Boolean);
+
+    // ── Preview coordinates ──────────────────────────────────────────────────
+    // Straight-line preview path between set points before a full route exists.
+    // Cleared as soon as routeData is available (the real route replaces it).
+    const previewCoordinates = useMemo(() => {
+        if (routeData) return null; // full route is shown instead
+        const pts = [];
+        if (startPos) pts.push({ lat: startPos.lat, lng: startPos.lng });
+        activeWaypoints.forEach(w => pts.push({ lat: w.lat, lng: w.lng }));
+        if (endPos) pts.push({ lat: endPos.lat, lng: endPos.lng });
+        return pts.length >= 2 ? pts : null;
+    }, [startPos, endPos, activeWaypoints, routeData]);
 
     return (
         <div className="font-sans text-foreground bg-background min-h-screen px-4 sm:px-8 lg:px-12 xl:px-16 py-6">
@@ -203,7 +312,7 @@ export default function RouteNavigator() {
                             Route <span className="text-cc-purple-500">Navigator</span>
                         </h1>
                         <p className="text-sm text-muted-foreground font-medium">
-                            Find the shortest road path between any two places
+                            Plan multi-stop routes and assign them to buses
                         </p>
                     </div>
                 </div>
@@ -217,27 +326,69 @@ export default function RouteNavigator() {
             )}
 
             {/* Main content grid */}
-            <div className="grid grid-cols-1 lg:grid-cols-[340px_1fr] gap-6 h-[calc(100vh-210px)] min-h-[520px]">
+            <div className="grid grid-cols-1 lg:grid-cols-[360px_1fr] gap-6 h-[calc(100vh-210px)] min-h-[520px]">
 
                 {/* Left Panel */}
                 <div className="flex flex-col gap-4 overflow-y-auto custom-scrollbar pr-1">
 
                     {/* Search Inputs */}
                     <div className="bg-card rounded-2xl border border-border p-5 shadow-md">
-                        {/* Section heading */}
                         <div className="flex items-center gap-2 mb-4">
                             <Route className="w-4 h-4 text-cc-purple-500" />
                             <span className="text-sm font-bold text-foreground tracking-tight">Plan Your Route</span>
                         </div>
 
                         <div className="flex flex-col gap-3">
-                            <PlaceSearch
-                                label="Starting Point"
-                                value={startPos}
-                                onChange={handleStartChange}
-                                placeholder="Search or use my location"
-                                isLoading={geoLoading}
-                            />
+                            {/* Start */}
+                            <div className="flex items-center gap-2">
+                                <div className="w-5 h-5 rounded-full bg-green-500 border-2 border-white shadow shrink-0 flex items-center justify-center">
+                                    <span className="text-[9px] font-black text-white">A</span>
+                                </div>
+                                <div className="flex-1">
+                                    <PlaceSearch
+                                        label="Starting Point"
+                                        value={startPos}
+                                        onChange={handleStartChange}
+                                        placeholder="Search or use my location"
+                                        isLoading={geoLoading}
+                                    />
+                                </div>
+                            </div>
+
+                            {/* Intermediate Stops */}
+                            {waypoints.map((wp, idx) => (
+                                <div key={idx} className="flex items-center gap-2 group">
+                                    <div className="w-5 h-5 rounded-full bg-cc-purple-500 border-2 border-white shadow shrink-0 flex items-center justify-center">
+                                        <span className="text-[9px] font-black text-white">{idx + 1}</span>
+                                    </div>
+                                    <div className="flex-1">
+                                        <PlaceSearch
+                                            label={`Stop ${idx + 1}`}
+                                            value={wp}
+                                            onChange={(pos) => updateWaypoint(idx, pos)}
+                                            placeholder={`Intermediate stop ${idx + 1}`}
+                                        />
+                                    </div>
+                                    <button
+                                        type="button"
+                                        onClick={() => removeWaypoint(idx)}
+                                        className="p-1.5 rounded-lg hover:bg-cc-red-500/10 text-muted-foreground hover:text-cc-red-500 transition-all opacity-0 group-hover:opacity-100"
+                                        title="Remove stop"
+                                    >
+                                        <X className="w-3.5 h-3.5" />
+                                    </button>
+                                </div>
+                            ))}
+
+                            {/* Add Stop button */}
+                            <button
+                                type="button"
+                                onClick={addWaypoint}
+                                className="flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-semibold text-cc-purple-500 border border-dashed border-cc-purple-500/40 hover:bg-cc-purple-500/8 hover:border-cc-purple-500 transition-all"
+                            >
+                                <Plus className="w-3.5 h-3.5" />
+                                Add Intermediate Stop
+                            </button>
 
                             {/* Swap button */}
                             <div className="flex justify-center">
@@ -254,25 +405,33 @@ export default function RouteNavigator() {
                                 </button>
                             </div>
 
-                            <PlaceSearch
-                                label="Destination"
-                                value={endPos}
-                                onChange={handleEndChange}
-                                placeholder="Where to?"
-                                inputRef={destinationRef}
-                            />
+                            {/* End */}
+                            <div className="flex items-center gap-2">
+                                <div className="w-5 h-5 rounded-full bg-red-500 border-2 border-white shadow shrink-0 flex items-center justify-center">
+                                    <span className="text-[9px] font-black text-white">B</span>
+                                </div>
+                                <div className="flex-1">
+                                    <PlaceSearch
+                                        label="Destination"
+                                        value={endPos}
+                                        onChange={handleEndChange}
+                                        placeholder="Where to?"
+                                        inputRef={destinationRef}
+                                    />
+                                </div>
+                            </div>
                         </div>
 
                         {/* Divider */}
                         <div className="border-t border-border my-4" />
 
-                        {/* Action row: Find Route (fallback) + Reset */}
+                        {/* Action row */}
                         <div className="flex gap-2">
                             <button
                                 type="button"
                                 onClick={() => {
                                     autoTriggeredKey.current = null;
-                                    findRoute(startPos, endPos);
+                                    findRoute(startPos, endPos, waypoints);
                                 }}
                                 disabled={!startPos || !endPos || loading}
                                 className="flex-1 flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl font-semibold text-sm bg-cc-purple-500/10 text-cc-purple-600 dark:text-cc-purple-400 border border-cc-purple-500/25 hover:bg-cc-purple-500 hover:text-white hover:border-cc-purple-500 active:scale-[0.98] transition-all duration-150 disabled:opacity-40 disabled:cursor-not-allowed"
@@ -302,14 +461,18 @@ export default function RouteNavigator() {
                         </div>
                     )}
 
-                    {/* Route Summary — hero ETA card */}
+                    {/* Route Summary */}
                     {routeData && (
                         <div className="bg-card rounded-2xl border border-cc-purple-500/30 p-5 shadow-md animate-pop-in">
 
-                            {/* Card heading */}
                             <div className="flex items-center gap-2 mb-4">
                                 <Clock className="w-4 h-4 text-cc-purple-500" />
                                 <span className="text-sm font-bold text-foreground tracking-tight">Route Summary</span>
+                                {activeWaypoints.length > 0 && (
+                                    <span className="ml-auto text-xs bg-cc-purple-500/10 text-cc-purple-500 px-2 py-0.5 rounded-full font-semibold border border-cc-purple-500/20">
+                                        {activeWaypoints.length} stop{activeWaypoints.length > 1 ? "s" : ""}
+                                    </span>
+                                )}
                             </div>
 
                             {/* ETA hero row */}
@@ -404,6 +567,71 @@ export default function RouteNavigator() {
                             )}
                         </div>
                     )}
+
+                    {/* ── Assign Route to Bus ─────────────────────────────────────────────── */}
+                    {routeData && (
+                        <div className="bg-card rounded-2xl border border-border p-5 shadow-md">
+                            <div className="flex items-center gap-2 mb-4">
+                                <Bus className="w-4 h-4 text-cc-purple-500" />
+                                <span className="text-sm font-bold text-foreground tracking-tight">Assign Route to Bus</span>
+                            </div>
+
+                            <p className="text-xs text-muted-foreground mb-3">
+                                Save this planned route to a bus so the driver can follow it.
+                            </p>
+
+                            {buses.length === 0 ? (
+                                <div className="text-sm text-muted-foreground bg-muted rounded-xl p-3 text-center">
+                                    No buses found in the system.
+                                </div>
+                            ) : (
+                                <div className="flex flex-col gap-3">
+                                    <select
+                                        value={selectedBusId}
+                                        onChange={e => { setSelectedBusId(e.target.value); setAssignSuccess(false); }}
+                                        className="w-full px-3 py-2.5 rounded-xl border border-border bg-muted/30 text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-cc-purple-500/40 focus:border-cc-purple-500 transition-all"
+                                    >
+                                        <option value="">Select a bus…</option>
+                                        {buses.map(bus => (
+                                            <option key={bus.id} value={bus.id}>
+                                                {bus.number || bus.plateNumber || bus.id}
+                                                {bus.driverName ? ` — ${bus.driverName}` : ""}
+                                            </option>
+                                        ))}
+                                    </select>
+
+                                    <button
+                                        type="button"
+                                        onClick={handleAssignRoute}
+                                        disabled={!selectedBusId || assigning}
+                                        className={`
+                                            flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl
+                                            font-semibold text-sm transition-all duration-200 active:scale-[0.98]
+                                            ${assignSuccess
+                                                ? "bg-green-500 text-white border border-green-500"
+                                                : "bg-cc-purple-500/10 text-cc-purple-600 dark:text-cc-purple-400 border border-cc-purple-500/25 hover:bg-cc-purple-500 hover:text-white hover:border-cc-purple-500 disabled:opacity-40 disabled:cursor-not-allowed"
+                                            }
+                                        `}
+                                    >
+                                        {assigning ? (
+                                            <span className="inline-block w-4 h-4 border-2 border-current/30 border-t-current rounded-full animate-spin" />
+                                        ) : assignSuccess ? (
+                                            <Check className="w-4 h-4" />
+                                        ) : (
+                                            <Bus className="w-4 h-4" />
+                                        )}
+                                        {assigning ? "Assigning…" : assignSuccess ? "Route Assigned!" : "Assign Route"}
+                                    </button>
+
+                                    {assignSuccess && (
+                                        <div className="text-xs text-green-600 dark:text-green-400 bg-green-500/10 rounded-lg px-3 py-2 border border-green-500/20">
+                                            ✓ Route saved to bus successfully.
+                                        </div>
+                                    )}
+                                </div>
+                            )}
+                        </div>
+                    )}
                 </div>
 
                 {/* Right Panel — Map + category filter */}
@@ -442,6 +670,9 @@ export default function RouteNavigator() {
                             endPos={endPos}
                             routeData={routeData}
                             activeCategory={activeCategory}
+                            waypoints={activeWaypoints}
+                            busLocations={busLocations}
+                            previewCoordinates={previewCoordinates}
                             onPoiSelect={(poi) => {
                                 const pos = { lat: poi.lat, lng: poi.lng, label: poi.name };
                                 if (!startPos) {

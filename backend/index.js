@@ -552,20 +552,39 @@ setInterval(checkPiHeartbeats, 10000);
 const OSRM_BASE = process.env.OSRM_BASE || 'http://127.0.0.1:5050';
 
 // ─── GET /api/route ─────────────────────────────────────────────────────────
-// Returns the shortest driving route between two points.
+// Returns the shortest driving route between two or more points.
 // Query params: start_lat, start_lng, end_lat, end_lng
+//   Optional:   waypoints=<JSON array [{lat,lng},...]>  (intermediate stops)
 // Proxies to self-hosted OSRM instance.
 
 app.get('/api/route', async (req, res) => {
     try {
-        const { start_lat, start_lng, end_lat, end_lng } = req.query;
+        const { start_lat, start_lng, end_lat, end_lng, waypoints: waypointsRaw } = req.query;
 
         if (!start_lat || !start_lng || !end_lat || !end_lng) {
             return res.status(400).json({ error: 'Missing required params: start_lat, start_lng, end_lat, end_lng' });
         }
 
-        // OSRM uses lng,lat order
-        const coords = `${start_lng},${start_lat};${end_lng},${end_lat}`;
+        // Build coordinate chain: start -> [waypoints] -> end (OSRM uses lng,lat)
+        const coordParts = [`${start_lng},${start_lat}`];
+
+        if (waypointsRaw) {
+            try {
+                const wps = JSON.parse(waypointsRaw);
+                if (Array.isArray(wps)) {
+                    for (const wp of wps) {
+                        if (wp.lat != null && wp.lng != null) {
+                            coordParts.push(`${wp.lng},${wp.lat}`);
+                        }
+                    }
+                }
+            } catch (e) {
+                return res.status(400).json({ error: 'Invalid waypoints JSON. Expected [{lat,lng},...]' });
+            }
+        }
+
+        coordParts.push(`${end_lng},${end_lat}`);
+        const coords = coordParts.join(';');
         const osrmUrl = `${OSRM_BASE}/route/v1/driving/${coords}?overview=full&geometries=geojson&steps=true`;
 
         const fetch = (...args) => import('node-fetch').then(({ default: f }) => f(...args));
@@ -578,19 +597,26 @@ app.get('/api/route', async (req, res) => {
         }
 
         const route = data.routes[0];
-        const result = {
-            geometry: route.geometry,           // GeoJSON LineString
-            distance_m: route.distance,         // meters
-            duration_s: route.duration,          // seconds
-            steps: route.legs[0].steps.map(s => ({
+
+        // Flatten steps from all legs (multi-leg when waypoints are present)
+        const allSteps = (route.legs || []).flatMap(leg =>
+            (leg.steps || []).map(s => ({
                 instruction: s.maneuver.type + (s.maneuver.modifier ? ` ${s.maneuver.modifier}` : ''),
                 name: s.name || '',
                 distance_m: s.distance,
                 duration_s: s.duration
             }))
+        );
+
+        const result = {
+            geometry: route.geometry,           // GeoJSON LineString (full overview)
+            distance_m: route.distance,         // meters (total)
+            duration_s: route.duration,         // seconds (total)
+            steps: allSteps,
+            waypoint_count: coordParts.length - 2, // number of intermediate stops
         };
 
-        console.log(`[route] Found: ${(result.distance_m / 1000).toFixed(1)}km, ${Math.round(result.duration_s / 60)}min`);
+        console.log(`[route] Found: ${(result.distance_m / 1000).toFixed(1)}km, ${Math.round(result.duration_s / 60)}min, stops=${result.waypoint_count}`);
         return res.status(200).json(result);
 
     } catch (error) {

@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { db } from '@/lib/firebase';
 import { collection, query, where, getDocs, limit, orderBy } from 'firebase/firestore';
-import { ArrowLeft, Search, Filter, SortAsc, SortDesc, ChevronDown } from 'lucide-react';
+import { ArrowLeft, Search, Filter, SortAsc, SortDesc, ChevronDown, Download, CheckCircle2, XCircle, Clock } from 'lucide-react';
 import Link from 'next/link';
 import AdminGuard from '@/features/admin/components/AdminGuard';
 
@@ -83,6 +83,175 @@ function CustomSelect({ label, value, options, onChange, placeholder = "Select..
                         )}
                     </ul>
                 </div>
+            )}
+        </div>
+    );
+}
+
+/**
+ * Formats a single Firestore value into a human-readable React node.
+ */
+function formatCellValue(value) {
+    if (value === null || value === undefined) {
+        return <span className="text-muted-foreground/50 italic text-xs">—</span>;
+    }
+
+    // Firestore Timestamp
+    if (value && typeof value === 'object' && typeof value.toDate === 'function') {
+        const d = value.toDate();
+        return (
+            <span className="flex items-center gap-1 text-xs text-sky-400 whitespace-nowrap">
+                <Clock size={12} />
+                {d.toLocaleDateString()} {d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+            </span>
+        );
+    }
+
+    if (typeof value === 'boolean') {
+        return value
+            ? <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-semibold bg-emerald-500/15 text-emerald-400"><CheckCircle2 size={11} />true</span>
+            : <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-semibold bg-red-500/15 text-red-400"><XCircle size={11} />false</span>;
+    }
+
+    if (Array.isArray(value)) {
+        if (value.length === 0) return <span className="text-muted-foreground/50 italic text-xs">[ ]</span>;
+        return (
+            <div className="flex flex-wrap gap-1 max-w-xs">
+                {value.map((item, i) => (
+                    <span key={i} className="px-1.5 py-0.5 bg-cc-purple-500/15 text-cc-purple-300 rounded text-xs font-mono">
+                        {String(item)}
+                    </span>
+                ))}
+            </div>
+        );
+    }
+
+    if (typeof value === 'object') {
+        return (
+            <details className="cursor-pointer">
+                <summary className="text-xs text-amber-400 hover:text-amber-300 select-none">{Object.keys(value).length} fields</summary>
+                <pre className="mt-1 whitespace-pre-wrap font-mono text-xs text-muted-foreground bg-muted/30 rounded p-2 max-w-sm">
+                    {JSON.stringify(value, null, 2)}
+                </pre>
+            </details>
+        );
+    }
+
+    const str = String(value);
+    return (
+        <span className="block max-w-xs truncate" title={str.length > 60 ? str : undefined}>
+            {str}
+        </span>
+    );
+}
+
+/**
+ * Derives a plain-text string for CSV export from a cell value.
+ */
+function csvCell(value) {
+    if (value === null || value === undefined) return '';
+    if (value && typeof value === 'object' && typeof value.toDate === 'function') {
+        return value.toDate().toLocaleString();
+    }
+    if (typeof value === 'object') return JSON.stringify(value);
+    return String(value);
+}
+
+/**
+ * Renders query results as a dynamic, human-readable table.
+ */
+function ResultsTable({ results, loading, error }) {
+    // Collect all field keys across all documents (excluding id – shown separately)
+    const columns = results.length > 0
+        ? Array.from(new Set(results.flatMap(doc => Object.keys(doc).filter(k => k !== 'id')))).sort()
+        : [];
+
+    const handleExportCSV = () => {
+        const header = ['id', ...columns];
+        const rows = results.map(doc =>
+            header.map(col => {
+                const raw = csvCell(doc[col]);
+                // Escape quotes for CSV
+                return `"${raw.replace(/"/g, '""')}"`;
+            }).join(',')
+        );
+        const csv = [header.join(','), ...rows].join('\n');
+        const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `query_results_${Date.now()}.csv`;
+        a.click();
+        URL.revokeObjectURL(url);
+    };
+
+    return (
+        <div className="space-y-4">
+            <div className="flex items-center justify-between">
+                <h2 className="text-xl font-semibold flex items-center gap-2">
+                    <Filter size={20} className="text-cc-purple-500" />
+                    Query Results
+                    <span className="text-sm font-normal text-muted-foreground bg-secondary px-2 py-0.5 rounded-full ml-2">
+                        {results.length} found
+                    </span>
+                </h2>
+                {results.length > 0 && (
+                    <button
+                        onClick={handleExportCSV}
+                        className="flex items-center gap-2 px-4 py-2 text-sm font-semibold rounded-xl border border-border bg-card hover:bg-muted/40 text-foreground transition-all"
+                    >
+                        <Download size={15} /> Export CSV
+                    </button>
+                )}
+            </div>
+
+            {error && (
+                <div className="p-4 bg-red-500/10 border border-red-500/20 rounded-xl text-red-600 font-medium">
+                    {error}
+                </div>
+            )}
+
+            {results.length > 0 ? (
+                <div className="bg-card rounded-2xl border border-border overflow-hidden shadow-sm">
+                    <div className="overflow-x-auto custom-scrollbar">
+                        <table className="w-full text-sm text-left">
+                            <thead className="text-xs text-muted-foreground uppercase bg-secondary/50 border-b border-border">
+                                <tr>
+                                    <th className="px-4 py-3 font-bold whitespace-nowrap sticky left-0 bg-secondary/50 z-10">Doc ID</th>
+                                    {columns.map(col => (
+                                        <th key={col} className="px-4 py-3 font-bold whitespace-nowrap">{col}</th>
+                                    ))}
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {results.map((doc, i) => (
+                                    <tr
+                                        key={doc.id}
+                                        className={`border-b border-border hover:bg-muted/30 transition-colors ${
+                                            i % 2 === 0 ? 'bg-background' : 'bg-card/40'
+                                        }`}
+                                    >
+                                        <td className="px-4 py-3 font-mono text-xs font-semibold text-foreground/60 align-top whitespace-nowrap sticky left-0 bg-inherit z-10 border-r border-border/50">
+                                            {doc.id}
+                                        </td>
+                                        {columns.map(col => (
+                                            <td key={col} className="px-4 py-3 align-top">
+                                                {formatCellValue(doc[col])}
+                                            </td>
+                                        ))}
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            ) : (
+                !loading && (
+                    <div className="text-center py-12 border-2 border-dashed border-border rounded-2xl opacity-50">
+                        <Search size={40} className="mx-auto mb-4 text-muted-foreground" />
+                        <p className="text-muted-foreground">Execute a query to see results here</p>
+                    </div>
+                )
             )}
         </div>
     );
@@ -283,57 +452,7 @@ export default function DataQueryPage() {
                 </div>
 
                 {/* Results */}
-                <div className="space-y-4">
-                    <h2 className="text-xl font-semibold flex items-center gap-2">
-                        <Filter size={20} className="text-cc-purple-500" />
-                        Query Results
-                        <span className="text-sm font-normal text-muted-foreground bg-secondary px-2 py-0.5 rounded-full ml-2">
-                            {results.length} found
-                        </span>
-                    </h2>
-
-                    {error && (
-                        <div className="p-4 bg-red-500/10 border border-red-500/20 rounded-xl text-red-600 font-medium">
-                            {error}
-                        </div>
-                    )}
-
-                    {results.length > 0 ? (
-                        <div className="bg-card rounded-2xl border border-border overflow-hidden shadow-sm">
-                            <div className="overflow-x-auto">
-                                <table className="w-full text-sm text-left">
-                                    <thead className="text-xs text-muted-foreground uppercase bg-secondary/50 border-b border-border">
-                                        <tr>
-                                            <th className="px-6 py-3 font-bold">ID</th>
-                                            <th className="px-6 py-3 font-bold">Data</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        {results.map((doc) => (
-                                            <tr key={doc.id} className="bg-background border-b border-border hover:bg-muted/30 transition-colors">
-                                                <td className="px-6 py-4 font-mono text-xs font-semibold text-foreground/70 align-top">
-                                                    {doc.id}
-                                                </td>
-                                                <td className="px-6 py-4">
-                                                    <pre className="whitespace-pre-wrap font-mono text-xs text-muted-foreground">
-                                                        {JSON.stringify({ ...doc, id: undefined }, null, 2)}
-                                                    </pre>
-                                                </td>
-                                            </tr>
-                                        ))}
-                                    </tbody>
-                                </table>
-                            </div>
-                        </div>
-                    ) : (
-                        !loading && (
-                            <div className="text-center py-12 border-2 border-dashed border-border rounded-2xl opacity-50">
-                                <Search size={40} className="mx-auto mb-4 text-muted-foreground" />
-                                <p className="text-muted-foreground">Execute a query to see results here</p>
-                            </div>
-                        )
-                    )}
-                </div>
+                <ResultsTable results={results} loading={loading} error={error} />
             </div>
         </AdminGuard>
     );

@@ -82,8 +82,8 @@ service cloud.firestore {
 
       allow read: if isAuth();
 
+      // Allow admin to write any bus fields (route assignment, driver, etc.)
       allow write: if isAdmin()
-        && validKeys(request.resource.data, ['plateNumber', 'capacity', 'status', 'driverId'])
         && smallPayload();
     }
 
@@ -190,6 +190,30 @@ service cloud.firestore {
         );
 
       allow delete: if isAdmin();
+    }
+
+    // =========================
+    // 🔹 ALERTS (SOS)
+    // =========================
+
+    match /alerts/{alertId} {
+
+      // Only admins can read alerts; drivers/students can create SOS alerts
+      allow read: if isAdmin();
+
+      allow create: if isAuth()
+        && smallPayload();
+
+      allow update, delete: if isAdmin();
+    }
+
+    // =========================
+    // 🔹 STREAM LOGS
+    // =========================
+
+    match /streamLogs/{logId} {
+      allow read: if isAdmin();
+      allow write: if false; // Written by backend only
     }
 
   }

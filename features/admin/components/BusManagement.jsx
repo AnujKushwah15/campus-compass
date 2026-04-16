@@ -2,13 +2,14 @@ import { useState, useEffect } from 'react';
 import Badge from '@/components/ui/Badge';
 import { db } from '@/lib/firebase';
 import { doc, onSnapshot } from 'firebase/firestore';
-import { ChevronDown, ChevronRight, Mail, Phone, Hash, School, GraduationCap } from 'lucide-react';
+import { ChevronDown, ChevronRight, Mail, Phone, Hash, School, GraduationCap, AlertCircle, X, UserCheck } from 'lucide-react';
 
 export default function BusManagement({ buses, students = [], selectedBus, onSelectBus, onUpdateBus, onUnassignStudent, onAssignStudent }) {
     const [searchTerm, setSearchTerm] = useState('');
     const [attendanceData, setAttendanceData] = useState({});
     const [isAssigning, setIsAssigning] = useState(false);
     const [showUnassigned, setShowUnassigned] = useState(false);
+    const [confirmAssign, setConfirmAssign] = useState(null); // { studentId, studentName, busId, busNumber }
 
     // Listen to live attendance updates for the currently selected bus's active trip
     useEffect(() => {
@@ -81,14 +82,41 @@ export default function BusManagement({ buses, students = [], selectedBus, onSel
         onUnassignStudent(studentId);
     };
 
+    const handleAssignConfirm = (student) => {
+        setConfirmAssign({
+            studentId: student.id,
+            studentName: student.name || student.fullName || 'Unknown',
+            busId: selectedBus.id,
+            busNumber: selectedBus.number,
+        });
+    };
+
+    const handleAssignFromDropdown = (studentId) => {
+        const student = students.find(s => s.id === studentId);
+        if (!student || !selectedBus) return;
+        setIsAssigning(false);
+        setConfirmAssign({
+            studentId: student.id,
+            studentName: student.name || student.fullName || 'Unknown',
+            busId: selectedBus.id,
+            busNumber: selectedBus.number,
+        });
+    };
+
+    const executeAssign = () => {
+        if (!confirmAssign) return;
+        onAssignStudent(confirmAssign.studentId, confirmAssign.busId);
+        setConfirmAssign(null);
+    };
+
     const getStatusParams = (studentId) => {
         const studentRecord = attendanceData[studentId];
-        if (!studentRecord) return { label: 'Pending', color: 'bg-secondary text-muted-foreground' };
+        if (!studentRecord) return null;
 
         switch (studentRecord.status) {
             case 'present': return { label: 'Onboard', color: 'bg-green-500/10 text-green-600 border-green-500/20' };
             case 'absent': return { label: 'Absent', color: 'bg-red-500/10 text-red-600 border-red-500/20' };
-            default: return { label: 'Pending', color: 'bg-secondary text-muted-foreground' };
+            default: return null;
         }
     };
 
@@ -191,8 +219,7 @@ export default function BusManagement({ buses, students = [], selectedBus, onSel
                                             className="text-xs px-2 py-1.5 bg-background border border-border rounded-lg focus:outline-none focus:ring-1 focus:ring-cc-purple-500 max-w-[200px] text-foreground"
                                             onChange={(e) => {
                                                 if (e.target.value) {
-                                                    onAssignStudent(e.target.value, selectedBus.id);
-                                                    setIsAssigning(false);
+                                                    handleAssignFromDropdown(e.target.value);
                                                 }
                                             }}
                                             onBlur={() => setIsAssigning(false)}
@@ -221,9 +248,11 @@ export default function BusManagement({ buses, students = [], selectedBus, onSel
                                                     <div>
                                                         <div className="flex items-center gap-2 mb-0.5">
                                                             <div className="text-sm font-bold text-foreground">{student.name}</div>
-                                                            <div className={`text-[10px] px-1.5 py-0.5 rounded border uppercase font-bold tracking-wider ${status.color}`}>
-                                                                {status.label}
-                                                            </div>
+                                                            {status && (
+                                                                <div className={`text-[10px] px-1.5 py-0.5 rounded border uppercase font-bold tracking-wider ${status.color}`}>
+                                                                    {status.label}
+                                                                </div>
+                                                            )}
                                                         </div>
                                                         <div className="text-xs text-muted-foreground font-mono bg-muted/50 px-1.5 py-0.5 rounded w-fit">PRN: {student.prn}</div>
                                                     </div>
@@ -298,7 +327,7 @@ export default function BusManagement({ buses, students = [], selectedBus, onSel
                                                             </div>
                                                         </div>
                                                         <button
-                                                            onClick={() => onAssignStudent(student.id, selectedBus.id)}
+                                                            onClick={() => handleAssignConfirm(student)}
                                                             className="px-3 py-1.5 bg-cc-purple-500/10 text-cc-purple-600 border border-cc-purple-500/20 rounded-lg text-xs font-bold hover:bg-cc-purple-600 hover:text-white transition shrink-0"
                                                         >
                                                             Assign
@@ -325,6 +354,47 @@ export default function BusManagement({ buses, students = [], selectedBus, onSel
                     )}
                 </div>
             </div>
+
+            {/* ── Assign Confirmation Modal ──────────────────────────────── */}
+            {confirmAssign && (
+                <div
+                    className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm"
+                    onClick={() => setConfirmAssign(null)}
+                >
+                    <div
+                        className="bg-card border border-border rounded-2xl shadow-2xl p-6 w-full max-w-sm mx-4 animate-in fade-in zoom-in-95 duration-200"
+                        onClick={(e) => e.stopPropagation()}
+                    >
+                        {/* Icon */}
+                        <div className="flex items-center justify-center w-12 h-12 rounded-full bg-cc-purple-500/10 border border-cc-purple-500/20 mx-auto mb-4">
+                            <UserCheck size={22} className="text-cc-purple-500" />
+                        </div>
+
+                        {/* Title */}
+                        <h3 className="text-lg font-bold text-foreground text-center mb-1">Confirm Assignment</h3>
+                        <p className="text-sm text-muted-foreground text-center mb-5">
+                            Assign <span className="font-semibold text-foreground">{confirmAssign.studentName}</span> to{' '}
+                            <span className="font-semibold text-cc-purple-500">Bus {confirmAssign.busNumber}</span>?
+                        </p>
+
+                        {/* Actions */}
+                        <div className="flex gap-3">
+                            <button
+                                onClick={() => setConfirmAssign(null)}
+                                className="flex-1 px-4 py-2.5 bg-muted text-muted-foreground rounded-xl text-sm font-semibold hover:bg-muted/80 transition border border-border"
+                            >
+                                Cancel
+                            </button>
+                            <button
+                                onClick={executeAssign}
+                                className="flex-1 px-4 py-2.5 bg-cc-purple-600 text-white rounded-xl text-sm font-semibold hover:bg-cc-purple-700 transition shadow-lg shadow-cc-purple-500/30"
+                            >
+                                Confirm
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 }

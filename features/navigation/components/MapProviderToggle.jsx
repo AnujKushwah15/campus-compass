@@ -38,6 +38,9 @@ export default function MapProviderToggle({
     routeData,
     onPoiSelect,
     activeCategory,
+    waypoints = [],
+    busLocations = [],
+    previewCoordinates = null,
 }) {
     // Start with "ola" only if an API key is configured
     const [provider, setProvider] = useState(OLA_KEY_EXISTS ? "ola" : "osm");
@@ -47,7 +50,7 @@ export default function MapProviderToggle({
         setProvider("osm");
     }, []);
 
-    const sharedProps = { startPos, endPos, routeData, onPoiSelect, activeCategory };
+    const sharedProps = { startPos, endPos, routeData, onPoiSelect, activeCategory, waypoints, busLocations, previewCoordinates };
 
     if (provider === "ola") {
         return (

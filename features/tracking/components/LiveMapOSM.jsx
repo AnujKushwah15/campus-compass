@@ -5,19 +5,43 @@ import { MapContainer, TileLayer, Marker, Popup, useMap } from 'react-leaflet';
 import 'leaflet/dist/leaflet.css';
 import L from 'leaflet';
 
-const iconUrl = 'https://unpkg.com/leaflet@1.7.1/dist/images/marker-icon.png';
-const iconRetinaUrl = 'https://unpkg.com/leaflet@1.7.1/dist/images/marker-icon-2x.png';
-const shadowUrl = 'https://unpkg.com/leaflet@1.7.1/dist/images/marker-shadow.png';
+// ── Custom SVG Bus Icon ───────────────────────────────────────────────────────
+function makeBusIcon(color = "#4ade80", label = "") {
+    return L.divIcon({
+        className: "",
+        html: `<div style="display:flex;flex-direction:column;align-items:center;animation:busPop 0.4s cubic-bezier(0.34,1.56,0.64,1) both;">
+          <div style="
+            background:${color};border:2.5px solid white;border-radius:8px;
+            width:40px;height:25px;box-shadow:0 4px 14px rgba(0,0,0,0.45);
+            display:flex;align-items:center;justify-content:center;">
+            <svg width="22" height="15" viewBox="0 0 24 16" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <rect x="1" y="1" width="22" height="11" rx="3" fill="white" fill-opacity="0.22"/>
+              <rect x="2" y="2" width="8" height="5" rx="1" fill="white" fill-opacity="0.6"/>
+              <rect x="14" y="2" width="8" height="5" rx="1" fill="white" fill-opacity="0.6"/>
+              <circle cx="5" cy="14" r="2" fill="white"/>
+              <circle cx="19" cy="14" r="2" fill="white"/>
+            </svg>
+          </div>
+          ${label ? `<div style="margin-top:2px;background:${color};color:white;font-size:9px;font-weight:700;border-radius:4px;padding:1px 5px;white-space:nowrap;border:1.5px solid white;box-shadow:0 2px 6px rgba(0,0,0,0.3);">${label}</div>` : ""}
+        </div>`,
+        iconSize: [42, label ? 50 : 30],
+        iconAnchor: [21, label ? 50 : 30],
+        popupAnchor: [0, -54],
+    });
+}
 
-const defaultIcon = L.icon({
-    iconUrl,
-    iconRetinaUrl,
-    shadowUrl,
-    iconSize: [25, 41],
-    iconAnchor: [12, 41],
-    popupAnchor: [1, -34],
-    shadowSize: [41, 41]
-});
+// ── Stop Icon ────────────────────────────────────────────────────────────────
+function makeStopIcon() {
+    return L.divIcon({
+        className: "",
+        html: `<div style="display:flex;flex-direction:column;align-items:center;">
+          <div style="background:#ef4444;width:14px;height:14px;border-radius:50%;border:3px solid white;box-shadow:0 2px 6px rgba(0,0,0,0.3);" />
+        </div>`,
+        iconSize: [14, 14],
+        iconAnchor: [7, 7],
+        popupAnchor: [0, -14],
+    });
+}
 
 function MapController({ center, bounds }) {
     const map = useMap();
@@ -40,7 +64,6 @@ export default function LiveMapOSM({ busLocation, busLocations = [], stops = [] 
     // Determine buses to draw
     const busesToDraw = busLocations?.length > 0 ? busLocations : (busLocation ? [busLocation] : []);
     
-    // Calculate active center or bounds
     const activeCenter = busesToDraw.length === 1 
         ? [busesToDraw[0].lat, busesToDraw[0].lng] 
         : (busesToDraw.length === 0 ? defaultCenter : null);
@@ -51,6 +74,14 @@ export default function LiveMapOSM({ busLocation, busLocations = [], stops = [] 
 
     return (
         <div className="w-full h-full rounded-2xl overflow-hidden border border-border shadow-inner relative z-0">
+            <style dangerouslySetInnerHTML={{
+                __html: `
+                    @keyframes busPop {
+                        from { opacity:0; transform:scale(0.4) translateY(-10px); }
+                        to   { opacity:1; transform:scale(1) translateY(0); }
+                    }
+                `
+            }} />
             <MapContainer
                 center={activeCenter}
                 zoom={14}
@@ -66,14 +97,22 @@ export default function LiveMapOSM({ busLocation, busLocations = [], stops = [] 
 
                 {busesToDraw.map((bus, idx) => {
                     const isSelected = busLocation && busLocation.lat === bus.lat && busLocation.lng === bus.lng;
+                    const color = isSelected ? "#8b5cf6" : "#4ade80";
+                    const label = bus.label || `Bus ${bus.id || ''}`;
                     return (
-                        <Marker key={bus.id || idx} position={[bus.lat, bus.lng]} icon={defaultIcon}>
-                            <Popup className="bus-popup">
-                                <div className={`text-sm font-bold ${isSelected ? 'text-cc-purple-600' : 'text-cc-purple-900'}`}>
-                                    🚍 {bus.label || `Bus ${bus.id || ''}`}<br />
-                                    <span className="text-xs font-normal text-gray-600">
-                                        Speed: {bus.speed || 0} km/h
-                                    </span>
+                        <Marker
+                            key={bus.id || idx}
+                            position={[bus.lat, bus.lng]}
+                            icon={makeBusIcon(color, label)}
+                        >
+                            <Popup>
+                                <div style={{ minWidth: "120px" }}>
+                                    <div style={{ fontSize: "13px", fontWeight: 700, color, marginBottom: "4px" }}>
+                                        🚍 {label}
+                                    </div>
+                                    <div style={{ fontSize: "11px", color: "#a1a0b0" }}>
+                                        Speed: <span style={{ color: "#333", fontWeight: 600 }}>{bus.speed || 0} km/h</span>
+                                    </div>
                                 </div>
                             </Popup>
                         </Marker>
@@ -84,10 +123,14 @@ export default function LiveMapOSM({ busLocation, busLocations = [], stops = [] 
                     <Marker
                         key={index}
                         position={[stop.lat, stop.lng]}
-                        icon={defaultIcon}
-                        opacity={0.7}
+                        icon={makeStopIcon()}
+                        opacity={0.85}
                     >
-                        <Popup>{stop.name}</Popup>
+                        <Popup>
+                            <div style={{ fontSize: "13px", fontWeight: 600, color: "#333" }}>
+                                📍 {stop.name}
+                            </div>
+                        </Popup>
                     </Marker>
                 ))}
             </MapContainer>

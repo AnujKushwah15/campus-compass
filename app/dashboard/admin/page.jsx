@@ -28,7 +28,17 @@ const LiveMap = dynamic(() => import('@/features/tracking/components/LiveMap'), 
 // ─────────────────────────────────────────────────────────────────────────────
 
 
+// Thin shell: verifies admin access BEFORE mounting the content.
+// This prevents Firestore snapshots from firing before auth is confirmed.
 export default function AdminDashboardPage() {
+    return (
+        <AdminGuard>
+            <AdminDashboardContent />
+        </AdminGuard>
+    );
+}
+
+function AdminDashboardContent() {
     const [buses, setBuses] = useState([]);
     const [students, setStudents] = useState([]);
     const [cameras, setCameras] = useState([]);
@@ -184,8 +194,7 @@ export default function AdminDashboardPage() {
 
 
     return (
-        <AdminGuard>
-            <div className="font-sans text-foreground min-h-screen bg-background px-4 sm:px-8 lg:px-12 xl:px-16 py-6">
+        <div className="font-sans text-foreground min-h-screen bg-background px-4 sm:px-8 lg:px-12 xl:px-16 py-6">
                 {/* ... existing content ... */}
                 <div className="flex items-center justify-between gap-8 mb-6">
                     <Link href="/dashboard/admin" className="hover:opacity-80 transition-opacity flex-shrink-0">
@@ -377,7 +386,6 @@ export default function AdminDashboardPage() {
                     onRequestCountChange={setPendingRequestCount}
                 />
             </div>
-        </AdminGuard>
     );
 }
 
