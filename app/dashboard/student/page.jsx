@@ -25,7 +25,8 @@ export default function StudentDashboard() {
         bus: null,
         route: null,
         driver: null,
-        busLocation: null
+        busLocation: null,
+        studentLocation: null
     });
 
     useEffect(() => {
@@ -76,7 +77,8 @@ export default function StudentDashboard() {
                             ...prev,
                             bus: { id: busId, ...bData },
                             route: routeData,
-                            driver: driverData
+                            driver: driverData,
+                            studentLocation: studentData?.location || null
                         }));
                     }
                 });
@@ -117,7 +119,7 @@ export default function StudentDashboard() {
         );
     }
 
-    const { bus, route, driver, busLocation } = dashboardData;
+    const { bus, route, driver, busLocation, studentLocation } = dashboardData;
     const isTripActive = !!bus?.activeTripId;
 
     let calculatedEta = null;
@@ -173,6 +175,7 @@ export default function StudentDashboard() {
                         <LiveMap 
                             busLocation={busLocation || { lat: 23.0225, lng: 72.5714, speed: 0 }} 
                             stops={route?.stops || []}
+                            studentLocation={studentLocation}
                         />
                     </div>
 

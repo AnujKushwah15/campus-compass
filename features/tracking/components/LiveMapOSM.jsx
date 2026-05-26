@@ -58,7 +58,7 @@ function MapController({ center, bounds }) {
     return null;
 }
 
-export default function LiveMapOSM({ busLocation, busLocations = [], stops = [] }) {
+export default function LiveMapOSM({ busLocation, busLocations = [], stops = [], studentLocation }) {
     const defaultCenter = [23.0225, 72.5714];
     
     // Determine buses to draw
@@ -133,6 +133,28 @@ export default function LiveMapOSM({ busLocation, busLocations = [], stops = [] 
                         </Popup>
                     </Marker>
                 ))}
+
+                {studentLocation && studentLocation.lat && studentLocation.lng && (
+                    <Marker
+                        position={[studentLocation.lat, studentLocation.lng]}
+                        icon={L.divIcon({
+                            className: "",
+                            html: `<div style="display:flex;flex-direction:column;align-items:center;">
+                                     <div style="background:#3b82f6;width:24px;height:24px;border-radius:50%;border:3px solid white;box-shadow:0 3px 10px rgba(0,0,0,0.35);display:flex;align-items:center;justify-content:center;font-size:12px;">👨‍🎓</div>
+                                   </div>`,
+                            iconSize: [24, 24],
+                            iconAnchor: [12, 12],
+                            popupAnchor: [0, -12],
+                        })}
+                        opacity={1.0}
+                    >
+                        <Popup>
+                            <div style={{ fontSize: "13px", fontWeight: 600, color: "#333" }}>
+                                Your Location
+                            </div>
+                        </Popup>
+                    </Marker>
+                )}
             </MapContainer>
         </div>
     );

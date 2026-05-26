@@ -32,11 +32,12 @@ if (typeof window !== 'undefined') {
     };
 }
 
-export default function OlaLiveMap({ busLocation, busLocations = [], stops = [], onInitError }) {
+export default function OlaLiveMap({ busLocation, busLocations = [], stops = [], studentLocation, onInitError }) {
     const containerRef = useRef(null);
     const mapRef = useRef(null);
     const busMarkersRef = useRef({});
     const stopMarkersRef = useRef([]);
+    const studentMarkerRef = useRef(null);
     const [ready, setReady] = useState(false);
     const [initFailed, setInitFailed] = useState(false);
 
@@ -197,6 +198,18 @@ export default function OlaLiveMap({ busLocation, busLocations = [], stops = [],
             });
         }
 
+        // Draw student location
+        if (studentLocation && studentLocation.lat && studentLocation.lng && !studentMarkerRef.current) {
+            const el = createPinEl("#3b82f6", "👨‍🎓"); // blue pin
+            const marker = new maplibregl.Marker({ element: el })
+                .setLngLat([studentLocation.lng, studentLocation.lat])
+                .setPopup(new maplibregl.Popup({ offset: 25 }).setHTML(`<b>Your Location</b>`))
+                .addTo(map);
+            studentMarkerRef.current = marker;
+        } else if (studentLocation && studentMarkerRef.current) {
+            studentMarkerRef.current.setLngLat([studentLocation.lng, studentLocation.lat]);
+        }
+
         // Draw or update bus markers
         const busesToDraw = busLocations?.length > 0 ? busLocations : (busLocation ? [busLocation] : []);
         const newIds = new Set(busesToDraw.map((b, i) => b.id || `bus-${i}`));
@@ -261,7 +274,7 @@ export default function OlaLiveMap({ busLocation, busLocations = [], stops = [],
             // Only fly if there's a specific selected bus
             map.flyTo({ center: [busLocation.lng, busLocation.lat], zoom: 15, speed: 0.8 });
         }
-    }, [busLocation, busLocations, stops, ready, createPinEl]);
+    }, [busLocation, busLocations, stops, studentLocation, ready, createPinEl]);
 
     return (
         <div className="w-full h-full rounded-2xl overflow-hidden border border-border bg-muted relative">
