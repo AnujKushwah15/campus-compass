@@ -85,6 +85,12 @@ service cloud.firestore {
       // Allow admin to write any bus fields (route assignment, driver, etc.)
       allow write: if isAdmin()
         && smallPayload();
+
+      // Allow driver to acquire/release the active trip lock
+      allow update: if isDriver()
+        && driverOwnsBus(busId)
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['activeTripId'])
+        && smallPayload();
     }
 
     // =========================
@@ -116,10 +122,13 @@ service cloud.firestore {
           && driverOwnsBus(request.resource.data.busId)
           && validKeys(request.resource.data, [
             'driverId',
+            'driverName',
             'busId',
+            'routeId',
             'status',
             'startTime',
             'endTime',
+            'location',
             'attendance'
           ])
           && smallPayload()
@@ -146,13 +155,34 @@ service cloud.firestore {
         || (isParent() && isParentOf(resource.data.studentId))
         || (isAuth() && resource.data.studentId == request.auth.uid);
 
-      allow create, update: if isAdmin()
+      allow create: if isAdmin()
         || (isDriver()
-          && driverOwnsBus(resource.data.busId)
+          && driverOwnsBus(request.resource.data.busId)
           && validKeys(request.resource.data, [
+            'id',
             'tripId',
             'studentId',
+            'studentName',
             'status',
+            'timestamp',
+            'date',
+            'autoMarked',
+            'busId'
+          ])
+          && smallPayload()
+        );
+
+      allow update: if isAdmin()
+        || (isDriver()
+          && driverOwnsBus(resource.data.busId)
+          && driverOwnsBus(request.resource.data.busId)
+          && validKeys(request.resource.data, [
+            'id',
+            'tripId',
+            'studentId',
+            'studentName',
+            'status',
+            'timestamp',
             'date',
             'autoMarked',
             'busId'
