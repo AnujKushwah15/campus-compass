@@ -7,41 +7,137 @@ const OLA_API_KEY = process.env.NEXT_PUBLIC_OLA_MAPS_API_KEY;
 const STYLE_URL =
     "https://api.olamaps.io/tiles/vector/v1/styles/default-light-standard/style.json";
 
-// Suppress MapLibre's persistent 3D model error that triggers Next.js dev overlays
-if (typeof window !== 'undefined') {
-    const originalConsoleError = console.error;
+// Suppress MapLibre's persistent 3D model error in Next.js dev overlay
+if (typeof window !== "undefined") {
+    const _ce = console.error;
     console.error = (...args) => {
-        const has3dError = args.some(arg => 
-            (typeof arg === 'string' && arg.includes('Source layer "3d_model" does not exist')) ||
-            (arg instanceof Error && arg.message.includes('Source layer "3d_model" does not exist')) ||
-            (arg && typeof arg === 'object' && arg.message && typeof arg.message === 'string' && arg.message.includes('Source layer "3d_model" does not exist'))
-        );
-        if (has3dError) return;
-        originalConsoleError.apply(console, args);
+        if (args.some(a => typeof a === "string" && a.includes('Source layer "3d_model" does not exist'))) return;
+        _ce.apply(console, args);
     };
-    
-    const originalConsoleWarn = console.warn;
+    const _cw = console.warn;
     console.warn = (...args) => {
-        const has3dError = args.some(arg => 
-            (typeof arg === 'string' && arg.includes('Source layer "3d_model" does not exist')) ||
-            (arg instanceof Error && arg.message.includes('Source layer "3d_model" does not exist')) ||
-            (arg && typeof arg === 'object' && arg.message && typeof arg.message === 'string' && arg.message.includes('Source layer "3d_model" does not exist'))
-        );
-        if (has3dError) return;
-        originalConsoleWarn.apply(console, args);
+        if (args.some(a => typeof a === "string" && a.includes('Source layer "3d_model" does not exist'))) return;
+        _cw.apply(console, args);
     };
 }
+
+// ── Custom marker element builders ───────────────────────────────────────────
+
+/**
+ * Build an animated live-bus marker element.
+ * @param {string} color   - hex colour for the bus chip
+ * @param {string} label   - text shown below the chip (e.g. "Bus-1")
+ * @param {number} speed   - km/h shown inside the chip
+ * @param {boolean} isLive - whether to show the pulse ring
+ */
+function createBusElement(color = "#8b5cf6", label = "", speed = 0, isLive = true) {
+    const wrapper = document.createElement("div");
+    wrapper.style.cssText = "display:flex;flex-direction:column;align-items:center;cursor:pointer;";
+
+    // Pulse ring (live indicator) — sits behind the chip
+    const pulseRing = document.createElement("div");
+    pulseRing.style.cssText = `
+        position:absolute;
+        width:54px;height:28px;
+        border-radius:10px;
+        background:${color};
+        opacity:${isLive ? 0.35 : 0};
+        animation:${isLive ? "busPulse 1.8s ease-in-out infinite" : "none"};
+        pointer-events:none;
+        top:0;left:50%;transform:translateX(-50%);
+    `;
+
+    // Bus chip
+    const chip = document.createElement("div");
+    chip.style.cssText = `
+        position:relative;
+        background:${color};
+        border:2.5px solid white;
+        border-radius:9px;
+        width:48px;height:28px;
+        box-shadow:0 4px 18px rgba(0,0,0,0.45);
+        display:flex;align-items:center;justify-content:center;gap:3px;
+        animation:busPop 0.45s cubic-bezier(0.34,1.56,0.64,1) both;
+        z-index:1;
+    `;
+    chip.innerHTML = `
+        <svg width="20" height="13" viewBox="0 0 24 16" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <rect x="1" y="1" width="22" height="11" rx="3" fill="white" fill-opacity="0.22"/>
+          <rect x="2" y="2" width="8" height="5" rx="1" fill="white" fill-opacity="0.65"/>
+          <rect x="14" y="2" width="8" height="5" rx="1" fill="white" fill-opacity="0.65"/>
+          <circle cx="5" cy="14" r="2" fill="white"/>
+          <circle cx="19" cy="14" r="2" fill="white"/>
+        </svg>
+    `;
+
+    // Connector stem
+    const stem = document.createElement("div");
+    stem.style.cssText = `
+        width:2px;height:6px;
+        background:${color};
+        border-radius:0 0 2px 2px;
+        opacity:0.8;
+    `;
+
+    // Label badge
+    const badge = document.createElement("div");
+    badge.setAttribute("data-bus-label", "true");
+    badge.style.cssText = `
+        background:${color};
+        color:white;
+        font-size:9px;font-weight:700;
+        border-radius:5px;
+        padding:2px 7px;
+        white-space:nowrap;
+        box-shadow:0 2px 8px rgba(0,0,0,0.35);
+        border:1.5px solid rgba(255,255,255,0.6);
+        letter-spacing:0.04em;
+        margin-top:1px;
+        min-width:48px;
+        text-align:center;
+    `;
+    badge.textContent = speed > 0 ? `${label} · ${Math.round(speed)} km/h` : label;
+
+    wrapper.appendChild(pulseRing);
+    wrapper.appendChild(chip);
+    wrapper.appendChild(stem);
+    if (label) wrapper.appendChild(badge);
+
+    return wrapper;
+}
+
+/**
+ * Build a simple pin element (for stops and student location).
+ */
+function createPinElement(color, emoji) {
+    const el = document.createElement("div");
+    el.style.cssText = "display:flex;flex-direction:column;align-items:center;";
+    el.innerHTML = `
+        <div style="
+            background:${color};width:32px;height:32px;border-radius:50%;
+            border:3px solid white;box-shadow:0 3px 10px rgba(0,0,0,0.35);
+            display:flex;align-items:center;justify-content:center;font-size:15px;">
+            ${emoji}
+        </div>
+        <div style="width:2px;height:5px;background:${color};opacity:0.6;border-radius:0 0 2px 2px;"></div>
+    `;
+    return el;
+}
+
+// ── Component ─────────────────────────────────────────────────────────────────
 
 export default function OlaLiveMap({ busLocation, busLocations = [], stops = [], studentLocation, onInitError }) {
     const containerRef = useRef(null);
     const mapRef = useRef(null);
-    const busMarkersRef = useRef({});
+    const olaMapsRef = useRef(null);          // OlaMaps instance (for addMarker API)
+    const busMarkersRef = useRef({});          // { id: { marker, el } }
     const stopMarkersRef = useRef([]);
     const studentMarkerRef = useRef(null);
+    const initialFlyDoneRef = useRef(false);   // fly to bus only on first location fix
     const [ready, setReady] = useState(false);
     const [initFailed, setInitFailed] = useState(false);
 
-    // Initialize Map
+    // ── 1. Initialize map ────────────────────────────────────────────────────
     useEffect(() => {
         if (!containerRef.current || initFailed) return;
         let cancelled = false;
@@ -49,27 +145,24 @@ export default function OlaLiveMap({ busLocation, busLocations = [], stops = [],
         (async () => {
             try {
                 const olaMaps = new OlaMaps({ apiKey: OLA_API_KEY });
-                
-                // Determine initial center
-                let startCenter = [72.5714, 23.0225];
-                if (busLocation) {
-                    startCenter = [busLocation.lng, busLocation.lat];
-                } else if (busLocations?.length > 0) {
-                    startCenter = [busLocations[0].lng, busLocations[0].lat];
-                }
+                olaMapsRef.current = olaMaps;
+
+                const startCenter = busLocation
+                    ? [busLocation.lng, busLocation.lat]
+                    : (busLocations?.length > 0 ? [busLocations[0].lng, busLocations[0].lat] : [72.5714, 23.0225]);
 
                 const map = await olaMaps.init({
                     style: STYLE_URL,
                     container: containerRef.current,
                     center: startCenter,
                     zoom: 14,
-                    pitch: 0, // Force 2D
+                    pitch: 0,
                     bearing: 0,
-                    transformRequest: (url, resourceType) => {
+                    transformRequest: (url) => {
                         if (url.includes("api.olamaps.io")) {
-                            const urlObj = new URL(url);
-                            urlObj.searchParams.set("api_key", OLA_API_KEY);
-                            return { url: urlObj.toString() };
+                            const u = new URL(url);
+                            u.searchParams.set("api_key", OLA_API_KEY);
+                            return { url: u.toString() };
                         }
                         return { url };
                     },
@@ -78,39 +171,26 @@ export default function OlaLiveMap({ busLocation, busLocations = [], stops = [],
                 if (cancelled) return;
 
                 map.on("load", () => {
-                    if (!cancelled) {
-                        // Remove problematic 3D layers if they exist
-                        if (map.getLayer("3d_model_data")) {
-                            map.removeLayer("3d_model_data");
-                        }
-
-                        mapRef.current = map;
-                        setReady(true);
-                    }
+                    if (cancelled) return;
+                    // Remove problematic 3D layer if present
+                    if (map.getLayer("3d_model_data")) map.removeLayer("3d_model_data");
+                    mapRef.current = map;
+                    setReady(true);
                 });
 
-                // Handle missing images (like "ola-mbo") to prevent console clutter
+                // Suppress missing image errors (ola-mbo icon etc.)
                 map.on("styleimagemissing", (e) => {
-                    const id = e.id;
                     const canvas = document.createElement("canvas");
-                    canvas.width = 1;
-                    canvas.height = 1;
-                    const ctx = canvas.getContext("2d");
-                    const imageData = ctx.getImageData(0, 0, 1, 1);
-                    map.addImage(id, imageData);
+                    canvas.width = 1; canvas.height = 1;
+                    map.addImage(e.id, canvas.getContext("2d").getImageData(0, 0, 1, 1));
                 });
 
                 map.on("error", (e) => {
                     const status = e?.error?.status || e?.status;
-                    if (status === 429 || status === 403) {
-                        onInitError?.();
-                    }
+                    if (status === 429 || status === 403) onInitError?.();
                 });
             } catch (err) {
-                if (!cancelled) {
-                    setInitFailed(true);
-                    onInitError?.();
-                }
+                if (!cancelled) { setInitFailed(true); onInitError?.(); }
             }
         })();
 
@@ -120,176 +200,152 @@ export default function OlaLiveMap({ busLocation, busLocations = [], stops = [],
                 try { mapRef.current.remove(); } catch (_) {}
                 mapRef.current = null;
             }
+            busMarkersRef.current = {};
+            stopMarkersRef.current = [];
+            studentMarkerRef.current = null;
+            initialFlyDoneRef.current = false;
             setReady(false);
         };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
 
-    // Create proper SVG Bus Icon
-    const createBusEl = useCallback((color, label) => {
-        const el = document.createElement("div");
-        el.innerHTML = `
-            <div style="display:flex;flex-direction:column;align-items:center;cursor:pointer;">
-              <div style="
-                background:${color};
-                border:2.5px solid white;
-                border-radius:8px;
-                width:42px;height:26px;
-                box-shadow:0 4px 14px rgba(0,0,0,0.45);
-                display:flex;align-items:center;justify-content:center;
-                animation: busPop 0.4s cubic-bezier(0.34,1.56,0.64,1) both;">
-                <svg width="24" height="16" viewBox="0 0 24 16" fill="none" xmlns="http://www.w3.org/2000/svg">
-                  <rect x="1" y="1" width="22" height="11" rx="3" fill="white" fill-opacity="0.22"/>
-                  <rect x="2" y="2" width="8" height="5" rx="1" fill="white" fill-opacity="0.6"/>
-                  <rect x="14" y="2" width="8" height="5" rx="1" fill="white" fill-opacity="0.6"/>
-                  <circle cx="5" cy="14" r="2" fill="white"/>
-                  <circle cx="19" cy="14" r="2" fill="white"/>
-                </svg>
-              </div>
-              ${label ? `<div style="
-                margin-top:3px;
-                background:${color};
-                color:white;
-                font-size:9px;
-                font-weight:700;
-                border-radius:4px;
-                padding:1px 6px;
-                white-space:nowrap;
-                box-shadow:0 2px 6px rgba(0,0,0,0.3);
-                border:1.5px solid white;
-                letter-spacing:0.03em;
-              ">${label}</div>` : ""}
-            </div>`;
-        return el;
-    }, []);
-
-    // Create Pin Helper
-    const createPinEl = useCallback((color, iconEmoji) => {
-        const el = document.createElement("div");
-        el.innerHTML = `
-            <div style="display:flex; flex-direction:column; align-items:center;">
-              <div style="
-                background:${color};width:32px;height:32px;border-radius:50%;
-                border:3px solid white;box-shadow:0 3px 10px rgba(0,0,0,0.35);
-                display:flex;align-items:center;justify-content:center;font-size:16px;">
-                ${iconEmoji}
-              </div>
-            </div>`;
-        return el;
-    }, []);
-
-    // Update markers and center on bus location
+    // ── 2. Real-time bus marker update ───────────────────────────────────────
+    // Runs whenever busLocation or busLocations changes (i.e. every RTDB push).
+    // Uses olaMaps.addMarker() — the official Ola Maps JS API for web.
     useEffect(() => {
         const map = mapRef.current;
-        if (!map || !ready) return;
+        const olaMaps = olaMapsRef.current;
+        if (!map || !ready || !olaMaps) return;
 
-        const maplibregl = window.maplibregl || window.mapboxgl;
-        if (!maplibregl) return;
+        // Build the list of buses to render
+        const busesToDraw = busLocations?.length > 0
+            ? busLocations
+            : (busLocation ? [{ ...busLocation, id: "primary" }] : []);
 
-        // Draw stops (once)
-        if (stopMarkersRef.current.length === 0 && stops && stops.length > 0) {
-            stops.forEach(stop => {
-                const el = createPinEl("#ef4444", "📍");
-                const marker = new maplibregl.Marker({ element: el })
-                    .setLngLat([stop.lng, stop.lat])
-                    .setPopup(new maplibregl.Popup({ offset: 25 }).setHTML(`<b>${stop.name}</b>`))
-                    .addTo(map);
-                stopMarkersRef.current.push(marker);
-            });
-        }
+        const activeIds = new Set(busesToDraw.map((b, i) => b.id || `bus-${i}`));
 
-        // Draw student location
-        if (studentLocation && studentLocation.lat && studentLocation.lng && !studentMarkerRef.current) {
-            const el = createPinEl("#3b82f6", "👨‍🎓"); // blue pin
-            const marker = new maplibregl.Marker({ element: el })
-                .setLngLat([studentLocation.lng, studentLocation.lat])
-                .setPopup(new maplibregl.Popup({ offset: 25 }).setHTML(`<b>Your Location</b>`))
-                .addTo(map);
-            studentMarkerRef.current = marker;
-        } else if (studentLocation && studentMarkerRef.current) {
-            studentMarkerRef.current.setLngLat([studentLocation.lng, studentLocation.lat]);
-        }
-
-        // Draw or update bus markers
-        const busesToDraw = busLocations?.length > 0 ? busLocations : (busLocation ? [busLocation] : []);
-        const newIds = new Set(busesToDraw.map((b, i) => b.id || `bus-${i}`));
-        
-        // Remove old markers that are no longer in the list
+        // Remove markers for buses that are no longer in the list
         Object.keys(busMarkersRef.current).forEach(id => {
-            if (!newIds.has(id)) {
+            if (!activeIds.has(id)) {
                 busMarkersRef.current[id].marker.remove();
                 delete busMarkersRef.current[id];
             }
         });
 
-        // Add or update markers
         busesToDraw.forEach((bus, i) => {
             const id = bus.id || `bus-${i}`;
-            const isSelected = busLocation && busLocation.lat === bus.lat && busLocation.lng === bus.lng;
-            const color = isSelected ? "#8b5cf6" : "#4ade80"; // Purple for selected, green for others
-            const label = bus.label || `Bus ${id}`;
-            
-            // Recreate if selection changed (color flip)
-            if (busMarkersRef.current[id] && busMarkersRef.current[id].isSelected !== isSelected) {
-                busMarkersRef.current[id].marker.remove();
-                delete busMarkersRef.current[id];
-            }
-            
-            if (!busMarkersRef.current[id]) {
-                const el = createBusEl(color, label);
-                const marker = new maplibregl.Marker({ element: el })
-                    .setLngLat([bus.lng, bus.lat])
-                    .setPopup(new maplibregl.Popup({ offset: 30 }).setHTML(
-                        `<div style="min-width:120px;">
-                            <div style="font-size:13px;font-weight:700;color:${color};margin-bottom:4px;">🚍 ${label}</div>
-                            <div style="font-size:11px;color:#a1a0b0;">Speed: <span style="color:#f1f0f7;font-weight:600;">${bus.speed || 0} km/h</span></div>
-                        </div>`
-                    ))
-                    .addTo(map);
-                busMarkersRef.current[id] = { marker, isSelected };
-            } else {
-                busMarkersRef.current[id].marker.setLngLat([bus.lng, bus.lat]);
-                const popup = busMarkersRef.current[id].marker.getPopup();
-                if (popup) {
-                    popup.setHTML(
-                        `<div style="min-width:120px;">
-                            <div style="font-size:13px;font-weight:700;color:${color};margin-bottom:4px;">🚍 ${label}</div>
-                            <div style="font-size:11px;color:#a1a0b0;">Speed: <span style="color:#f1f0f7;font-weight:600;">${bus.speed || 0} km/h</span></div>
-                        </div>`
-                    );
+            // Primary tracked bus is always purple; others green
+            const isTracked = busLocation && (id === "primary" || (busLocation.lat === bus.lat && busLocation.lng === bus.lng));
+            const color = isTracked ? "#8b5cf6" : "#22c55e";
+            const labelText = bus.label || (id === "primary" ? "Bus" : `Bus ${id}`);
+            const speed = bus.speed ?? 0;
+
+            if (busMarkersRef.current[id]) {
+                // ── Already exists: just move it (smooth RTDB update) ──────
+                const { marker, el } = busMarkersRef.current[id];
+                marker.setLngLat([bus.lng, bus.lat]);
+
+                // Update speed badge text without rebuilding the whole element
+                const badge = el.querySelector("[data-bus-label]");
+                if (badge) {
+                    badge.textContent = speed > 0 ? `${labelText} · ${Math.round(speed)} km/h` : labelText;
                 }
+            } else {
+                // ── New marker: create via olaMaps.addMarker() ─────────────
+                const el = createBusElement(color, labelText, speed, isTracked);
+
+                // olaMaps.addMarker({ element }) — official Ola Maps web API
+                // equivalent to new maplibregl.Marker({ element })
+                const marker = olaMaps.addMarker({ element: el })
+                    .setLngLat([bus.lng, bus.lat])
+                    .setPopup(
+                        olaMaps.addPopup({ offset: [0, -38], closeButton: false }).setHTML(`
+                            <div style="font-size:12px;font-weight:700;color:${color};margin-bottom:3px;">🚍 ${labelText}</div>
+                            <div style="font-size:11px;color:#555;">Speed: <b>${Math.round(speed)} km/h</b></div>
+                            ${bus.accuracy ? `<div style="font-size:10px;color:#999;">Accuracy: ±${Math.round(bus.accuracy)}m</div>` : ""}
+                        `)
+                    )
+                    .addTo(map);
+
+                busMarkersRef.current[id] = { marker, el };
             }
         });
 
-        // Fly to single bus or fit bounds to all
+        // ── Camera: fly to primary bus on first location fix, then just follow ──
+        if (busLocation) {
+            if (!initialFlyDoneRef.current) {
+                map.flyTo({ center: [busLocation.lng, busLocation.lat], zoom: 15, speed: 1.2, curve: 1.4 });
+                initialFlyDoneRef.current = true;
+            } else if (busesToDraw.length === 1) {
+                // Gentle pan (no zoom change) on subsequent real-time ticks
+                map.easeTo({ center: [busLocation.lng, busLocation.lat], duration: 800, easing: t => t });
+            }
+        }
+
+        // Multi-bus fleet view: fit all buses in frame
         if (busesToDraw.length > 1) {
             const lats = busesToDraw.map(b => b.lat);
             const lngs = busesToDraw.map(b => b.lng);
-            const bounds = [
-                [Math.min(...lngs), Math.min(...lats)], // sw
-                [Math.max(...lngs), Math.max(...lats)]  // ne
-            ];
-            map.fitBounds(bounds, { padding: 50, duration: 1500 });
-        } else if (busesToDraw.length === 1 && busLocation) {
-            // Only fly if there's a specific selected bus
-            map.flyTo({ center: [busLocation.lng, busLocation.lat], zoom: 15, speed: 0.8 });
+            map.fitBounds(
+                [[Math.min(...lngs), Math.min(...lats)], [Math.max(...lngs), Math.max(...lats)]],
+                { padding: 60, duration: 1200 }
+            );
         }
-    }, [busLocation, busLocations, stops, studentLocation, ready, createPinEl]);
+    }, [busLocation, busLocations, ready]);
 
+    // ── 3. Stop markers (rendered once) ──────────────────────────────────────
+    useEffect(() => {
+        const map = mapRef.current;
+        const olaMaps = olaMapsRef.current;
+        if (!map || !ready || !olaMaps || stopMarkersRef.current.length > 0) return;
+
+        stops?.forEach((stop, idx) => {
+            if (!stop.lat || !stop.lng) return;
+            const el = createPinElement("#ef4444", "📍");
+            olaMaps.addMarker({ element: el })
+                .setLngLat([stop.lng, stop.lat])
+                .setPopup(olaMaps.addPopup({ offset: [0, -30] }).setHTML(`<b>${stop.name || `Stop ${idx + 1}`}</b>`))
+                .addTo(map);
+            stopMarkersRef.current.push(true); // just track that we've drawn them
+        });
+    }, [stops, ready]);
+
+    // ── 4. Student location marker ────────────────────────────────────────────
+    useEffect(() => {
+        const map = mapRef.current;
+        const olaMaps = olaMapsRef.current;
+        if (!map || !ready || !olaMaps) return;
+        if (!studentLocation?.lat || !studentLocation?.lng) return;
+
+        if (!studentMarkerRef.current) {
+            const el = createPinElement("#3b82f6", "👨‍🎓");
+            studentMarkerRef.current = olaMaps.addMarker({ element: el })
+                .setLngLat([studentLocation.lng, studentLocation.lat])
+                .setPopup(olaMaps.addPopup({ offset: [0, -30] }).setHTML("<b>Your Location</b>"))
+                .addTo(map);
+        } else {
+            studentMarkerRef.current.setLngLat([studentLocation.lng, studentLocation.lat]);
+        }
+    }, [studentLocation, ready]);
+
+    // ── Render ────────────────────────────────────────────────────────────────
     return (
         <div className="w-full h-full rounded-2xl overflow-hidden border border-border bg-muted relative">
-            <style dangerouslySetInnerHTML={{
-                __html: `
-                    @keyframes busPop {
-                        from { opacity:0; transform:scale(0.4) translateY(-10px); }
-                        to   { opacity:1; transform:scale(1) translateY(0); }
-                    }
-                `
-            }} />
+            <style dangerouslySetInnerHTML={{ __html: `
+                @keyframes busPop {
+                    from { opacity:0; transform:scale(0.3) translateY(-8px); }
+                    to   { opacity:1; transform:scale(1)   translateY(0);    }
+                }
+                @keyframes busPulse {
+                    0%,100% { transform:translateX(-50%) scale(1);   opacity:0.35; }
+                    50%     { transform:translateX(-50%) scale(1.55); opacity:0;    }
+                }
+            `}} />
             <div ref={containerRef} className="w-full h-full" />
             {!ready && !initFailed && (
-                <div className="absolute inset-0 flex items-center justify-center bg-card/80 backdrop-blur-sm">
-                    <div className="w-8 h-8 border-3 border-cc-purple-500/30 border-t-cc-purple-500 rounded-full animate-spin" />
+                <div className="absolute inset-0 flex flex-col items-center justify-center bg-card/80 backdrop-blur-sm gap-3">
+                    <div className="w-9 h-9 border-[3px] border-cc-purple-500/30 border-t-cc-purple-500 rounded-full animate-spin" />
+                    <p className="text-xs text-muted-foreground font-medium">Loading Map…</p>
                 </div>
             )}
         </div>
