@@ -21,7 +21,7 @@ const LiveMapOSM = dynamic(() => import("./LiveMapOSM"), {
 
 const OLA_KEY_EXISTS = !!process.env.NEXT_PUBLIC_OLA_MAPS_API_KEY;
 
-export default function LiveMap({ busLocation, busLocations = [], stops = [], studentLocation = null }) {
+export default function LiveMap({ busLocation, busLocations = [], stops = [], studentLocation = null, busLabel = "" }) {
     const [provider, setProvider] = useState(OLA_KEY_EXISTS ? "ola" : "osm");
 
     const handleOlaError = useCallback(() => {
@@ -29,7 +29,7 @@ export default function LiveMap({ busLocation, busLocations = [], stops = [], st
         setProvider("osm");
     }, []);
 
-    const sharedProps = { busLocation, busLocations, stops, studentLocation };
+    const sharedProps = { busLocation, busLocations, stops, studentLocation, busLabel };
 
     if (provider === "ola") {
         return (

@@ -358,7 +358,7 @@ function AdminDashboardContent() {
                                 <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Fleet Global Map</span>
                             </div>
                             <div className="flex-1 relative">
-                                <BusMap allLocations={busLocations} />
+                                <BusMap allLocations={busLocations} busMonitorList={busMonitorList} />
                             </div>
                         </div>
                     </div>
@@ -413,10 +413,17 @@ function AdminStreamWidget({ selectedCamera, onCameraSelect, busLabel }) {
 }
 
 // ─── BusMap ───────────────────────────────────────────────────────────────────
-// Shows the entire active fleet location on the map.
-function BusMap({ allLocations }) {
-    // Gather all available locations for context markers
-    const allEntries = Object.entries(allLocations).map(([id, loc]) => ({ ...loc, id, label: `Bus ${id}` }));
+// Shows the entire active fleet on the map. Uses busMonitorList for enriched labels.
+function BusMap({ allLocations, busMonitorList = [] }) {
+    // Merge RTDB locations with Firestore labels from busMonitorList
+    const allEntries = Object.entries(allLocations).map(([id, loc]) => {
+        const monitor = busMonitorList.find(b => b.id === id);
+        return {
+            ...loc,
+            id,
+            label: monitor?.label || `Bus ${id}`,
+        };
+    });
 
     return (
         <div className="w-full h-full absolute inset-0">

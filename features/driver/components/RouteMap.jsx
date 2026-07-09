@@ -11,10 +11,10 @@ const LiveMap = dynamic(() => import('@/features/tracking/components/LiveMap'), 
     )
 });
 
-export default function RouteMap({ busLocation }) {
+export default function RouteMap({ busLocation, busLabel }) {
     return (
         <div className="w-full h-64 bg-card rounded-xl shadow-lg border border-border relative overflow-hidden group z-0">
-            <LiveMap busLocation={busLocation} />
+            <LiveMap busLocation={busLocation} busLabel={busLabel} />
         </div>
     );
 }

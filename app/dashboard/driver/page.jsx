@@ -327,7 +327,7 @@ export default function DriverDashboard() {
                                     <h3 className="font-bold text-foreground">Live Route Map</h3>
                                     <span className="text-xs text-muted-foreground">Updated: Just now</span>
                                 </div>
-                                <RouteMap busLocation={busLocation} />
+                                <RouteMap busLocation={busLocation} busLabel={driverProfile.busNumber} />
                             </div>
                         </div>
 

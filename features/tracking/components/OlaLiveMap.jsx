@@ -126,7 +126,7 @@ function createPinElement(color, emoji) {
 
 // ── Component ─────────────────────────────────────────────────────────────────
 
-export default function OlaLiveMap({ busLocation, busLocations = [], stops = [], studentLocation, onInitError }) {
+export default function OlaLiveMap({ busLocation, busLocations = [], stops = [], studentLocation, busLabel = "", onInitError }) {
     const containerRef = useRef(null);
     const mapRef = useRef(null);
     const olaMapsRef = useRef(null);          // OlaMaps instance (for addMarker API)
@@ -237,7 +237,9 @@ export default function OlaLiveMap({ busLocation, busLocations = [], stops = [],
             // Primary tracked bus is always purple; others green
             const isTracked = busLocation && (id === "primary" || (busLocation.lat === bus.lat && busLocation.lng === bus.lng));
             const color = isTracked ? "#8b5cf6" : "#22c55e";
-            const labelText = bus.label || (id === "primary" ? "Bus" : `Bus ${id}`);
+            // Use explicit busLabel for single-bus mode (driver/parent/student),
+            // fall back to the per-entry label in multi-bus mode (admin fleet map)
+            const labelText = busLabel || bus.label || (id === "primary" ? "Bus" : `Bus ${id}`);
             const speed = bus.speed ?? 0;
 
             if (busMarkersRef.current[id]) {
