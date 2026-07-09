@@ -83,8 +83,9 @@ export default function StudentDashboard() {
                     }
                 });
 
-                // 3. Listen to Real-time Bus Location from RTDB
-                const locRef = ref(rtdb, `buses/${busId}/sources/phone`);
+                // 3. Listen to Real-time Bus Location from RTDB (authoritative /location node)
+                // Written by driver's phone via updateLocation(), and by the VPS Arbitrator when running.
+                const locRef = ref(rtdb, `buses/${busId}/location`);
                 unsubLoc = onValue(locRef, (locSnap) => {
                     if (isMounted && locSnap.exists()) {
                         setDashboardData(prev => ({ ...prev, busLocation: locSnap.val() }));

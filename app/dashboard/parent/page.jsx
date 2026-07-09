@@ -100,11 +100,13 @@ export default function ParentDashboard() {
         return () => unsubscribeAuth();
     }, []);
 
-    // Subscribe to RTDB for live bus location
+    // Subscribe to RTDB for live bus location (authoritative /location node)
+    // This node is written by both the driver's phone (updateLocation fallback)
+    // and the VPS Arbitrator when running, making it the single source of truth.
     useEffect(() => {
         if (!studentLink?.busId) return;
 
-        const busLocRef = ref(rtdb, `buses/${studentLink.busId}/sources/phone`);
+        const busLocRef = ref(rtdb, `buses/${studentLink.busId}/location`);
         const unsubscribe = onValue(busLocRef, (snapshot) => {
             const data = snapshot.val();
             if (data) setLiveLocation(data);

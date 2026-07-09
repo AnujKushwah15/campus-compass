@@ -74,9 +74,13 @@ export default function DriverDashboard() {
             (position) => {
                 const { latitude, longitude, speed } = position.coords;
 
-                // Only update context/firestore if we are actually in an active trip
+                // Only update context/firestore if we are actually in an active trip.
+                // Pass driverProfile.assignedBusId as override so writes fire immediately
+                // after startTrip(), before the Firestore onSnapshot has returned the
+                // new trip doc and populated currentTrip.busId.
                 if (currentTrip?.status === 'active' || isTripping) {
-                    updateLocation(latitude, longitude, speed);
+                    const busIdOverride = currentTrip?.busId || driverProfile.assignedBusId;
+                    updateLocation(latitude, longitude, speed ?? 0, 0, busIdOverride);
                 }
                 setLocationError(''); // clear any previous errors on success
             },
@@ -118,7 +122,7 @@ export default function DriverDashboard() {
         return () => {
             navigator.geolocation.clearWatch(watchId);
         };
-    }, [currentTrip?.status, isTripping, updateLocation]);
+    }, [currentTrip?.status, currentTrip?.busId, isTripping, updateLocation, driverProfile.assignedBusId]);
 
 
     const handleStartTrip = async () => {

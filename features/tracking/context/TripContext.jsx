@@ -257,29 +257,32 @@ export function TripProvider({ children }) {
         }
     };
 
-    // 4. Update Location (Called by Driver Page) - Writes to RTDB (Source: Phone)
-    const updateLocation = useCallback(async (lat, lng, speed = 0, accuracy = 0) => {
-        if (!currentTrip?.busId) return;
+    // 4. Update Location (Called by Driver Page) - Writes to RTDB
+    // busIdOverride: used on trip start before currentTrip is populated by Firestore snapshot
+    const updateLocation = useCallback(async (lat, lng, speed = 0, accuracy = 0, busIdOverride = null) => {
+        const targetBusId = busIdOverride || currentTrip?.busId;
+        if (!targetBusId) return;
 
         try {
             const locationData = {
                 lat,
                 lng,
                 speed,
-                accuracy, // New: Confidence metric
+                accuracy,
                 timestamp: rtdbTimestamp(), // Server time
-                last_seen: Date.now(), // Client time
-                connected: true // Flag
+                last_seen: Date.now(),       // Client time
+                connected: true
             };
 
-            // Write to /buses/{busId}/sources/phone
-            const sourceRef = ref(rtdb, `buses/${currentTrip?.busId}/sources/phone`);
+            // Write to phone source node (for VPS Arbitrator to consume)
+            const sourceRef = ref(rtdb, `buses/${targetBusId}/sources/phone`);
             await set(sourceRef, locationData);
 
-            // Note: We NO LONGER write to Firestore 'trips' doc here.
-            // That is now the job of the Cloud Function (Arbitration Logic).
-            // However, for pure client-side MVP without Cloud Functions, we might blindly copy to location node too.
-            // For this phase, we follow the plan: Write to SOURCE node.
+            // Also write directly to the authoritative /location node so the
+            // driver & parent maps always update even when the VPS Arbitrator
+            // is not running (phone-only mode).
+            const locationRef = ref(rtdb, `buses/${targetBusId}/location`);
+            await set(locationRef, locationData);
         } catch (error) {
             console.error("Error updating RTDB location:", error);
         }
